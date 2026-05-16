@@ -16,7 +16,10 @@ export default async function handler(req, res) {
       return;
     }
 
-    const result = await runSignalScan({ dryRun: req.query?.dryRun === "1" });
+    const result = await runSignalScan({
+      dryRun: req.query?.dryRun === "1",
+      group: req.query?.group || "all"
+    });
     res.status(200).json({ ok: true, ...result });
   } catch (error) {
     console.error(error);
