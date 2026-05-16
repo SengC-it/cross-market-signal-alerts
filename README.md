@@ -4,7 +4,7 @@ Cloud-ready signal scanner for crypto spot, crypto perpetual futures, US equitie
 
 ## What It Does
 
-- Runs from GitHub Actions every 4 hours and calls the deployed Vercel API.
+- Runs from GitHub Actions every hour and calls the deployed Vercel API.
 - Scans multiple asset groups and strategies in smaller batches to avoid cloud function timeouts.
 - Scores each signal with historical performance, risk, current environment, and liquidity.
 - Sends a decision-card style email only for new medium/high confidence signals.
@@ -60,7 +60,7 @@ The tables are:
 
 ## Scheduling
 
-Production scheduling is handled by [`.github/workflows/signal-cron.yml`](.github/workflows/signal-cron.yml). The workflow runs every 4 hours and calls:
+Production scheduling is handled by [`.github/workflows/signal-cron.yml`](.github/workflows/signal-cron.yml). The workflow runs every hour and calls:
 
 ```text
 GET /api/cron?secret=YOUR_CRON_SECRET&group=GROUP_NAME
