@@ -11,7 +11,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        group: [crypto-core, crypto-alt, futures-core, tradfi]
+        group: [crypto-core-a, crypto-core-b, crypto-alt-a, crypto-alt-b, crypto-alt-c, futures-core, tradfi]
     timeout-minutes: 10
     steps:
       - name: Call signal scanner
