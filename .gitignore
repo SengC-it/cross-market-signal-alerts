@@ -1,0 +1,11 @@
+node_modules
+.vercel
+.env
+.env.local
+*.log
+*.zip
+all_data/
+data/
+extracted/
+market_data/
+market_extracted/

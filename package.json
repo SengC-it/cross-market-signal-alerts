@@ -1,0 +1,14 @@
+{
+  "name": "cross-market-signal-alerts",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node scripts/smoke-test.js",
+    "dev": "vercel dev",
+    "deploy": "vercel deploy --prod"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
