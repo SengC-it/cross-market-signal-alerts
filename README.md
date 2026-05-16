@@ -18,7 +18,12 @@ ALERT_EMAIL_TO=sheng.chi@qq.com
 ALERT_EMAIL_FROM=Signal Alerts <alerts@your-domain.com>
 CRON_SECRET=choose-a-long-random-secret
 
-# Choose one email provider
+# Choose one email provider.
+# Recommended if you do not own a domain:
+GMAIL_SMTP_USER=your-gmail-address@gmail.com
+GMAIL_APP_PASSWORD=your-16-character-google-app-password
+
+# Recommended if you own a verified sending domain:
 RESEND_API_KEY=...
 # or
 SENDGRID_API_KEY=...
@@ -58,6 +63,23 @@ Manual test:
 GET /api/test-email?secret=YOUR_CRON_SECRET
 GET /api/cron?secret=YOUR_CRON_SECRET&dryRun=1
 ```
+
+## Gmail SMTP
+
+If you do not own a sending domain, Gmail SMTP is the easiest production email path.
+
+1. Enable 2-Step Verification on the Gmail account.
+2. Create an App Password for this app.
+3. Add these Vercel environment variables:
+
+```text
+GMAIL_SMTP_USER=your-gmail-address@gmail.com
+GMAIL_APP_PASSWORD=your-16-character-app-password
+ALERT_EMAIL_FROM=Signal Alerts <your-gmail-address@gmail.com>
+ALERT_EMAIL_TO=sheng.chi@qq.com
+```
+
+Gmail App Passwords are different from your normal Google password. Do not commit them to GitHub.
 
 ## Notes
 

@@ -8,6 +8,9 @@
     "dev": "vercel dev",
     "deploy": "vercel deploy --prod"
   },
+  "dependencies": {
+    "nodemailer": "^6.9.16"
+  },
   "engines": {
     "node": ">=20"
   }
