@@ -11,6 +11,11 @@ export default async function handler(req, res) {
   }
 
   try {
+    if (req.query?.quick === "1") {
+      res.status(200).json({ ok: true, mode: "quick", message: "cron endpoint reachable" });
+      return;
+    }
+
     const result = await runSignalScan({ dryRun: req.query?.dryRun === "1" });
     res.status(200).json({ ok: true, ...result });
   } catch (error) {
