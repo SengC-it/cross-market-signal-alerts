@@ -1,0 +1,17 @@
+name: Signal Cron
+
+on:
+  schedule:
+    - cron: "10 */4 * * *"
+  workflow_dispatch:
+
+jobs:
+  run-signal-scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Call signal scanner
+        run: |
+          curl --fail --show-error --silent \
+            --get "${{ secrets.VERCEL_APP_URL }}/api/cron" \
+            --data-urlencode "secret=${{ secrets.CRON_SECRET }}"
