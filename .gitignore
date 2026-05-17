@@ -1,7 +1,9 @@
 node_modules
 .vercel
+.npm-cache/
 .env
 .env.local
+.env.vercel.local
 *.log
 *.zip
 all_data/

@@ -1,0 +1,15 @@
+.git
+.vercel
+.npm-cache
+node_modules
+all_data
+data
+extracted
+market_data
+market_extracted
+automations
+*.zip
+*.log
+.env
+.env.local
+.env.vercel.local

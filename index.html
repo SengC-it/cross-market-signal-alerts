@@ -1,0 +1,542 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>跨市场信号提醒运行面板</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --ink: #17201d;
+        --muted: #64716d;
+        --line: #d9e1dd;
+        --paper: #f7faf8;
+        --panel: #ffffff;
+        --teal: #087f73;
+        --teal-soft: #dff4ef;
+        --red: #b42318;
+        --red-soft: #ffe7e2;
+        --amber: #996a13;
+        --amber-soft: #fff0c9;
+        --blue: #265ea8;
+        --blue-soft: #e6f0ff;
+        --shadow: 0 16px 40px rgba(23, 32, 29, 0.08);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: "Aptos", "Segoe UI", "Microsoft YaHei", sans-serif;
+        color: var(--ink);
+        background:
+          linear-gradient(135deg, rgba(8, 127, 115, 0.09), transparent 34%),
+          linear-gradient(315deg, rgba(153, 106, 19, 0.11), transparent 38%),
+          var(--paper);
+      }
+
+      button,
+      input,
+      select {
+        font: inherit;
+      }
+
+      .shell {
+        width: min(1180px, calc(100% - 32px));
+        margin: 0 auto;
+        padding: 30px 0 48px;
+      }
+
+      .topbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 18px;
+        margin-bottom: 22px;
+      }
+
+      .title {
+        display: grid;
+        gap: 6px;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: clamp(26px, 4vw, 44px);
+        line-height: 1.08;
+        letter-spacing: 0;
+      }
+
+      .subtitle {
+        color: var(--muted);
+        margin: 0;
+        font-size: 15px;
+      }
+
+      .controls {
+        display: grid;
+        grid-template-columns: minmax(190px, 270px) auto auto;
+        gap: 10px;
+        align-items: center;
+      }
+
+      .secret {
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--panel);
+        min-height: 42px;
+        padding: 0 12px;
+        color: var(--ink);
+      }
+
+      .button {
+        border: 0;
+        border-radius: 8px;
+        min-height: 42px;
+        padding: 0 16px;
+        background: var(--ink);
+        color: white;
+        cursor: pointer;
+        font-weight: 700;
+      }
+
+      .button.secondary {
+        background: var(--panel);
+        color: var(--ink);
+        border: 1px solid var(--line);
+      }
+
+      .status-line {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        align-items: center;
+        margin: 0 0 18px;
+        color: var(--muted);
+        font-size: 14px;
+      }
+
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        min-height: 30px;
+        padding: 0 10px;
+        border-radius: 999px;
+        font-weight: 700;
+        background: var(--blue-soft);
+        color: var(--blue);
+      }
+
+      .pill.ok {
+        background: var(--teal-soft);
+        color: var(--teal);
+      }
+
+      .pill.warn {
+        background: var(--amber-soft);
+        color: var(--amber);
+      }
+
+      .pill.bad {
+        background: var(--red-soft);
+        color: var(--red);
+      }
+
+      .grid {
+        display: grid;
+        gap: 16px;
+      }
+
+      .metrics {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+      }
+
+      .metric {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        box-shadow: var(--shadow);
+        padding: 18px;
+        min-height: 122px;
+      }
+
+      .metric span {
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .metric strong {
+        display: block;
+        margin-top: 12px;
+        font-size: 28px;
+        line-height: 1;
+      }
+
+      .section {
+        margin-top: 18px;
+        background: rgba(255, 255, 255, 0.74);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        overflow: hidden;
+      }
+
+      .section-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        padding: 16px 18px;
+        border-bottom: 1px solid var(--line);
+      }
+
+      h2 {
+        margin: 0;
+        font-size: 18px;
+      }
+
+      .table-wrap {
+        overflow-x: auto;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        min-width: 860px;
+        background: var(--panel);
+      }
+
+      th,
+      td {
+        padding: 12px 14px;
+        border-bottom: 1px solid var(--line);
+        text-align: left;
+        vertical-align: top;
+        font-size: 14px;
+      }
+
+      th {
+        color: var(--muted);
+        font-size: 12px;
+        text-transform: uppercase;
+        background: #f3f7f5;
+      }
+
+      .mono {
+        font-family: "Cascadia Mono", "SFMono-Regular", Consolas, monospace;
+      }
+
+      .empty,
+      .error {
+        padding: 22px;
+        color: var(--muted);
+        background: var(--panel);
+      }
+
+      .error {
+        color: var(--red);
+      }
+
+      .mobile-cards {
+        display: none;
+      }
+
+      @media (max-width: 840px) {
+        .topbar {
+          align-items: stretch;
+          flex-direction: column;
+        }
+
+        .controls {
+          grid-template-columns: 1fr;
+        }
+
+        .metrics {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+
+      @media (max-width: 560px) {
+        .shell {
+          width: min(100% - 20px, 1180px);
+          padding-top: 18px;
+        }
+
+        .metrics {
+          grid-template-columns: 1fr;
+        }
+
+        .desktop-table {
+          display: none;
+        }
+
+        .mobile-cards {
+          display: grid;
+          gap: 10px;
+          padding: 10px;
+          background: var(--panel);
+        }
+
+        .row-card {
+          border: 1px solid var(--line);
+          border-radius: 8px;
+          padding: 12px;
+          display: grid;
+          gap: 8px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="shell">
+      <header class="topbar">
+        <div class="title">
+          <h1>跨市场信号提醒运行面板</h1>
+          <p class="subtitle">查询扫描执行、策略触发、邮件提醒和最近错误。</p>
+        </div>
+        <form class="controls" id="statusForm">
+          <input class="secret" id="secretInput" type="password" autocomplete="current-password" placeholder="输入 CRON_SECRET" />
+          <button class="button" type="submit">查询</button>
+          <button class="button secondary" id="clearButton" type="button">清除密钥</button>
+        </form>
+      </header>
+
+      <div class="status-line">
+        <span class="pill warn" id="connectionState">等待查询</span>
+        <span id="lastRefresh">尚未刷新</span>
+        <span id="warningText"></span>
+      </div>
+
+      <section class="grid metrics" aria-label="运行概览">
+        <div class="metric"><span>最近执行</span><strong id="latestRun">--</strong></div>
+        <div class="metric"><span>最近分组</span><strong id="latestGroup">--</strong></div>
+        <div class="metric"><span>是否触发策略</span><strong id="latestSignal">--</strong></div>
+        <div class="metric"><span>是否发送邮件</span><strong id="latestEmail">--</strong></div>
+      </section>
+
+      <section class="section">
+        <div class="section-head">
+          <h2>分组状态</h2>
+          <span class="pill" id="groupCount">0 组</span>
+        </div>
+        <div id="groupSummary"></div>
+      </section>
+
+      <section class="section">
+        <div class="section-head">
+          <h2>最近执行记录</h2>
+          <span class="pill" id="runCount">0 条</span>
+        </div>
+        <div id="runLogs"></div>
+      </section>
+
+      <section class="section">
+        <div class="section-head">
+          <h2>最近邮件提醒</h2>
+          <span class="pill" id="alertCount">0 条</span>
+        </div>
+        <div id="sentAlerts"></div>
+      </section>
+    </main>
+
+    <script>
+      const els = {
+        form: document.querySelector("#statusForm"),
+        secret: document.querySelector("#secretInput"),
+        clear: document.querySelector("#clearButton"),
+        state: document.querySelector("#connectionState"),
+        lastRefresh: document.querySelector("#lastRefresh"),
+        warningText: document.querySelector("#warningText"),
+        latestRun: document.querySelector("#latestRun"),
+        latestGroup: document.querySelector("#latestGroup"),
+        latestSignal: document.querySelector("#latestSignal"),
+        latestEmail: document.querySelector("#latestEmail"),
+        groupSummary: document.querySelector("#groupSummary"),
+        runLogs: document.querySelector("#runLogs"),
+        sentAlerts: document.querySelector("#sentAlerts"),
+        groupCount: document.querySelector("#groupCount"),
+        runCount: document.querySelector("#runCount"),
+        alertCount: document.querySelector("#alertCount")
+      };
+
+      const savedSecret = localStorage.getItem("signal-dashboard-secret");
+      if (savedSecret) els.secret.value = savedSecret;
+
+      els.form.addEventListener("submit", (event) => {
+        event.preventDefault();
+        loadStatus();
+      });
+
+      els.clear.addEventListener("click", () => {
+        localStorage.removeItem("signal-dashboard-secret");
+        els.secret.value = "";
+        setState("warn", "等待查询");
+      });
+
+      if (savedSecret) loadStatus();
+
+      async function loadStatus() {
+        const secret = els.secret.value.trim();
+        if (!secret) {
+          setState("bad", "需要密钥");
+          return;
+        }
+        localStorage.setItem("signal-dashboard-secret", secret);
+        setState("warn", "查询中");
+
+        try {
+          const response = await fetch(`/api/status?limit=70&alertLimit=30&secret=${encodeURIComponent(secret)}`);
+          const data = await response.json();
+          if (!response.ok || !data.ok) throw new Error(data.message || data.error || `HTTP ${response.status}`);
+          render(data);
+          setState("ok", "连接正常");
+        } catch (error) {
+          setState("bad", "查询失败");
+          els.runLogs.innerHTML = `<div class="error">${escapeHtml(error.message)}</div>`;
+        }
+      }
+
+      function render(data) {
+        const summary = data.summary || {};
+        els.lastRefresh.textContent = `页面刷新：${formatDate(data.generatedAt)}`;
+        els.warningText.textContent = Array.isArray(data.warnings) && data.warnings.length
+          ? `部分数据不可用：${data.warnings.map((warning) => warning.source).join("、")}`
+          : "";
+        els.latestRun.textContent = summary.latestRunAt ? relativeTime(summary.latestRunAt) : "--";
+        els.latestGroup.textContent = summary.latestScanGroup || "--";
+        els.latestSignal.textContent = summary.latestRunHadSignal ? "是" : "否";
+        els.latestEmail.textContent = summary.latestRunEmailed ? "是" : "否";
+        els.groupCount.textContent = `${summary.groups?.length || 0} 组`;
+        els.runCount.textContent = `${data.runLogs?.length || 0} 条`;
+        els.alertCount.textContent = `${data.sentAlerts?.length || 0} 条`;
+        renderGroups(summary.groups || []);
+        renderRuns(data.runLogs || []);
+        renderAlerts(data.sentAlerts || []);
+      }
+
+      function renderGroups(groups) {
+        if (!groups.length) {
+          els.groupSummary.innerHTML = `<div class="empty">还没有分组执行记录。</div>`;
+          return;
+        }
+        els.groupSummary.innerHTML = table(
+          ["分组", "最近执行", "运行次数", "候选", "信号", "邮件", "错误"],
+          groups.map((group) => [
+            group.group,
+            formatDate(group.lastRun),
+            group.runs,
+            group.candidates,
+            group.signals,
+            badge(group.emails > 0, group.emails > 0 ? `${group.emails} 次` : "无"),
+            badge(group.errors === 0, group.errors === 0 ? "无" : `${group.errors} 条`, true)
+          ])
+        );
+      }
+
+      function renderRuns(runs) {
+        if (!runs.length) {
+          els.runLogs.innerHTML = `<div class="empty">还没有执行记录。请先确认 GitHub Actions 是否触发 /api/cron。</div>`;
+          return;
+        }
+        els.runLogs.innerHTML = table(
+          ["执行时间", "分组", "候选", "信号", "邮件", "耗时", "错误"],
+          runs.map((run) => [
+            formatDate(run.created_at || run.finished_at || run.started_at),
+            run.scan_group || "all",
+            Number(run.candidates_count || 0),
+            Number(run.signals_count || 0),
+            badge(Boolean(run.emailed), run.emailed ? "已发送" : "未发送"),
+            duration(run.started_at, run.finished_at),
+            renderErrors(run.errors)
+          ])
+        );
+      }
+
+      function renderAlerts(alerts) {
+        if (!alerts.length) {
+          els.sentAlerts.innerHTML = `<div class="empty">最近没有邮件提醒记录。</div>`;
+          return;
+        }
+        els.sentAlerts.innerHTML = table(
+          ["发送时间", "资产", "周期", "策略", "推荐指数", "触发 K 线"],
+          alerts.map((alert) => [
+            formatDate(alert.sent_at),
+            alert.asset || "--",
+            alert.interval || "--",
+            alert.payload?.strategyName || alert.strategy_id || "--",
+            alert.recommendation_score == null ? "--" : Math.round(Number(alert.recommendation_score)),
+            formatDate(alert.trigger_time)
+          ])
+        );
+      }
+
+      function table(headers, rows) {
+        const head = headers.map((item) => `<th>${escapeHtml(item)}</th>`).join("");
+        const body = rows.map((row) => `<tr>${row.map((cell) => `<td>${cellHtml(cell)}</td>`).join("")}</tr>`).join("");
+        const cards = rows
+          .map((row) => `<article class="row-card">${headers.map((header, i) => `<div><strong>${escapeHtml(header)}：</strong>${cellHtml(row[i])}</div>`).join("")}</article>`)
+          .join("");
+        return `<div class="table-wrap desktop-table"><table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div><div class="mobile-cards">${cards}</div>`;
+      }
+
+      function badge(ok, text, invert = false) {
+        const cls = ok ? "ok" : invert ? "bad" : "warn";
+        return { html: `<span class="pill ${cls}">${escapeHtml(text)}</span>` };
+      }
+
+      function renderErrors(errors) {
+        if (!Array.isArray(errors) || errors.length === 0) return badge(true, "无");
+        return { html: `<span class="pill bad">${errors.length} 条</span>` };
+      }
+
+      function cellHtml(value) {
+        if (value && typeof value === "object" && "html" in value) return value.html;
+        return escapeHtml(value);
+      }
+
+      function duration(start, end) {
+        if (!start || !end) return "--";
+        const ms = new Date(end).getTime() - new Date(start).getTime();
+        if (!Number.isFinite(ms) || ms < 0) return "--";
+        return `${Math.round(ms / 1000)} 秒`;
+      }
+
+      function formatDate(value) {
+        if (!value) return "--";
+        return new Intl.DateTimeFormat("zh-CN", {
+          timeZone: "Asia/Shanghai",
+          month: "2-digit",
+          day: "2-digit",
+          hour: "2-digit",
+          minute: "2-digit"
+        }).format(new Date(value));
+      }
+
+      function relativeTime(value) {
+        const diff = Date.now() - new Date(value).getTime();
+        if (!Number.isFinite(diff)) return "--";
+        const minutes = Math.max(0, Math.round(diff / 60000));
+        if (minutes < 60) return `${minutes} 分钟前`;
+        return `${Math.round(minutes / 60)} 小时前`;
+      }
+
+      function setState(kind, text) {
+        els.state.className = `pill ${kind}`;
+        els.state.textContent = text;
+      }
+
+      function escapeHtml(value) {
+        return String(value ?? "--").replace(/[&<>"']/g, (char) => ({
+          "&": "&amp;",
+          "<": "&lt;",
+          ">": "&gt;",
+          '"': "&quot;",
+          "'": "&#039;"
+        })[char]);
+      }
+    </script>
+  </body>
+</html>
