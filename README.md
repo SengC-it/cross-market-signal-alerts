@@ -75,6 +75,8 @@ CRON_SECRET=the-same-secret-used-in-vercel
 
 Vercel Hobby cron is intentionally not used because the free plan only allows daily cron jobs.
 
+Supabase also has an optional cloud fallback scheduler in [sql/supabase-hourly-cron.example.sql](sql/supabase-hourly-cron.example.sql). It uses `pg_cron` and `pg_net` to call the same Vercel API hourly, so the scanner can keep running even if GitHub Actions schedule is delayed or skipped.
+
 ## Vercel
 
 Vercel hosts the API endpoints. Keep the same environment variables in Vercel as listed above.
