@@ -395,7 +395,7 @@
         setState("warn", "查询中");
 
         try {
-          const response = await fetch(`/api/status?limit=80&alertLimit=30&secret=${encodeURIComponent(secret)}`);
+          const response = await fetch(`/api/status?limit=80&alertLimit=120&secret=${encodeURIComponent(secret)}`);
           const data = await response.json();
           if (!response.ok || !data.ok) throw new Error(data.message || data.error || `HTTP ${response.status}`);
           render(data);
@@ -415,7 +415,7 @@
         els.latestRun.textContent = summary.latestRunAt ? relativeTime(summary.latestRunAt) : "--";
         els.latestGroup.textContent = labelGroup(summary.latestScanGroup);
         els.latestSignal.textContent = summary.latestRunHadSignal ? "是" : "否";
-        els.latestEmail.textContent = summary.latestRunEmailed ? "是" : "否";
+        els.latestEmail.textContent = emailText(summary.latestRunEmailed, summary.latestRunEmailConsistency);
         els.groupCount.textContent = `${summary.groups?.length || 0} 组`;
         els.runCount.textContent = `${data.runLogs?.length || 0} 条`;
         els.alertCount.textContent = `${data.sentAlerts?.length || 0} 条`;
@@ -430,7 +430,7 @@
           return;
         }
         els.groupSummary.innerHTML = table(
-          ["分组", "说明", "最近执行", "运行次数", "候选", "信号", "邮件", "警告", "错误"],
+          ["分组", "说明", "最近执行", "运行次数", "候选", "信号", "已确认邮件", "待核查邮件", "警告", "错误"],
           groups.map((group) => [
             group.group,
             labelGroup(group.group),
@@ -439,6 +439,7 @@
             group.candidates,
             group.signals,
             badge(group.emails > 0, group.emails > 0 ? `${group.emails} 次` : "无"),
+            badge(group.unverifiedEmails === 0, group.unverifiedEmails === 0 ? "无" : `${group.unverifiedEmails} 次`, true, "warn"),
             badge(group.warnings === 0, group.warnings === 0 ? "无" : `${group.warnings} 条`, true, "warn"),
             badge(group.errors === 0, group.errors === 0 ? "无" : `${group.errors} 条`, true)
           ])
@@ -451,14 +452,15 @@
           return;
         }
         els.runLogs.innerHTML = table(
-          ["执行时间", "分组", "候选", "信号", "邮件", "邮件状态", "耗时", "警告", "错误"],
+          ["执行时间", "分组", "候选", "信号", "邮件", "邮件状态", "核验", "耗时", "警告", "错误"],
           runs.map((run) => [
             formatDate(run.created_at || run.finished_at || run.started_at),
             labelGroup(run.scan_group || "all"),
             Number(run.candidates_count || 0),
             Number(run.signals_count || 0),
-            badge(Boolean(run.emailed), run.emailed ? "已发送" : "未发送"),
+            badge(Boolean(run.emailed), run.emailed ? "流程已发送" : "未发送"),
             run.email_status || "--",
+            renderEmailConsistency(run.email_consistency),
             duration(run.started_at, run.finished_at),
             renderWarnings(run.warnings),
             renderErrors(run.errors)
@@ -502,6 +504,22 @@
       function renderWarnings(warnings) {
         if (!Array.isArray(warnings) || warnings.length === 0) return badge(true, "无");
         return { html: `<details><summary><span class="pill warn">${warnings.length} 条</span></summary>${warningList(warnings)}</details>` };
+      }
+
+      function renderEmailConsistency(consistency) {
+        const status = consistency?.status || "none";
+        if (status === "verified") return badge(true, "已落库");
+        if (status === "legacy_unverified") return badge(false, "旧记录未核验", true, "warn");
+        if (status === "missing_sent_alert_record") return badge(false, "缺少提醒记录", true);
+        return "--";
+      }
+
+      function emailText(emailed, consistency) {
+        if (!emailed) return "否";
+        const status = consistency?.status || "legacy_unverified";
+        if (status === "verified") return "是";
+        if (status === "missing_sent_alert_record") return "异常";
+        return "待核查";
       }
 
       function renderErrors(errors) {

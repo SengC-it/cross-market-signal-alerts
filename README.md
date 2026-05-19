@@ -62,6 +62,8 @@ If your project was created before the warning/error split, run this once in Sup
 
 ```sql
 alter table run_logs add column if not exists warnings jsonb;
+alter table run_logs add column if not exists email_result jsonb;
+alter table run_logs add column if not exists sent_alert_keys jsonb;
 ```
 
 ## Scheduling
