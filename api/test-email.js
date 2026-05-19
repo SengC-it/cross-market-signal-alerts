@@ -8,10 +8,9 @@ export default async function handler(req, res) {
   }
 
   try {
-    const body = renderTestEmail();
     await sendEmail({
-      subject: "测试｜云端跨市场信号提醒已接通",
-      text: body
+      subject: "测试：云端跨市场信号提醒已接通",
+      text: renderTestEmail()
     });
 
     res.status(200).json({ ok: true, sent: true });
