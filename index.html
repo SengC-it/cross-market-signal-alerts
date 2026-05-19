@@ -39,8 +39,7 @@
       }
 
       button,
-      input,
-      select {
+      input {
         font: inherit;
       }
 
@@ -101,6 +100,7 @@
         color: white;
         cursor: pointer;
         font-weight: 700;
+        white-space: nowrap;
       }
 
       .button.secondary {
@@ -205,7 +205,7 @@
       table {
         width: 100%;
         border-collapse: collapse;
-        min-width: 860px;
+        min-width: 900px;
         background: var(--panel);
       }
 
@@ -223,10 +223,6 @@
         font-size: 12px;
         text-transform: uppercase;
         background: #f3f7f5;
-      }
-
-      .mono {
-        font-family: "Cascadia Mono", "SFMono-Regular", Consolas, monospace;
       }
 
       .empty,
@@ -295,7 +291,7 @@
       <header class="topbar">
         <div class="title">
           <h1>跨市场信号提醒运行面板</h1>
-          <p class="subtitle">查询扫描执行、策略触发、邮件提醒和最近错误。</p>
+          <p class="subtitle">查看每小时扫描、合约套利、策略触发、邮件发送和最近错误。</p>
         </div>
         <form class="controls" id="statusForm">
           <input class="secret" id="secretInput" type="password" autocomplete="current-password" placeholder="输入 CRON_SECRET" />
@@ -343,6 +339,17 @@
     </main>
 
     <script>
+      const GROUP_LABELS = {
+        "crypto-core-a": "主流币 A",
+        "crypto-core-b": "主流币 B",
+        "crypto-alt-a": "山寨币 A",
+        "crypto-alt-b": "山寨币 B",
+        "crypto-alt-c": "山寨币 C",
+        "futures-core": "合约趋势",
+        "futures-arbitrage": "合约套利",
+        tradfi: "美股/商品"
+      };
+
       const els = {
         form: document.querySelector("#statusForm"),
         secret: document.querySelector("#secretInput"),
@@ -388,7 +395,7 @@
         setState("warn", "查询中");
 
         try {
-          const response = await fetch(`/api/status?limit=70&alertLimit=30&secret=${encodeURIComponent(secret)}`);
+          const response = await fetch(`/api/status?limit=80&alertLimit=30&secret=${encodeURIComponent(secret)}`);
           const data = await response.json();
           if (!response.ok || !data.ok) throw new Error(data.message || data.error || `HTTP ${response.status}`);
           render(data);
@@ -406,7 +413,7 @@
           ? `部分数据不可用：${data.warnings.map((warning) => warning.source).join("、")}`
           : "";
         els.latestRun.textContent = summary.latestRunAt ? relativeTime(summary.latestRunAt) : "--";
-        els.latestGroup.textContent = summary.latestScanGroup || "--";
+        els.latestGroup.textContent = labelGroup(summary.latestScanGroup);
         els.latestSignal.textContent = summary.latestRunHadSignal ? "是" : "否";
         els.latestEmail.textContent = summary.latestRunEmailed ? "是" : "否";
         els.groupCount.textContent = `${summary.groups?.length || 0} 组`;
@@ -423,9 +430,10 @@
           return;
         }
         els.groupSummary.innerHTML = table(
-          ["分组", "最近执行", "运行次数", "候选", "信号", "邮件", "错误"],
+          ["分组", "说明", "最近执行", "运行次数", "候选", "信号", "邮件", "错误"],
           groups.map((group) => [
             group.group,
+            labelGroup(group.group),
             formatDate(group.lastRun),
             group.runs,
             group.candidates,
@@ -438,17 +446,18 @@
 
       function renderRuns(runs) {
         if (!runs.length) {
-          els.runLogs.innerHTML = `<div class="empty">还没有执行记录。请先确认 GitHub Actions 是否触发 /api/cron。</div>`;
+          els.runLogs.innerHTML = `<div class="empty">还没有执行记录。请确认 GitHub Actions / Supabase 是否触发 /api/cron。</div>`;
           return;
         }
         els.runLogs.innerHTML = table(
-          ["执行时间", "分组", "候选", "信号", "邮件", "耗时", "错误"],
+          ["执行时间", "分组", "候选", "信号", "邮件", "邮件状态", "耗时", "错误"],
           runs.map((run) => [
             formatDate(run.created_at || run.finished_at || run.started_at),
-            run.scan_group || "all",
+            labelGroup(run.scan_group || "all"),
             Number(run.candidates_count || 0),
             Number(run.signals_count || 0),
             badge(Boolean(run.emailed), run.emailed ? "已发送" : "未发送"),
+            run.email_status || "--",
             duration(run.started_at, run.finished_at),
             renderErrors(run.errors)
           ])
@@ -461,10 +470,11 @@
           return;
         }
         els.sentAlerts.innerHTML = table(
-          ["发送时间", "资产", "周期", "策略", "推荐指数", "触发 K 线"],
+          ["发送时间", "资产", "市场", "周期", "策略", "推荐指数", "触发时间"],
           alerts.map((alert) => [
             formatDate(alert.sent_at),
             alert.asset || "--",
+            alert.payload?.market || "--",
             alert.interval || "--",
             alert.payload?.strategyName || alert.strategy_id || "--",
             alert.recommendation_score == null ? "--" : Math.round(Number(alert.recommendation_score)),
@@ -521,6 +531,11 @@
         const minutes = Math.max(0, Math.round(diff / 60000));
         if (minutes < 60) return `${minutes} 分钟前`;
         return `${Math.round(minutes / 60)} 小时前`;
+      }
+
+      function labelGroup(group) {
+        if (!group) return "--";
+        return GROUP_LABELS[group] || group;
       }
 
       function setState(kind, text) {

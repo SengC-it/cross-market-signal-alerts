@@ -1,5 +1,16 @@
 import { fetchRecentRunLogs, fetchRecentSentAlerts, isSupabaseConfigured } from "../lib/storage.js";
 
+const EXPECTED_GROUPS = [
+  "crypto-core-a",
+  "crypto-core-b",
+  "crypto-alt-a",
+  "crypto-alt-b",
+  "crypto-alt-c",
+  "futures-core",
+  "futures-arbitrage",
+  "tradfi"
+];
+
 export default async function handler(req, res) {
   if (!isAuthorized(req)) {
     res.status(401).json({ ok: false, error: "unauthorized" });
@@ -58,6 +69,9 @@ function unwrapResult(result, source, warnings) {
 
 function buildSummary(runLogs, sentAlerts) {
   const groups = new Map();
+  for (const group of EXPECTED_GROUPS) {
+    groups.set(group, { group, runs: 0, lastRun: null, candidates: 0, signals: 0, emails: 0, errors: 0 });
+  }
   for (const log of runLogs) {
     const group = log.scan_group || "all";
     if (!groups.has(group)) groups.set(group, { group, runs: 0, lastRun: null, candidates: 0, signals: 0, emails: 0, errors: 0 });
