@@ -56,7 +56,13 @@ Run [sql/schema.sql](sql/schema.sql) in Supabase SQL Editor.
 The tables are:
 
 - `sent_alerts`: de-duplicates sent signals.
-- `run_logs`: records each scan run.
+- `run_logs`: records each scan run, system errors, and recoverable market-data warnings.
+
+If your project was created before the warning/error split, run this once in Supabase SQL Editor:
+
+```sql
+alter table run_logs add column if not exists warnings jsonb;
+```
 
 ## Scheduling
 

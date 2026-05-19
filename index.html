@@ -291,7 +291,7 @@
       <header class="topbar">
         <div class="title">
           <h1>跨市场信号提醒运行面板</h1>
-          <p class="subtitle">查看每小时扫描、合约套利、策略触发、邮件发送和最近错误。</p>
+          <p class="subtitle">查看每小时扫描、合约套利、策略触发、邮件发送、数据源警告和系统错误。</p>
         </div>
         <form class="controls" id="statusForm">
           <input class="secret" id="secretInput" type="password" autocomplete="current-password" placeholder="输入 CRON_SECRET" />
@@ -430,7 +430,7 @@
           return;
         }
         els.groupSummary.innerHTML = table(
-          ["分组", "说明", "最近执行", "运行次数", "候选", "信号", "邮件", "错误"],
+          ["分组", "说明", "最近执行", "运行次数", "候选", "信号", "邮件", "警告", "错误"],
           groups.map((group) => [
             group.group,
             labelGroup(group.group),
@@ -439,6 +439,7 @@
             group.candidates,
             group.signals,
             badge(group.emails > 0, group.emails > 0 ? `${group.emails} 次` : "无"),
+            badge(group.warnings === 0, group.warnings === 0 ? "无" : `${group.warnings} 条`, true, "warn"),
             badge(group.errors === 0, group.errors === 0 ? "无" : `${group.errors} 条`, true)
           ])
         );
@@ -450,7 +451,7 @@
           return;
         }
         els.runLogs.innerHTML = table(
-          ["执行时间", "分组", "候选", "信号", "邮件", "邮件状态", "耗时", "错误"],
+          ["执行时间", "分组", "候选", "信号", "邮件", "邮件状态", "耗时", "警告", "错误"],
           runs.map((run) => [
             formatDate(run.created_at || run.finished_at || run.started_at),
             labelGroup(run.scan_group || "all"),
@@ -459,6 +460,7 @@
             badge(Boolean(run.emailed), run.emailed ? "已发送" : "未发送"),
             run.email_status || "--",
             duration(run.started_at, run.finished_at),
+            renderWarnings(run.warnings),
             renderErrors(run.errors)
           ])
         );
@@ -492,14 +494,27 @@
         return `<div class="table-wrap desktop-table"><table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div><div class="mobile-cards">${cards}</div>`;
       }
 
-      function badge(ok, text, invert = false) {
-        const cls = ok ? "ok" : invert ? "bad" : "warn";
+      function badge(ok, text, invert = false, invertClass = "bad") {
+        const cls = ok ? "ok" : invert ? invertClass : "warn";
         return { html: `<span class="pill ${cls}">${escapeHtml(text)}</span>` };
+      }
+
+      function renderWarnings(warnings) {
+        if (!Array.isArray(warnings) || warnings.length === 0) return badge(true, "无");
+        return { html: `<details><summary><span class="pill warn">${warnings.length} 条</span></summary>${warningList(warnings)}</details>` };
       }
 
       function renderErrors(errors) {
         if (!Array.isArray(errors) || errors.length === 0) return badge(true, "无");
-        return { html: `<span class="pill bad">${errors.length} 条</span>` };
+        return { html: `<details><summary><span class="pill bad">${errors.length} 条</span></summary>${errorList(errors)}</details>` };
+      }
+
+      function warningList(warnings) {
+        return `<ul>${warnings.slice(0, 8).map((item) => `<li>${escapeHtml(item.label || "数据源")}：${escapeHtml(item.warning || item.error || item.message || item)}</li>`).join("")}</ul>`;
+      }
+
+      function errorList(errors) {
+        return `<ul>${errors.slice(0, 8).map((item) => `<li>${escapeHtml(item.label || "系统")}：${escapeHtml(item.error || item.message || item)}</li>`).join("")}</ul>`;
       }
 
       function cellHtml(value) {

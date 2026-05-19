@@ -29,6 +29,7 @@ select cron.schedule(
     'crypto-alt-b',
     'crypto-alt-c',
     'futures-core',
+    'futures-arbitrage',
     'tradfi'
   ]) as grp;
   $$

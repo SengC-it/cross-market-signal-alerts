@@ -70,17 +70,18 @@ function unwrapResult(result, source, warnings) {
 function buildSummary(runLogs, sentAlerts) {
   const groups = new Map();
   for (const group of EXPECTED_GROUPS) {
-    groups.set(group, { group, runs: 0, lastRun: null, candidates: 0, signals: 0, emails: 0, errors: 0 });
+    groups.set(group, { group, runs: 0, lastRun: null, candidates: 0, signals: 0, emails: 0, errors: 0, warnings: 0 });
   }
   for (const log of runLogs) {
     const group = log.scan_group || "all";
-    if (!groups.has(group)) groups.set(group, { group, runs: 0, lastRun: null, candidates: 0, signals: 0, emails: 0, errors: 0 });
+    if (!groups.has(group)) groups.set(group, { group, runs: 0, lastRun: null, candidates: 0, signals: 0, emails: 0, errors: 0, warnings: 0 });
     const item = groups.get(group);
     item.runs += 1;
     item.candidates += Number(log.candidates_count || 0);
     item.signals += Number(log.signals_count || 0);
     if (log.emailed) item.emails += 1;
     if (Array.isArray(log.errors) && log.errors.length) item.errors += log.errors.length;
+    if (Array.isArray(log.warnings) && log.warnings.length) item.warnings += log.warnings.length;
     if (!item.lastRun || new Date(log.created_at) > new Date(item.lastRun)) item.lastRun = log.created_at;
   }
 
@@ -94,6 +95,8 @@ function buildSummary(runLogs, sentAlerts) {
     latestRunAgeMinutes: newestRunMs == null ? null : Math.round(newestRunMs / 60000),
     latestRunHadSignal: Boolean(latestRun && Number(latestRun.signals_count || 0) > 0),
     latestRunEmailed: Boolean(latestRun?.emailed),
+    latestRunErrors: Array.isArray(latestRun?.errors) ? latestRun.errors.length : 0,
+    latestRunWarnings: Array.isArray(latestRun?.warnings) ? latestRun.warnings.length : 0,
     latestAlertAt: latestAlert?.sent_at || null,
     totalRunsReturned: runLogs.length,
     totalAlertsReturned: sentAlerts.length,
