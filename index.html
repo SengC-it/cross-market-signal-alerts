@@ -193,6 +193,31 @@
         border-bottom: 1px solid var(--line);
       }
 
+      summary.section-head {
+        cursor: pointer;
+        list-style: none;
+      }
+
+      summary.section-head::-webkit-details-marker {
+        display: none;
+      }
+
+      details:not([open]) .section-head {
+        border-bottom: 0;
+      }
+
+      .section-title {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .toggle-hint {
+        color: var(--muted);
+        font-size: 13px;
+        font-weight: 700;
+      }
+
       h2 {
         margin: 0;
         font-size: 18px;
@@ -322,11 +347,16 @@
       </section>
 
       <section class="section">
-        <div class="section-head">
-          <h2>最近执行记录</h2>
-          <span class="pill" id="runCount">0 条</span>
-        </div>
-        <div id="runLogs"></div>
+        <details id="runLogDetails">
+          <summary class="section-head">
+            <span class="section-title">
+              <h2>最近执行记录</h2>
+              <span class="toggle-hint">点击展开/收起</span>
+            </span>
+            <span class="pill" id="runCount">0 条</span>
+          </summary>
+          <div id="runLogs"></div>
+        </details>
       </section>
 
       <section class="section">
@@ -528,7 +558,19 @@
       }
 
       function warningList(warnings) {
-        return `<ul>${warnings.slice(0, 8).map((item) => `<li>${escapeHtml(item.label || "数据源")}：${escapeHtml(item.warning || item.error || item.message || item)}</li>`).join("")}</ul>`;
+        const grouped = new Map();
+        for (const item of warnings) {
+          const message = item.warning || item.error || item.message || item;
+          const key = String(message);
+          if (!grouped.has(key)) grouped.set(key, []);
+          grouped.get(key).push(item.label || "数据源");
+        }
+        return `<ul>${[...grouped.entries()].slice(0, 8).map(([message, labels]) => {
+          const labelText = labels.length > 1
+            ? `${labels.length} 项：${labels.slice(0, 4).join("、")}${labels.length > 4 ? " 等" : ""}`
+            : labels[0];
+          return `<li>${escapeHtml(labelText)}：${escapeHtml(message)}</li>`;
+        }).join("")}</ul>`;
       }
 
       function errorList(errors) {

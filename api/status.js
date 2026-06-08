@@ -34,7 +34,7 @@ export default async function handler(req, res) {
       fetchRecentSentAlerts(alertLimit)
     ]);
     const warnings = [];
-    const runLogs = unwrapResult(runLogsResult, "run_logs", warnings);
+    const runLogs = normalizeRunLogs(unwrapResult(runLogsResult, "run_logs", warnings));
     const sentAlerts = unwrapResult(sentAlertsResult, "sent_alerts", warnings);
 
     if (runLogsResult.status === "rejected" && sentAlertsResult.status === "rejected") {
@@ -56,6 +56,22 @@ export default async function handler(req, res) {
       error: error instanceof Error ? error.message : String(error)
     });
   }
+}
+
+function normalizeRunLogs(runLogs) {
+  return runLogs.map((log) => ({
+    ...log,
+    warnings: filterActionableWarnings(log.warnings)
+  }));
+}
+
+function filterActionableWarnings(warnings) {
+  if (!Array.isArray(warnings)) return warnings;
+  return warnings.filter((warning) => {
+    const label = String(warning?.label || "");
+    const message = String(warning?.warning || warning?.message || warning?.error || "");
+    return !label.includes("arbitrage threshold") && !message.includes("低于提醒阈值");
+  });
 }
 
 function unwrapResult(result, source, warnings) {
