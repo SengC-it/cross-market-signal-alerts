@@ -2,16 +2,68 @@ name: Signal Cron
 
 on:
   schedule:
+    - cron: "*/30 * * * *"
     - cron: "0 * * * *"
+    - cron: "8 */4 * * *"
+    - cron: "15 0 * * *"
   workflow_dispatch:
 
 jobs:
-  run-signal-scan:
+  dynamic-spot-scan:
     runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' || github.event.schedule == '*/30 * * * *'
     strategy:
       fail-fast: false
       matrix:
-        group: [crypto-core-a, crypto-core-b, crypto-alt-a, crypto-alt-b, crypto-alt-c, futures-core, futures-arbitrage, tradfi]
+        group: [dynamic-spot]
+    timeout-minutes: 10
+    steps:
+      - name: Call signal scanner
+        run: |
+          curl --fail --show-error --silent \
+            --get "${{ secrets.VERCEL_APP_URL }}/api/cron" \
+            --data-urlencode "secret=${{ secrets.CRON_SECRET }}" \
+            --data-urlencode "group=${{ matrix.group }}"
+
+  hourly-signal-scan:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' || github.event.schedule == '0 * * * *'
+    strategy:
+      fail-fast: false
+      matrix:
+        group: [crypto-core-a-1h, crypto-core-b-1h, crypto-alt-a-1h, crypto-alt-b-1h, crypto-alt-c-1h, futures-core-1h, futures-arbitrage]
+    timeout-minutes: 10
+    steps:
+      - name: Call signal scanner
+        run: |
+          curl --fail --show-error --silent \
+            --get "${{ secrets.VERCEL_APP_URL }}/api/cron" \
+            --data-urlencode "secret=${{ secrets.CRON_SECRET }}" \
+            --data-urlencode "group=${{ matrix.group }}"
+
+  mid-signal-scan:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' || github.event.schedule == '8 */4 * * *'
+    strategy:
+      fail-fast: false
+      matrix:
+        group: [crypto-core-a-mid, crypto-core-b-mid, crypto-alt-a-mid, crypto-alt-b-mid, crypto-alt-c-mid, futures-core-mid]
+    timeout-minutes: 10
+    steps:
+      - name: Call signal scanner
+        run: |
+          curl --fail --show-error --silent \
+            --get "${{ secrets.VERCEL_APP_URL }}/api/cron" \
+            --data-urlencode "secret=${{ secrets.CRON_SECRET }}" \
+            --data-urlencode "group=${{ matrix.group }}"
+
+  daily-signal-scan:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' || github.event.schedule == '15 0 * * *'
+    strategy:
+      fail-fast: false
+      matrix:
+        group: [crypto-core-a-daily, crypto-core-b-daily, crypto-alt-a-daily, crypto-alt-b-daily, crypto-alt-c-daily, futures-daily, tradfi-daily]
     timeout-minutes: 10
     steps:
       - name: Call signal scanner

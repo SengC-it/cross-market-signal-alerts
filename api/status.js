@@ -1,14 +1,27 @@
 import { fetchRecentRunLogs, fetchRecentSentAlerts, isSupabaseConfigured } from "../lib/storage.js";
 
 const EXPECTED_GROUPS = [
-  "crypto-core-a",
-  "crypto-core-b",
-  "crypto-alt-a",
-  "crypto-alt-b",
-  "crypto-alt-c",
-  "futures-core",
+  "dynamic-spot",
+  "crypto-core-a-1h",
+  "crypto-core-b-1h",
+  "crypto-alt-a-1h",
+  "crypto-alt-b-1h",
+  "crypto-alt-c-1h",
+  "futures-core-1h",
   "futures-arbitrage",
-  "tradfi"
+  "crypto-core-a-mid",
+  "crypto-core-b-mid",
+  "crypto-alt-a-mid",
+  "crypto-alt-b-mid",
+  "crypto-alt-c-mid",
+  "futures-core-mid",
+  "crypto-core-a-daily",
+  "crypto-core-b-daily",
+  "crypto-alt-a-daily",
+  "crypto-alt-b-daily",
+  "crypto-alt-c-daily",
+  "futures-daily",
+  "tradfi-daily"
 ];
 
 export default async function handler(req, res) {

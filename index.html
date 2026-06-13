@@ -380,6 +380,30 @@
         tradfi: "美股/商品"
       };
 
+      Object.assign(GROUP_LABELS, {
+        "dynamic-spot": "动态强势池",
+        "crypto-core-a-1h": "主流币 A 1h",
+        "crypto-core-b-1h": "主流币 B 1h",
+        "crypto-alt-a-1h": "山寨币 A 1h",
+        "crypto-alt-b-1h": "山寨币 B 1h",
+        "crypto-alt-c-1h": "山寨币 C 1h",
+        "futures-core-1h": "合约趋势 1h",
+        "crypto-core-a-mid": "主流币 A 2h/4h",
+        "crypto-core-b-mid": "主流币 B 2h/4h",
+        "crypto-alt-a-mid": "山寨币 A 2h/4h",
+        "crypto-alt-b-mid": "山寨币 B 2h/4h",
+        "crypto-alt-c-mid": "山寨币 C 2h/4h",
+        "futures-core-mid": "合约趋势 2h/4h",
+        "crypto-core-a-daily": "主流币 A 日线",
+        "crypto-core-b-daily": "主流币 B 日线",
+        "crypto-alt-a-daily": "山寨币 A 日线",
+        "crypto-alt-b-daily": "山寨币 B 日线",
+        "crypto-alt-c-daily": "山寨币 C 日线",
+        "crypto-daily": "虚拟货币日线",
+        "futures-daily": "合约日线",
+        "tradfi-daily": "美股/商品日线"
+      });
+
       const els = {
         form: document.querySelector("#statusForm"),
         secret: document.querySelector("#secretInput"),
@@ -504,7 +528,7 @@
           return;
         }
         els.sentAlerts.innerHTML = table(
-          ["发送时间", "资产", "市场", "周期", "策略", "推荐指数", "触发时间"],
+          ["发送时间", "资产", "市场", "周期", "策略", "推荐指数", "评分拆解", "已发复盘", "触发时间"],
           alerts.map((alert) => [
             formatDate(alert.sent_at),
             alert.asset || "--",
@@ -512,6 +536,8 @@
             alert.interval || "--",
             alert.payload?.strategyName || alert.strategy_id || "--",
             alert.recommendation_score == null ? "--" : Math.round(Number(alert.recommendation_score)),
+            scoringBreakdownText(alert.payload?.scoringBreakdown),
+            livePerformanceText(alert.payload?.livePerformance),
             formatDate(alert.trigger_time)
           ])
         );
@@ -606,6 +632,22 @@
         const minutes = Math.max(0, Math.round(diff / 60000));
         if (minutes < 60) return `${minutes} 分钟前`;
         return `${Math.round(minutes / 60)} 小时前`;
+      }
+
+      function livePerformanceText(performance) {
+        if (!performance || !performance.trades) return "样本不足";
+        return `${pct(performance.winRate)} / ${performance.trades} 次 / ${pct(performance.totalReturn)}`;
+      }
+
+      function scoringBreakdownText(breakdown) {
+        if (!breakdown) return "旧记录暂无";
+        return `样本外 ${breakdown.outOfSample ?? "--"} / 环境 ${breakdown.environment ?? "--"} / 真实 ${breakdown.livePerformance ?? "--"} / 风险 ${breakdown.risk ?? "--"} / 成本 ${breakdown.costLiquidity ?? "--"} / 效率 ${breakdown.capitalEfficiency ?? "--"}`;
+      }
+
+      function pct(value) {
+        const number = Number(value);
+        if (!Number.isFinite(number)) return "N/A";
+        return `${(number * 100).toFixed(Math.abs(number) >= 0.1 ? 1 : 2)}%`;
       }
 
       function labelGroup(group) {
