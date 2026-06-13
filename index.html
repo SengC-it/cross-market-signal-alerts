@@ -473,9 +473,38 @@
         els.groupCount.textContent = `${summary.groups?.length || 0} 组`;
         els.runCount.textContent = `${data.runLogs?.length || 0} 条`;
         els.alertCount.textContent = `${data.sentAlerts?.length || 0} 条`;
-        renderGroups(summary.groups || []);
+        renderGroupsV2(summary.groups || []);
         renderRuns(data.runLogs || []);
         renderAlerts(data.sentAlerts || []);
+      }
+
+      function renderGroupsV2(groups) {
+        if (!groups.length) {
+          els.groupSummary.innerHTML = `<div class="empty">还没有分组执行记录。</div>`;
+          return;
+        }
+        els.groupSummary.innerHTML = table(
+          ["分组", "说明", "最近执行", "运行次数", "候选 最新/累计", "信号 最新/累计", "已确认邮件", "待核查邮件", "警告 最新/历史", "错误 最新/历史"],
+          groups.map((group) => [
+            group.group,
+            labelGroup(group.group),
+            formatDate(group.lastRun),
+            group.runs,
+            `${Number(group.latestCandidates || 0)} / ${Number(group.candidates || 0)}`,
+            `${Number(group.latestSignals || 0)} / ${Number(group.signals || 0)}`,
+            badge(group.emails > 0, group.emails > 0 ? `${group.emails} 次` : "无"),
+            badge(group.unverifiedEmails === 0, group.unverifiedEmails === 0 ? "无" : `${group.unverifiedEmails} 次`, true, "warn"),
+            statusPair(group.warnings, group.totalWarnings, "warn"),
+            statusPair(group.errors, group.totalErrors, "bad")
+          ])
+        );
+      }
+
+      function statusPair(latest, total, badClass) {
+        const latestCount = Number(latest || 0);
+        const totalCount = Number(total || 0);
+        const text = latestCount === 0 && totalCount === 0 ? "无" : `${latestCount} / ${totalCount}`;
+        return badge(latestCount === 0, text, true, badClass);
       }
 
       function renderGroups(groups) {

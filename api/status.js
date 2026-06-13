@@ -100,11 +100,11 @@ function buildSummary(runLogs, sentAlerts) {
   const sentAlertKeys = new Set(sentAlerts.map((alert) => alert.signal_key).filter(Boolean));
   const groups = new Map();
   for (const group of EXPECTED_GROUPS) {
-    groups.set(group, { group, runs: 0, lastRun: null, candidates: 0, signals: 0, emails: 0, unverifiedEmails: 0, errors: 0, warnings: 0 });
+    groups.set(group, emptyGroupSummary(group));
   }
   for (const log of runLogs) {
     const group = log.scan_group || "all";
-    if (!groups.has(group)) groups.set(group, { group, runs: 0, lastRun: null, candidates: 0, signals: 0, emails: 0, unverifiedEmails: 0, errors: 0, warnings: 0 });
+    if (!groups.has(group)) groups.set(group, emptyGroupSummary(group));
     const item = groups.get(group);
     item.runs += 1;
     item.candidates += Number(log.candidates_count || 0);
@@ -113,9 +113,18 @@ function buildSummary(runLogs, sentAlerts) {
     log.email_consistency = consistency;
     if (consistency.status === "verified") item.emails += 1;
     if (consistency.status === "legacy_unverified" || consistency.status === "missing_sent_alert_record") item.unverifiedEmails += 1;
-    if (Array.isArray(log.errors) && log.errors.length) item.errors += log.errors.length;
-    if (Array.isArray(log.warnings) && log.warnings.length) item.warnings += log.warnings.length;
-    if (!item.lastRun || new Date(log.created_at) > new Date(item.lastRun)) item.lastRun = log.created_at;
+    const errorCount = Array.isArray(log.errors) ? log.errors.length : 0;
+    const warningCount = Array.isArray(log.warnings) ? log.warnings.length : 0;
+    item.totalErrors += errorCount;
+    item.totalWarnings += warningCount;
+    if (!item.lastRun || new Date(log.created_at) > new Date(item.lastRun)) {
+      item.lastRun = log.created_at;
+      item.errors = errorCount;
+      item.warnings = warningCount;
+      item.latestCandidates = Number(log.candidates_count || 0);
+      item.latestSignals = Number(log.signals_count || 0);
+      item.latestEmailed = Boolean(log.emailed);
+    }
   }
 
   const latestRun = runLogs[0] || null;
@@ -135,6 +144,25 @@ function buildSummary(runLogs, sentAlerts) {
     totalRunsReturned: runLogs.length,
     totalAlertsReturned: sentAlerts.length,
     groups: [...groups.values()].sort((a, b) => String(a.group).localeCompare(String(b.group)))
+  };
+}
+
+function emptyGroupSummary(group) {
+  return {
+    group,
+    runs: 0,
+    lastRun: null,
+    candidates: 0,
+    signals: 0,
+    latestCandidates: 0,
+    latestSignals: 0,
+    latestEmailed: false,
+    emails: 0,
+    unverifiedEmails: 0,
+    errors: 0,
+    warnings: 0,
+    totalErrors: 0,
+    totalWarnings: 0
   };
 }
 
