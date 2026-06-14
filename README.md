@@ -18,6 +18,7 @@ Scheduled groups:
 - `dynamic-spot`: dynamically selected high-volume, high-momentum Binance spot symbols; scans every 30 minutes on `1h`.
 - `crypto-core-a-1h`, `crypto-core-b-1h`: major spot crypto groups; scan hourly on `1h`.
 - `crypto-alt-a-1h`, `crypto-alt-b-1h`, `crypto-alt-c-1h`: altcoin spot groups; scan hourly on `1h`.
+- `futures-scalp-a`, `futures-scalp-b`: USDT perpetual futures short-term groups; scan every 30 minutes on `15m` and `30m`.
 - `futures-core-1h`: major USDT perpetual futures; scans hourly on `1h`.
 - `futures-arbitrage`: funding-rate arbitrage watchlist; scans hourly.
 - `crypto-core-a-mid`, `crypto-core-b-mid`, `crypto-alt-a-mid`, `crypto-alt-b-mid`, `crypto-alt-c-mid`: spot crypto swing groups; scan every 4 hours on `2h` and `4h`.
@@ -71,7 +72,7 @@ alter table run_logs add column if not exists sent_alert_keys jsonb;
 
 Production scheduling is handled by [`.github/workflows/signal-cron.yml`](.github/workflows/signal-cron.yml). The workflow uses this cadence:
 
-- Every 30 minutes: `dynamic-spot`
+- Every 30 minutes: `dynamic-spot`, `futures-scalp-a`, and `futures-scalp-b`
 - Every hour at minute `0`: `1h` crypto spot, `1h` futures, and futures arbitrage
 - Every 4 hours at minute `8`: `2h`/`4h` crypto spot and futures swing scans
 - Daily at `00:15 UTC`: split daily crypto, futures, and traditional-market scans

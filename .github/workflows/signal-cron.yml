@@ -15,7 +15,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        group: [dynamic-spot]
+        group: [dynamic-spot, futures-scalp-a, futures-scalp-b]
     timeout-minutes: 10
     steps:
       - name: Call signal scanner

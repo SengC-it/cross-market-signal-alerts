@@ -7,6 +7,8 @@ const EXPECTED_GROUPS = [
   "crypto-alt-a-1h",
   "crypto-alt-b-1h",
   "crypto-alt-c-1h",
+  "futures-scalp-a",
+  "futures-scalp-b",
   "futures-core-1h",
   "futures-arbitrage",
   "crypto-core-a-mid",

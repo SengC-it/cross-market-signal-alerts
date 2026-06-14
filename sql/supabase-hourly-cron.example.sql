@@ -25,7 +25,11 @@ select cron.schedule(
     headers := jsonb_build_object('Authorization', 'Bearer YOUR_CRON_SECRET'),
     timeout_milliseconds := 60000
   )
-  from unnest(array['dynamic-spot']) as grp;
+  from unnest(array[
+    'dynamic-spot',
+    'futures-scalp-a',
+    'futures-scalp-b'
+  ]) as grp;
   $$
 );
 
