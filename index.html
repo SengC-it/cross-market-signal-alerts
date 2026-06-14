@@ -475,7 +475,29 @@
         els.alertCount.textContent = `${data.sentAlerts?.length || 0} 条`;
         renderGroupsV2(summary.groups || []);
         renderRuns(data.runLogs || []);
-        renderAlerts(data.sentAlerts || []);
+        renderAlertsV2(data.sentAlerts || []);
+      }
+
+      function renderAlertsV2(alerts) {
+        if (!alerts.length) {
+          els.sentAlerts.innerHTML = `<div class="empty">最近没有邮件提醒记录。</div>`;
+          return;
+        }
+        els.sentAlerts.innerHTML = table(
+          ["发送时间", "资产", "市场", "周期", "策略", "推荐指数", "执行计划", "评分拆解", "已发复盘", "触发时间"],
+          alerts.map((alert) => [
+            formatDate(alert.sent_at),
+            alert.asset || "--",
+            alert.payload?.market || "--",
+            alert.interval || "--",
+            alert.payload?.strategyName || alert.strategy_id || "--",
+            alert.recommendation_score == null ? "--" : Math.round(Number(alert.recommendation_score)),
+            executionPlanText(alert.payload?.executionPlan),
+            scoringBreakdownText(alert.payload?.scoringBreakdown),
+            livePerformanceText(alert.payload?.livePerformance),
+            formatDate(alert.trigger_time)
+          ])
+        );
       }
 
       function renderGroupsV2(groups) {
@@ -668,6 +690,16 @@
         return `${pct(performance.winRate)} / ${performance.trades} 次 / ${pct(performance.totalReturn)}`;
       }
 
+      function executionPlanText(plan) {
+        if (!plan) return "--";
+        return [
+          `止损 ${formatNumber(plan.stopLoss)}`,
+          `目标 ${formatNumber(plan.takeProfit)}`,
+          `杠杆<=${formatNumber(plan.suggestedLeverage)}x`,
+          plan.validFor || ""
+        ].filter(Boolean).join(" / ");
+      }
+
       function scoringBreakdownText(breakdown) {
         if (!breakdown) return "旧记录暂无";
         return `样本外 ${breakdown.outOfSample ?? "--"} / 环境 ${breakdown.environment ?? "--"} / 真实 ${breakdown.livePerformance ?? "--"} / 风险 ${breakdown.risk ?? "--"} / 成本 ${breakdown.costLiquidity ?? "--"} / 效率 ${breakdown.capitalEfficiency ?? "--"}`;
@@ -677,6 +709,14 @@
         const number = Number(value);
         if (!Number.isFinite(number)) return "N/A";
         return `${(number * 100).toFixed(Math.abs(number) >= 0.1 ? 1 : 2)}%`;
+      }
+
+      function formatNumber(value) {
+        const number = Number(value);
+        if (!Number.isFinite(number)) return "N/A";
+        if (Math.abs(number) >= 100) return number.toFixed(2);
+        if (Math.abs(number) >= 1) return number.toFixed(4).replace(/\.?0+$/, "");
+        return number.toPrecision(4);
       }
 
       function labelGroup(group) {
