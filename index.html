@@ -492,7 +492,7 @@
             alert.asset || "--",
             alert.payload?.market || "--",
             alert.interval || "--",
-            alert.payload?.strategyName || alert.strategy_id || "--",
+            `${tierText(alert.payload)} / ${alert.payload?.strategyName || alert.strategy_id || "--"}`,
             alert.recommendation_score == null ? "--" : Math.round(Number(alert.recommendation_score)),
             executionPlanText(alert.payload?.executionPlan),
             scoringBreakdownText(alert.payload?.scoringBreakdown),
@@ -690,6 +690,14 @@
       function livePerformanceText(performance) {
         if (!performance || !performance.trades) return "样本不足";
         return `${pct(performance.winRate)} / ${performance.trades} 次 / ${pct(performance.totalReturn)}`;
+      }
+
+      function tierText(payload) {
+        if (!payload) return "交易级";
+        if (payload.alertTierLabel) return payload.alertTierLabel;
+        if (payload.alertTier === "risk") return "风险级";
+        if (payload.alertTier === "watch") return "观察级";
+        return "交易级";
       }
 
       function executionPlanText(plan) {
