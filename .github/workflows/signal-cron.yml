@@ -63,7 +63,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        group: [crypto-core-a-daily, crypto-core-b-daily, crypto-alt-a-daily, crypto-alt-b-daily, crypto-alt-c-daily, futures-daily, tradfi-daily]
+        group: [crypto-core-a-daily, crypto-core-b-daily, crypto-alt-a-daily, crypto-alt-b-daily, crypto-alt-c-daily, futures-daily]
     timeout-minutes: 10
     steps:
       - name: Call signal scanner

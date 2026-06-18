@@ -1,6 +1,6 @@
 # Cross-Market Signal Alerts
 
-Cloud-ready signal scanner for crypto spot, crypto perpetual futures, US equities/ETFs, and commodity proxies.
+Cloud-ready signal scanner for crypto spot, USDT perpetual futures, and funding-rate arbitrage opportunities.
 
 ## What It Does
 
@@ -23,9 +23,9 @@ Scheduled groups:
 - `futures-arbitrage`: funding-rate arbitrage watchlist; scans hourly.
 - `crypto-core-a-mid`, `crypto-core-b-mid`, `crypto-alt-a-mid`, `crypto-alt-b-mid`, `crypto-alt-c-mid`: spot crypto swing groups; scan every 4 hours on `2h` and `4h`.
 - `futures-core-mid`: perpetual futures swing group; scans every 4 hours on `2h` and `4h`.
-- `crypto-core-a-daily`, `crypto-core-b-daily`, `crypto-alt-a-daily`, `crypto-alt-b-daily`, `crypto-alt-c-daily`, `futures-daily`, `tradfi-daily`: slower daily context scans; run once per day.
+- `crypto-core-a-daily`, `crypto-core-b-daily`, `crypto-alt-a-daily`, `crypto-alt-b-daily`, `crypto-alt-c-daily`, `futures-daily`: slower daily crypto context scans; run once per day.
 
-Legacy group names such as `crypto-core-a`, `crypto-alt-a`, `futures-core`, and `tradfi` are still supported for manual testing, but scheduled jobs use the frequency-specific group names above.
+Legacy group names such as `crypto-core-a`, `crypto-alt-a`, and `futures-core` are still supported for manual testing, but scheduled jobs use the frequency-specific group names above.
 
 Strategy families include trend-following, Donchian breakouts, moving-average crosses, RSI/Bollinger rebounds, defensive breakdown alerts, short-term momentum/pullback/breakdown signals, and futures-specific short-side observation signals.
 
@@ -75,7 +75,7 @@ Production scheduling is handled by [`.github/workflows/signal-cron.yml`](.githu
 - Every 30 minutes: `dynamic-spot`, `futures-scalp-a`, and `futures-scalp-b`
 - Every hour at minute `0`: `1h` crypto spot, `1h` futures, and futures arbitrage
 - Every 4 hours at minute `8`: `2h`/`4h` crypto spot and futures swing scans
-- Daily at `00:15 UTC`: split daily crypto, futures, and traditional-market scans
+- Daily at `00:15 UTC`: split daily crypto spot and futures scans
 
 Each scheduled job calls:
 
@@ -125,4 +125,4 @@ Gmail App Passwords are different from your normal Google password. Do not commi
 
 ## Notes
 
-Crypto data uses Binance public REST where available, with Yahoo crypto chart data as a fallback for supported symbols and intervals. If Binance returns a geo-restriction response and no fallback data is available, the scanner skips that asset/interval instead of failing the whole batch. US equity/ETF and commodity proxy data uses Yahoo chart endpoints as a lightweight source. For production-grade market data, replace or augment Yahoo with a paid provider such as Polygon, Twelve Data, Alpha Vantage, or Nasdaq Data Link.
+Crypto data uses Binance public REST where available, with Yahoo crypto chart data as a fallback for supported symbols and intervals. If Binance returns a geo-restriction response and no fallback data is available, the scanner skips that asset/interval instead of failing the whole batch. For production-grade crypto market data, replace or augment public endpoints with a paid crypto data provider that supports spot candles, futures candles, funding rates, open interest, and long/short positioning.

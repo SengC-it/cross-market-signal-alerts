@@ -22,8 +22,7 @@ const EXPECTED_GROUPS = [
   "crypto-alt-a-daily",
   "crypto-alt-b-daily",
   "crypto-alt-c-daily",
-  "futures-daily",
-  "tradfi-daily"
+  "futures-daily"
 ];
 
 export default async function handler(req, res) {

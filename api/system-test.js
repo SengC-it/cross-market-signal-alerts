@@ -44,8 +44,8 @@ export default async function handler(req, res) {
   });
 
   await runCheck(checks, "Binance 现货行情", async () => probeJson("https://api.binance.com/api/v3/time"));
-  await runCheck(checks, "Binance 合约行情", async () => probeJson("https://fapi.binance.com/fapi/v1/premiumIndex?symbol=BTCUSDT"));
-  await runCheck(checks, "Yahoo 美股行情", async () => probeJson("https://query1.finance.yahoo.com/v8/finance/chart/SPY?range=5d&interval=1d"));
+  await runCheck(checks, "Binance U本位合约行情", async () => probeJson("https://fapi.binance.com/fapi/v1/premiumIndex?symbol=BTCUSDT"));
+  await runCheck(checks, "Binance 合约资金费率", async () => probeJson("https://fapi.binance.com/fapi/v1/fundingRate?symbol=BTCUSDT&limit=1"));
 
   const finishedAt = new Date();
   const report = renderReport({ startedAt, finishedAt, checks });
@@ -54,7 +54,7 @@ export default async function handler(req, res) {
 
   if (shouldNotify) {
     email = await sendEmail({
-      subject: `系统测试报告：${overallStatus(checks)} - 跨市场信号提醒`,
+      subject: `系统测试报告：${overallStatus(checks)} - 加密信号提醒`,
       text: report
     });
   }
@@ -103,17 +103,18 @@ function renderReport({ startedAt, finishedAt, checks }) {
   const passed = checks.filter((check) => check.ok).length;
   const failed = checks.length - passed;
   const lines = [
-    "【跨市场信号提醒系统测试报告】",
+    "【加密信号提醒系统测试报告】",
     "",
     `测试时间：${formatDate(startedAt)} 至 ${formatDate(finishedAt)}`,
     `总体结果：${failed ? `有 ${failed} 项需要关注` : "全部检查通过"}`,
+    `通过项：${passed}/${checks.length}`,
     "",
     "检查明细："
   ];
 
   for (const check of checks) {
     lines.push("");
-    lines.push(`${check.ok ? "通过" : "失败"}：${check.name}（${check.durationMs}ms）`);
+    lines.push(`${check.ok ? "通过" : "失败"}：${check.name}：${check.durationMs}ms`);
     if (check.ok) {
       lines.push(formatDetails(check.details));
     } else {

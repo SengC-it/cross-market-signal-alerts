@@ -92,8 +92,7 @@ select cron.schedule(
     'crypto-alt-a-daily',
     'crypto-alt-b-daily',
     'crypto-alt-c-daily',
-    'futures-daily',
-    'tradfi-daily'
+    'futures-daily'
   ]) as grp;
   $$
 );
