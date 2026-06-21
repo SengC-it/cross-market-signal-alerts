@@ -21,8 +21,7 @@ select cron.schedule(
   $$
   select net.http_get(
     url := 'https://cross-market-signal-alerts.vercel.app/api/cron',
-    params := jsonb_build_object('group', grp),
-    headers := jsonb_build_object('Authorization', 'Bearer YOUR_CRON_SECRET'),
+    params := jsonb_build_object('group', grp, 'secret', 'YOUR_CRON_SECRET'),
     timeout_milliseconds := 60000
   )
   from unnest(array[
@@ -39,8 +38,7 @@ select cron.schedule(
   $$
   select net.http_get(
     url := 'https://cross-market-signal-alerts.vercel.app/api/cron',
-    params := jsonb_build_object('group', grp),
-    headers := jsonb_build_object('Authorization', 'Bearer YOUR_CRON_SECRET'),
+    params := jsonb_build_object('group', grp, 'secret', 'YOUR_CRON_SECRET'),
     timeout_milliseconds := 60000
   )
   from unnest(array[
@@ -61,8 +59,7 @@ select cron.schedule(
   $$
   select net.http_get(
     url := 'https://cross-market-signal-alerts.vercel.app/api/cron',
-    params := jsonb_build_object('group', grp),
-    headers := jsonb_build_object('Authorization', 'Bearer YOUR_CRON_SECRET'),
+    params := jsonb_build_object('group', grp, 'secret', 'YOUR_CRON_SECRET'),
     timeout_milliseconds := 60000
   )
   from unnest(array[
@@ -82,8 +79,7 @@ select cron.schedule(
   $$
   select net.http_get(
     url := 'https://cross-market-signal-alerts.vercel.app/api/cron',
-    params := jsonb_build_object('group', grp),
-    headers := jsonb_build_object('Authorization', 'Bearer YOUR_CRON_SECRET'),
+    params := jsonb_build_object('group', grp, 'secret', 'YOUR_CRON_SECRET'),
     timeout_milliseconds := 60000
   )
   from unnest(array[
