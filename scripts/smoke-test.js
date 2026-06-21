@@ -1,8 +1,24 @@
 import { renderSignalEmail, renderTestEmail } from "../lib/report.js";
+import { reviewAlertWithCandles, reviewArbitrageAlert } from "../lib/alert-review.js";
+import { isDynamicSpotCoolingDown } from "../lib/scanner.js";
 import { STRATEGIES } from "../lib/strategies.js";
 
 if (!STRATEGIES.length) {
   throw new Error("No strategies registered");
+}
+
+const dynamicCooldown = isDynamicSpotCoolingDown({
+  sentAlerts: [{
+    asset: "SAGAUSDT",
+    strategy_id: "dynamic_relative_strength_breakout",
+    interval: "1h",
+    trigger_time: new Date(Date.UTC(2026, 5, 21, 12, 0)).toISOString()
+  }],
+  asset: "SAGAUSDT",
+  triggerTime: Date.UTC(2026, 5, 21, 13, 0)
+});
+if (!dynamicCooldown.active || dynamicCooldown.hoursSince !== 1) {
+  throw new Error("Dynamic spot cooldown should block repeated same-asset alerts");
 }
 
 const email = renderTestEmail();
@@ -80,6 +96,66 @@ for (const required of ["SOLUSDT", "类型：合约套利观察", "资金费率�
 
 if (arbitrageEmail.text.includes("止损：") || arbitrageEmail.text.includes("止盈：")) {
   throw new Error("Arbitrage email should not show stop loss or take profit");
+}
+
+const reviewNow = Date.UTC(2026, 5, 21, 12, 0);
+const reviewedWin = reviewAlertWithCandles({
+  trigger_time: new Date(Date.UTC(2026, 5, 21, 8, 0)).toISOString(),
+  interval: "1h",
+  payload: {
+    close: 100,
+    validUntil: Date.UTC(2026, 5, 21, 10, 0),
+    direction: "做多观察",
+    executionPlan: { entryReference: 100, stopLoss: 97, takeProfit: 105 }
+  }
+}, [
+  { openTime: Date.UTC(2026, 5, 21, 9, 0), high: 106, low: 99, close: 105.5 }
+], reviewNow);
+if (reviewedWin.status !== "reviewed" || reviewedWin.outcome !== "止盈" || reviewedWin.returnPct <= 0) {
+  throw new Error("Alert review should detect take profit");
+}
+
+const reviewedLoss = reviewAlertWithCandles({
+  trigger_time: new Date(Date.UTC(2026, 5, 21, 8, 0)).toISOString(),
+  interval: "1h",
+  payload: {
+    close: 100,
+    validUntil: Date.UTC(2026, 5, 21, 10, 0),
+    direction: "做多观察",
+    executionPlan: { entryReference: 100, stopLoss: 97, takeProfit: 105 }
+  }
+}, [
+  { openTime: Date.UTC(2026, 5, 21, 9, 0), high: 101, low: 96.5, close: 97 }
+], reviewNow);
+if (reviewedLoss.status !== "reviewed" || reviewedLoss.outcome !== "止损" || reviewedLoss.returnPct >= 0) {
+  throw new Error("Alert review should detect stop loss");
+}
+
+const pendingReview = reviewAlertWithCandles({
+  trigger_time: new Date(Date.UTC(2026, 5, 21, 8, 0)).toISOString(),
+  interval: "1h",
+  payload: {
+    close: 100,
+    validUntil: Date.UTC(2026, 5, 21, 10, 0),
+    direction: "做多观察"
+  }
+}, [
+  { openTime: Date.UTC(2026, 5, 21, 9, 0), high: 101, low: 99, close: 100.5 }
+], Date.UTC(2026, 5, 21, 9, 30));
+if (pendingReview.status !== "pending") {
+  throw new Error("Alert review should stay pending before validUntil");
+}
+
+const arbitrageReview = reviewArbitrageAlert({
+  payload: {
+    kind: "futures_arbitrage",
+    close: 150,
+    validUntil: Date.UTC(2026, 5, 21, 10, 0),
+    details: { estimatedDailyFunding: 0.0012 }
+  }
+}, reviewNow);
+if (arbitrageReview.status !== "reviewed" || arbitrageReview.returnPct !== 0.0012) {
+  throw new Error("Arbitrage review should use estimated funding return");
 }
 
 console.log("Smoke test passed");

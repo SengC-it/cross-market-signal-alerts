@@ -494,7 +494,7 @@
             alert.recommendation_score == null ? "--" : Math.round(Number(alert.recommendation_score)),
             executionPlanText(alert.payload?.executionPlan),
             scoringBreakdownText(alert.payload?.scoringBreakdown),
-            livePerformanceText(alert.payload?.livePerformance),
+            reviewText(alert.payload?.review, alert.payload?.livePerformance),
             formatDate(alert.trigger_time)
           ])
         );
@@ -588,7 +588,7 @@
             alert.payload?.strategyName || alert.strategy_id || "--",
             alert.recommendation_score == null ? "--" : Math.round(Number(alert.recommendation_score)),
             scoringBreakdownText(alert.payload?.scoringBreakdown),
-            livePerformanceText(alert.payload?.livePerformance),
+            reviewText(alert.payload?.review, alert.payload?.livePerformance),
             formatDate(alert.trigger_time)
           ])
         );
@@ -685,7 +685,16 @@
         return `${Math.round(minutes / 60)} 小时前`;
       }
 
-      function livePerformanceText(performance) {
+      function reviewText(review, performance) {
+        if (review?.status === "reviewed") {
+          const outcome = review.outcome || "已复盘";
+          const value = Number.isFinite(Number(review.returnPct)) ? ` ${pct(review.returnPct)}` : "";
+          const price = Number.isFinite(Number(review.exitPrice)) ? ` / 退出 ${formatNumber(review.exitPrice)}` : "";
+          return `${outcome}${value}${price}`;
+        }
+        if (review?.status === "pending") {
+          return review.reason || "待复盘";
+        }
         if (!performance || !performance.trades) return "样本不足";
         return `${pct(performance.winRate)} / ${performance.trades} 次 / ${pct(performance.totalReturn)}`;
       }
