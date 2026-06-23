@@ -34,6 +34,7 @@ Strategy families include trend-following, Donchian breakouts, moving-average cr
 ```text
 ALERT_EMAIL_TO=sheng.chi@qq.com
 ALERT_EMAIL_FROM=Signal Alerts <alerts@your-domain.com>
+EMAIL_FROM_NAME=Crypto Signal Bot
 CRON_SECRET=choose-a-long-random-secret
 
 # Choose one email provider.
@@ -81,7 +82,10 @@ Each scheduled job calls:
 
 ```text
 GET /api/cron?secret=YOUR_CRON_SECRET&group=GROUP_NAME
+GET /api/cron?secret=YOUR_CRON_SECRET&groups=GROUP_A,GROUP_B,GROUP_C
 ```
+
+Use `groups` for scheduled batches. The API scans each group, de-duplicates new signals, and sends one combined email with a subject that includes the signal count, top asset, direction, and highest recommendation score.
 
 Required GitHub Actions secrets:
 
@@ -118,6 +122,7 @@ If you do not own a sending domain, Gmail SMTP is the easiest production email p
 GMAIL_SMTP_USER=your-gmail-address@gmail.com
 GMAIL_APP_PASSWORD=your-16-character-app-password
 ALERT_EMAIL_FROM=Signal Alerts <your-gmail-address@gmail.com>
+EMAIL_FROM_NAME=Crypto Signal Bot
 ALERT_EMAIL_TO=sheng.chi@qq.com
 ```
 

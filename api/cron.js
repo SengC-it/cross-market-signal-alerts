@@ -1,4 +1,4 @@
-import { runSignalScan } from "../lib/scanner.js";
+import { runSignalBatch, runSignalScan } from "../lib/scanner.js";
 
 export const config = {
   maxDuration: 60
@@ -16,10 +16,13 @@ export default async function handler(req, res) {
       return;
     }
 
-    const result = await runSignalScan({
-      dryRun: req.query?.dryRun === "1",
-      group: req.query?.group || "all"
-    });
+    const groups = parseCronGroups(req.query || {});
+    const result = groups.length > 1
+      ? await runSignalBatch({ dryRun: req.query?.dryRun === "1", groups })
+      : await runSignalScan({
+        dryRun: req.query?.dryRun === "1",
+        group: groups[0] || "all"
+      });
     res.status(200).json({ ok: true, ...result });
   } catch (error) {
     console.error(error);
@@ -28,6 +31,17 @@ export default async function handler(req, res) {
       error: error instanceof Error ? error.message : String(error)
     });
   }
+}
+
+export function parseCronGroups(query) {
+  if (query?.groups) {
+    return String(query.groups)
+      .split(",")
+      .map((group) => group.trim())
+      .filter(Boolean);
+  }
+  if (query?.group) return [String(query.group).trim()].filter(Boolean);
+  return ["all"];
 }
 
 function isAuthorized(req) {

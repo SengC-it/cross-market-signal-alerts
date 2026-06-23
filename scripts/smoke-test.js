@@ -1,3 +1,5 @@
+import { buildEmailFrom } from "../lib/email.js";
+import { parseCronGroups } from "../api/cron.js";
 import { renderSignalEmail, renderTestEmail } from "../lib/report.js";
 import { reviewAlertWithCandles, reviewArbitrageAlert } from "../lib/alert-review.js";
 import { isDynamicSpotCoolingDown } from "../lib/scanner.js";
@@ -5,6 +7,14 @@ import { STRATEGIES } from "../lib/strategies.js";
 
 if (!STRATEGIES.length) {
   throw new Error("No strategies registered");
+}
+
+const parsedGroups = parseCronGroups({
+  group: "dynamic-spot",
+  groups: " futures-scalp-a, futures-scalp-b ,, "
+});
+if (parsedGroups.join("|") !== "futures-scalp-a|futures-scalp-b") {
+  throw new Error("Cron groups parser should prefer comma-separated groups");
 }
 
 const dynamicCooldown = isDynamicSpotCoolingDown({
@@ -43,12 +53,14 @@ const spotEmail = renderSignalEmail([{
   }
 }]);
 
+if (!spotEmail.subject.includes("BTCUSDT") || !spotEmail.subject.includes("82/100")) {
+  throw new Error("Single-signal subject should include asset and score");
+}
 for (const required of ["BTCUSDT", "方向：做多观察", "推荐指数：82/100", "参考价：100", "止损：97", "止盈：105.4", "有效期：", "原因："]) {
   if (!spotEmail.text.includes(required)) {
     throw new Error(`Compact spot email missing: ${required}`);
   }
 }
-
 for (const removed of ["历史样本", "推荐指数拆解", "为什么提醒你", "你可以怎么处理"]) {
   if (spotEmail.text.includes(removed)) {
     throw new Error(`Compact spot email still contains verbose section: ${removed}`);
@@ -69,7 +81,6 @@ const futuresEmail = renderSignalEmail([{
     simpleThesis: "ETHUSDT 出现偏空合约观察信号。"
   }
 }]);
-
 for (const required of ["ETHUSDT", "方向：做空观察", "参考价：2000", "止损：2040", "止盈：1928"]) {
   if (!futuresEmail.text.includes(required)) {
     throw new Error(`Compact futures email missing: ${required}`);
@@ -87,15 +98,43 @@ const arbitrageEmail = renderSignalEmail([{
     nextFundingTime: Date.UTC(2026, 5, 21, 12, 0)
   }
 }]);
-
 for (const required of ["SOLUSDT", "类型：合约套利观察", "资金费率：0.0400% / 8小时", "年化收益：43.8%", "下次结算："]) {
   if (!arbitrageEmail.text.includes(required)) {
     throw new Error(`Compact arbitrage email missing: ${required}`);
   }
 }
-
 if (arbitrageEmail.text.includes("止损：") || arbitrageEmail.text.includes("止盈：")) {
   throw new Error("Arbitrage email should not show stop loss or take profit");
+}
+
+const summaryEmail = renderSignalEmail([
+  {
+    asset: "BTCUSDT",
+    direction: "做多观察",
+    strategyId: "dynamic_relative_strength_breakout",
+    recommendationScore: 82,
+    close: 100,
+    validUntil: Date.UTC(2026, 5, 21, 10, 0)
+  },
+  {
+    asset: "SOLUSDT",
+    direction: "做多观察",
+    strategyId: "dynamic_relative_strength_breakout",
+    recommendationScore: 76,
+    close: 150,
+    validUntil: Date.UTC(2026, 5, 21, 10, 0)
+  }
+]);
+if (!summaryEmail.subject.includes("2") || !summaryEmail.subject.includes("BTCUSDT") || !summaryEmail.subject.includes("82/100")) {
+  throw new Error("Multi-signal subject should include count, top asset, and top score");
+}
+
+const previousEmailFromName = process.env.EMAIL_FROM_NAME;
+process.env.EMAIL_FROM_NAME = "Crypto Signal Bot";
+const namedFrom = buildEmailFrom("sender@example.com");
+process.env.EMAIL_FROM_NAME = previousEmailFromName;
+if (namedFrom !== "Crypto Signal Bot <sender@example.com>") {
+  throw new Error("EMAIL_FROM_NAME should control sender display name");
 }
 
 const reviewNow = Date.UTC(2026, 5, 21, 12, 0);
