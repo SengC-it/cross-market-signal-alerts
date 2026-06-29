@@ -16,8 +16,14 @@ jobs:
     steps:
       - name: Call signal scanner
         run: |
+          APP_URL="${{ secrets.VERCEL_APP_URL }}"
+          APP_URL="${APP_URL%/}"
+          if [ -z "$APP_URL" ]; then
+            APP_URL="https://cross-market-signal-alerts.vercel.app"
+          fi
+
           curl --fail --show-error --silent \
-            --get "${{ secrets.VERCEL_APP_URL }}/api/cron" \
+            --get "$APP_URL/api/cron" \
             --data-urlencode "secret=${{ secrets.CRON_SECRET }}" \
             --data-urlencode "groups=dynamic-spot,futures-scalp-a,futures-scalp-b"
 
@@ -28,8 +34,14 @@ jobs:
     steps:
       - name: Call signal scanner
         run: |
+          APP_URL="${{ secrets.VERCEL_APP_URL }}"
+          APP_URL="${APP_URL%/}"
+          if [ -z "$APP_URL" ]; then
+            APP_URL="https://cross-market-signal-alerts.vercel.app"
+          fi
+
           curl --fail --show-error --silent \
-            --get "${{ secrets.VERCEL_APP_URL }}/api/cron" \
+            --get "$APP_URL/api/cron" \
             --data-urlencode "secret=${{ secrets.CRON_SECRET }}" \
             --data-urlencode "groups=crypto-core-a-1h,crypto-core-b-1h,crypto-alt-a-1h,crypto-alt-b-1h,crypto-alt-c-1h,futures-core-1h,futures-arbitrage"
 
@@ -40,8 +52,14 @@ jobs:
     steps:
       - name: Call signal scanner
         run: |
+          APP_URL="${{ secrets.VERCEL_APP_URL }}"
+          APP_URL="${APP_URL%/}"
+          if [ -z "$APP_URL" ]; then
+            APP_URL="https://cross-market-signal-alerts.vercel.app"
+          fi
+
           curl --fail --show-error --silent \
-            --get "${{ secrets.VERCEL_APP_URL }}/api/cron" \
+            --get "$APP_URL/api/cron" \
             --data-urlencode "secret=${{ secrets.CRON_SECRET }}" \
             --data-urlencode "groups=crypto-core-a-mid,crypto-core-b-mid,crypto-alt-a-mid,crypto-alt-b-mid,crypto-alt-c-mid,futures-core-mid"
 
@@ -52,7 +70,13 @@ jobs:
     steps:
       - name: Call signal scanner
         run: |
+          APP_URL="${{ secrets.VERCEL_APP_URL }}"
+          APP_URL="${APP_URL%/}"
+          if [ -z "$APP_URL" ]; then
+            APP_URL="https://cross-market-signal-alerts.vercel.app"
+          fi
+
           curl --fail --show-error --silent \
-            --get "${{ secrets.VERCEL_APP_URL }}/api/cron" \
+            --get "$APP_URL/api/cron" \
             --data-urlencode "secret=${{ secrets.CRON_SECRET }}" \
             --data-urlencode "groups=crypto-core-a-daily,crypto-core-b-daily,crypto-alt-a-daily,crypto-alt-b-daily,crypto-alt-c-daily,futures-daily"
