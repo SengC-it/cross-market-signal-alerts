@@ -1,6 +1,6 @@
--- Optional cloud fallback scheduler for Supabase.
+-- Primary cloud scheduler for Supabase.
 -- Replace YOUR_CRON_SECRET before running this in Supabase SQL Editor.
--- GitHub Actions remains the primary scheduler; this is a fallback if Actions is delayed or skipped.
+-- GitHub Actions is kept for manual dispatch only.
 
 create extension if not exists pg_cron with schema extensions;
 create extension if not exists pg_net with schema extensions;
@@ -17,7 +17,7 @@ where jobname in (
 
 select cron.schedule(
   'cross_market_signal_dynamic_30m',
-  '*/30 * * * *',
+  '7,37 * * * *',
   $$
   select net.http_get(
     url := 'https://cross-market-signal-alerts.vercel.app/api/cron',
@@ -34,7 +34,7 @@ select cron.schedule(
 
 select cron.schedule(
   'cross_market_signal_short_hourly',
-  '0 * * * *',
+  '11 * * * *',
   $$
   select net.http_get(
     url := 'https://cross-market-signal-alerts.vercel.app/api/cron',
@@ -51,7 +51,7 @@ select cron.schedule(
 
 select cron.schedule(
   'cross_market_signal_mid_4h',
-  '8 */4 * * *',
+  '17 1-23/4 * * *',
   $$
   select net.http_get(
     url := 'https://cross-market-signal-alerts.vercel.app/api/cron',
@@ -68,7 +68,7 @@ select cron.schedule(
 
 select cron.schedule(
   'cross_market_signal_daily',
-  '15 0 * * *',
+  '23 0 * * *',
   $$
   select net.http_get(
     url := 'https://cross-market-signal-alerts.vercel.app/api/cron',
