@@ -2,7 +2,7 @@ import { buildEmailFrom } from "../lib/email.js";
 import { parseCronGroups } from "../api/cron.js";
 import { renderSignalEmail, renderTestEmail } from "../lib/report.js";
 import { reviewAlertWithCandles, reviewArbitrageAlert } from "../lib/alert-review.js";
-import { isDynamicSpotCoolingDown, shouldReviewRecentAlerts } from "../lib/scanner.js";
+import { filterSignalsByCurrentPrice, isDynamicSpotCoolingDown, shouldReviewRecentAlerts } from "../lib/scanner.js";
 import { hasProcessedScanCandle, recordProcessedScanCandle } from "../lib/storage.js";
 import { STRATEGIES } from "../lib/strategies.js";
 
@@ -37,6 +37,34 @@ if (shouldReviewRecentAlerts("dynamic-spot") || shouldReviewRecentAlerts("future
 }
 if (!shouldReviewRecentAlerts("crypto-core-a-daily") || !shouldReviewRecentAlerts("futures-daily") || !shouldReviewRecentAlerts("all")) {
   throw new Error("Daily and full scan groups should keep historical alert reviews");
+}
+
+const driftWarnings = [];
+const driftFiltered = filterSignalsByCurrentPrice({
+  signals: [
+    { asset: "TURBOUSDT", close: 0.00095, recommendationScore: 82 },
+    { asset: "BTCUSDT", close: 100, recommendationScore: 75 }
+  ],
+  currentPrices: new Map([
+    ["TURBOUSDT", 0.00091],
+    ["BTCUSDT", 99.5]
+  ]),
+  maxDriftPct: 0.02,
+  warnings: driftWarnings
+});
+if (driftFiltered.length !== 1 || driftFiltered[0].asset !== "BTCUSDT" || driftWarnings.length !== 1) {
+  throw new Error("Current price guard should drop signals that moved too far from reference price");
+}
+
+const missingPriceWarnings = [];
+const missingPriceKept = filterSignalsByCurrentPrice({
+  signals: [{ asset: "ETHUSDT", close: 2000, recommendationScore: 76 }],
+  currentPrices: new Map(),
+  maxDriftPct: 0.02,
+  warnings: missingPriceWarnings
+});
+if (missingPriceKept.length !== 1 || missingPriceWarnings.length !== 1) {
+  throw new Error("Current price guard should keep signals when live price is unavailable and warn");
 }
 
 if (await hasProcessedScanCandle({ scanGroup: "dynamic-spot", asset: "BTCUSDT", interval: "1h", candleOpenTime: 1780000000000 })) {
