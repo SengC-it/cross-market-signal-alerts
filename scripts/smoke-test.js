@@ -2,7 +2,8 @@ import { buildEmailFrom } from "../lib/email.js";
 import { parseCronGroups } from "../api/cron.js";
 import { renderSignalEmail, renderTestEmail } from "../lib/report.js";
 import { reviewAlertWithCandles, reviewArbitrageAlert } from "../lib/alert-review.js";
-import { isDynamicSpotCoolingDown } from "../lib/scanner.js";
+import { isDynamicSpotCoolingDown, shouldReviewRecentAlerts } from "../lib/scanner.js";
+import { hasProcessedScanCandle, recordProcessedScanCandle } from "../lib/storage.js";
 import { STRATEGIES } from "../lib/strategies.js";
 
 if (!STRATEGIES.length) {
@@ -30,6 +31,18 @@ const dynamicCooldown = isDynamicSpotCoolingDown({
 if (!dynamicCooldown.active || dynamicCooldown.hoursSince !== 1) {
   throw new Error("Dynamic spot cooldown should block repeated same-asset alerts");
 }
+
+if (shouldReviewRecentAlerts("dynamic-spot") || shouldReviewRecentAlerts("futures-scalp-a") || shouldReviewRecentAlerts("crypto-core-a-1h")) {
+  throw new Error("High-frequency scan groups should skip historical alert reviews");
+}
+if (!shouldReviewRecentAlerts("crypto-core-a-daily") || !shouldReviewRecentAlerts("futures-daily") || !shouldReviewRecentAlerts("all")) {
+  throw new Error("Daily and full scan groups should keep historical alert reviews");
+}
+
+if (await hasProcessedScanCandle({ scanGroup: "dynamic-spot", asset: "BTCUSDT", interval: "1h", candleOpenTime: 1780000000000 })) {
+  throw new Error("Processed candle lookup should not block scans when Supabase is not configured");
+}
+await recordProcessedScanCandle({ scanGroup: "dynamic-spot", asset: "BTCUSDT", interval: "1h", candleOpenTime: 1780000000000 });
 
 const email = renderTestEmail();
 if (!email.includes("云端信号系统测试邮件")) {
