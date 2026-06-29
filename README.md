@@ -73,10 +73,10 @@ alter table run_logs add column if not exists sent_alert_keys jsonb;
 
 Production scheduling is handled by [`.github/workflows/signal-cron.yml`](.github/workflows/signal-cron.yml). The workflow uses this cadence:
 
-- Every 30 minutes: `dynamic-spot`, `futures-scalp-a`, and `futures-scalp-b`
-- Every hour at minute `0`: `1h` crypto spot, `1h` futures, and futures arbitrage
-- Every 4 hours at minute `8`: `2h`/`4h` crypto spot and futures swing scans
-- Daily at `00:15 UTC`: split daily crypto spot and futures scans
+- Every 30 minutes at minutes `7` and `37`: `dynamic-spot`, `futures-scalp-a`, and `futures-scalp-b`
+- Every hour at minute `11`: `1h` crypto spot, `1h` futures, and futures arbitrage
+- Every 4 hours at minute `17`: `2h`/`4h` crypto spot and futures swing scans
+- Daily at `00:23 UTC`: split daily crypto spot and futures scans
 
 Each scheduled job calls:
 
