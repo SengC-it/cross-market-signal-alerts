@@ -38,4 +38,3 @@ alter table run_logs add column if not exists sent_alert_keys jsonb;
 
 create index if not exists sent_alerts_asset_time_idx on sent_alerts (asset, trigger_time desc);
 create index if not exists run_logs_created_at_idx on run_logs (created_at desc);
-create index if not exists processed_scan_candles_processed_at_idx on processed_scan_candles (processed_at desc);
