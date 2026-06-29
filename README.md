@@ -88,6 +88,23 @@ GET /api/cron?secret=YOUR_CRON_SECRET&groups=GROUP_A,GROUP_B,GROUP_C
 
 Use `groups` for scheduled batches. The API scans each group, de-duplicates new signals, and sends one combined email with a subject that includes the signal count, top asset, direction, and highest recommendation score.
 
+Before running the scheduler SQL, replace the single `cron_secret` value with the same `CRON_SECRET` configured in Vercel. The SQL intentionally raises an error if the placeholder is left unchanged.
+
+To verify scheduled jobs and recent HTTP results in Supabase SQL Editor:
+
+```sql
+select jobid, jobname, schedule, active
+from cron.job
+where jobname like 'cross_market_signal%';
+
+select id, status_code, error_msg, created
+from net._http_response
+order by created desc
+limit 20;
+```
+
+A `401` response from `/api/cron` means Supabase reached Vercel but the scheduled request did not use the same `CRON_SECRET` as Vercel.
+
 Required GitHub Actions secrets for manual dispatch:
 
 ```text

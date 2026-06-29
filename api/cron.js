@@ -6,6 +6,11 @@ export const config = {
 
 export default async function handler(req, res) {
   if (!isAuthorized(req)) {
+    console.warn("Unauthorized cron request", {
+      hasAuthorizationHeader: Boolean(req.headers.authorization),
+      hasQuerySecret: Boolean(req.query?.secret),
+      queryKeys: Object.keys(req.query || {}).filter((key) => key !== "secret")
+    });
     res.status(401).json({ ok: false, error: "unauthorized" });
     return;
   }
