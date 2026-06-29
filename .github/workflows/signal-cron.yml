@@ -1,17 +1,11 @@
 name: Signal Cron
 
 on:
-  schedule:
-    - cron: "7,37 * * * *"
-    - cron: "11 * * * *"
-    - cron: "17 1-23/4 * * *"
-    - cron: "23 0 * * *"
   workflow_dispatch:
 
 jobs:
   dynamic-spot-scan:
     runs-on: ubuntu-latest
-    if: github.event_name == 'workflow_dispatch' || github.event.schedule == '7,37 * * * *'
     timeout-minutes: 10
     steps:
       - name: Call signal scanner
@@ -29,7 +23,6 @@ jobs:
 
   hourly-signal-scan:
     runs-on: ubuntu-latest
-    if: github.event_name == 'workflow_dispatch' || github.event.schedule == '11 * * * *'
     timeout-minutes: 10
     steps:
       - name: Call signal scanner
@@ -47,7 +40,6 @@ jobs:
 
   mid-signal-scan:
     runs-on: ubuntu-latest
-    if: github.event_name == 'workflow_dispatch' || github.event.schedule == '17 1-23/4 * * *'
     timeout-minutes: 10
     steps:
       - name: Call signal scanner
@@ -65,7 +57,6 @@ jobs:
 
   daily-signal-scan:
     runs-on: ubuntu-latest
-    if: github.event_name == 'workflow_dispatch' || github.event.schedule == '23 0 * * *'
     timeout-minutes: 10
     steps:
       - name: Call signal scanner
