@@ -17,7 +17,7 @@ where jobname in (
 
 select cron.schedule(
   'cross_market_signal_dynamic_30m',
-  '7,37 * * * *',
+  '0,30 * * * *',
   $$
   select net.http_get(
     url := 'https://cross-market-signal-alerts.vercel.app/api/cron',
@@ -34,7 +34,7 @@ select cron.schedule(
 
 select cron.schedule(
   'cross_market_signal_short_hourly',
-  '11 * * * *',
+  '0 * * * *',
   $$
   select net.http_get(
     url := 'https://cross-market-signal-alerts.vercel.app/api/cron',
@@ -51,7 +51,7 @@ select cron.schedule(
 
 select cron.schedule(
   'cross_market_signal_mid_4h',
-  '17 1-23/4 * * *',
+  '0 */4 * * *',
   $$
   select net.http_get(
     url := 'https://cross-market-signal-alerts.vercel.app/api/cron',
@@ -68,7 +68,7 @@ select cron.schedule(
 
 select cron.schedule(
   'cross_market_signal_daily',
-  '23 0 * * *',
+  '0 0 * * *',
   $$
   select net.http_get(
     url := 'https://cross-market-signal-alerts.vercel.app/api/cron',
