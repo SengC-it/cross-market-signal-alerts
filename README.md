@@ -72,14 +72,14 @@ alter table run_logs add column if not exists sent_alert_keys jsonb;
 
 ## Scheduling
 
-Production scheduling is handled by [`.github/workflows/signal-cron.yml`](.github/workflows/signal-cron.yml). The workflow uses this cadence:
+Production scheduling is handled by [sql/supabase-hourly-cron.example.sql](sql/supabase-hourly-cron.example.sql) using Supabase `pg_cron` and `pg_net`. The scheduler uses this cadence:
 
 - Every 30 minutes at minutes `7` and `37`: `dynamic-spot`, `futures-scalp-a`, and `futures-scalp-b`
 - Every hour at minute `11`: `1h` crypto spot, `1h` futures, and futures arbitrage
 - Every 4 hours at minute `17`: `2h`/`4h` crypto spot and futures swing scans
 - Daily at `00:23 UTC`: split daily crypto spot and futures scans
 
-Each scheduled job calls:
+Each scheduled job calls Vercel:
 
 ```text
 GET /api/cron?secret=YOUR_CRON_SECRET&group=GROUP_NAME
@@ -88,16 +88,14 @@ GET /api/cron?secret=YOUR_CRON_SECRET&groups=GROUP_A,GROUP_B,GROUP_C
 
 Use `groups` for scheduled batches. The API scans each group, de-duplicates new signals, and sends one combined email with a subject that includes the signal count, top asset, direction, and highest recommendation score.
 
-Required GitHub Actions secrets:
+Required GitHub Actions secrets for manual dispatch:
 
 ```text
 VERCEL_APP_URL=https://your-vercel-app.vercel.app
 CRON_SECRET=the-same-secret-used-in-vercel
 ```
 
-Vercel Hobby cron is intentionally not used because the free plan only allows daily cron jobs.
-
-Supabase also has an optional cloud fallback scheduler in [sql/supabase-hourly-cron.example.sql](sql/supabase-hourly-cron.example.sql). It uses `pg_cron` and `pg_net` to call the same Vercel API on the same tiered cadence, so the scanner can keep running even if GitHub Actions schedule is delayed or skipped.
+Vercel Hobby cron is intentionally not used because the free plan only allows daily cron jobs. GitHub Actions is intentionally kept as manual dispatch only because scheduled runs can be delayed or skipped.
 
 ## Vercel
 
