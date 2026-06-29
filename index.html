@@ -738,6 +738,7 @@
 
       function labelGroup(group) {
         if (!group) return "--";
+        if (String(group).startsWith("batch:")) return "批量扫描";
         return GROUP_LABELS[group] || group;
       }
 

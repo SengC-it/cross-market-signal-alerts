@@ -105,6 +105,7 @@ function buildSummary(runLogs, sentAlerts) {
   }
   for (const log of runLogs) {
     const group = log.scan_group || "all";
+    if (isBatchGroup(group)) continue;
     if (!groups.has(group)) groups.set(group, emptyGroupSummary(group));
     const item = groups.get(group);
     item.runs += 1;
@@ -146,6 +147,10 @@ function buildSummary(runLogs, sentAlerts) {
     totalAlertsReturned: sentAlerts.length,
     groups: [...groups.values()].sort((a, b) => String(a.group).localeCompare(String(b.group)))
   };
+}
+
+function isBatchGroup(group) {
+  return String(group || "").startsWith("batch:");
 }
 
 function emptyGroupSummary(group) {
