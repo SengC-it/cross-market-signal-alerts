@@ -16,6 +16,7 @@ Cloud-ready signal scanner for crypto spot, USDT perpetual futures, and funding-
 Scheduled groups:
 
 - `dynamic-spot`: dynamically selected high-volume, high-momentum Binance spot symbols; scans every 30 minutes on `1h`.
+- `dynamic-weak-spot`: dynamically selected high-volume, high-downside Binance spot symbols for short observation; scans every 30 minutes on `1h`.
 - `crypto-core-a-1h`, `crypto-core-b-1h`: major spot crypto groups; scan hourly on `1h`.
 - `crypto-alt-a-1h`, `crypto-alt-b-1h`, `crypto-alt-c-1h`: altcoin spot groups; scan hourly on `1h`.
 - `futures-scalp-a`, `futures-scalp-b`: USDT perpetual futures short-term groups; scan every 30 minutes on `15m` and `30m`.
@@ -74,7 +75,7 @@ alter table run_logs add column if not exists sent_alert_keys jsonb;
 
 Production scheduling is handled by [sql/supabase-hourly-cron.example.sql](sql/supabase-hourly-cron.example.sql) using Supabase `pg_cron` and `pg_net`. The scheduler uses this cadence:
 
-- Every 30 minutes at minutes `0` and `30`: `dynamic-spot`, `futures-scalp-a`, and `futures-scalp-b`
+- Every 30 minutes at minutes `0` and `30`: `dynamic-spot`, `dynamic-weak-spot`, `futures-scalp-a`, and `futures-scalp-b`
 - Every hour at minute `0`: `1h` crypto spot, `1h` futures, and futures arbitrage
 - Every 4 hours at minute `0`: `2h`/`4h` crypto spot and futures swing scans
 - Daily at `00:00 UTC`: split daily crypto spot and futures scans
