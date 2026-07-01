@@ -12,6 +12,7 @@ where jobname in (
   'cross_market_signal_dynamic_30m',
   'cross_market_signal_short_hourly',
   'cross_market_signal_mid_4h',
+  'cross_market_signal_review_4h',
   'cross_market_signal_daily'
 );
 
@@ -80,6 +81,29 @@ begin
         params := jsonb_build_object(
           'groups',
           'crypto-core-a-mid,crypto-core-b-mid,crypto-alt-a-mid,crypto-alt-b-mid,crypto-alt-c-mid,futures-core-mid'
+        ),
+        headers := jsonb_build_object(
+          'Authorization',
+          %L
+        ),
+        timeout_milliseconds := 60000
+      );
+      $job$,
+      app_url,
+      'Bearer ' || cron_secret
+    )
+  );
+
+  perform cron.schedule(
+    'cross_market_signal_review_4h',
+    '0 */4 * * *',
+    format(
+      $job$
+      select net.http_get(
+        url := %L,
+        params := jsonb_build_object(
+          'group',
+          'review'
         ),
         headers := jsonb_build_object(
           'Authorization',

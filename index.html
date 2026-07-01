@@ -695,7 +695,8 @@
         if (review?.status === "pending") {
           return review.reason || "待复盘";
         }
-        if (!performance || !performance.trades) return "样本不足";
+        if (!performance) return "待复盘";
+        if (!performance.trades) return "同类已发样本不足";
         return `${pct(performance.winRate)} / ${performance.trades} 次 / ${pct(performance.totalReturn)}`;
       }
 

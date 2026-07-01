@@ -5,6 +5,7 @@ node_modules
 .env.local
 .env.vercel.local
 *.log
+*.local.sql
 *.zip
 all_data/
 data/

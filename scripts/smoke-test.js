@@ -1,4 +1,5 @@
 import { buildEmailFrom } from "../lib/email.js";
+import { readFileSync } from "node:fs";
 import { parseCronGroups } from "../api/cron.js";
 import { renderSignalEmail, renderTestEmail } from "../lib/report.js";
 import { reviewAlertWithCandles, reviewArbitrageAlert } from "../lib/alert-review.js";
@@ -8,6 +9,19 @@ import { STRATEGIES } from "../lib/strategies.js";
 
 if (!STRATEGIES.length) {
   throw new Error("No strategies registered");
+}
+
+const dashboardHtml = readFileSync(new URL("../index.html", import.meta.url), "utf8");
+if (dashboardHtml.includes('return "样本不足";')) {
+  throw new Error("Dashboard review text should not use a generic insufficient-sample fallback");
+}
+if (!dashboardHtml.includes('return "待复盘";') || !dashboardHtml.includes("同类已发样本不足")) {
+  throw new Error("Dashboard review text should distinguish pending reviews from live-performance sample gaps");
+}
+
+const schedulerSql = readFileSync(new URL("../sql/supabase-hourly-cron.example.sql", import.meta.url), "utf8");
+if (!schedulerSql.includes("'cross_market_signal_review_4h'") || !schedulerSql.includes("'0 */4 * * *'") || !schedulerSql.includes("'group',") || !schedulerSql.includes("'review'")) {
+  throw new Error("Scheduler should run a dedicated review job every 4 hours");
 }
 
 const parsedGroups = parseCronGroups({
