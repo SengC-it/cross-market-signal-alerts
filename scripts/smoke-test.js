@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { parseCronGroups } from "../api/cron.js";
 import { renderSignalEmail, renderTestEmail } from "../lib/report.js";
 import { reviewAlertWithCandles, reviewArbitrageAlert } from "../lib/alert-review.js";
-import { filterSignalsByCurrentPrice, isDynamicSpotCoolingDown, shouldReviewRecentAlerts } from "../lib/scanner.js";
+import { filterSignalsByCurrentPrice, isDynamicSpotCoolingDown, isDynamicWeakSpotCandidate, selectScanTargets, shouldReviewRecentAlerts } from "../lib/scanner.js";
 import { hasProcessedScanCandle, recordProcessedScanCandle } from "../lib/storage.js";
 import { STRATEGIES } from "../lib/strategies.js";
 
@@ -22,6 +22,9 @@ if (!dashboardHtml.includes('return "待复盘";') || !dashboardHtml.includes("�
 const schedulerSql = readFileSync(new URL("../sql/supabase-hourly-cron.example.sql", import.meta.url), "utf8");
 if (!schedulerSql.includes("'cross_market_signal_review_4h'") || !schedulerSql.includes("'0 */4 * * *'") || !schedulerSql.includes("'group',") || !schedulerSql.includes("'review'")) {
   throw new Error("Scheduler should run a dedicated review job every 4 hours");
+}
+if (!schedulerSql.includes("dynamic-weak-spot")) {
+  throw new Error("Scheduler should include the dynamic weak spot scan group");
 }
 
 const parsedGroups = parseCronGroups({
@@ -51,6 +54,39 @@ if (shouldReviewRecentAlerts("dynamic-spot") || shouldReviewRecentAlerts("future
 }
 if (!shouldReviewRecentAlerts("crypto-core-a-daily") || !shouldReviewRecentAlerts("futures-daily") || !shouldReviewRecentAlerts("all")) {
   throw new Error("Daily and full scan groups should keep historical alert reviews");
+}
+
+const reviewTargets = selectScanTargets("review");
+if (
+  reviewTargets.cryptoAssets.length ||
+  reviewTargets.futuresAssets.length ||
+  reviewTargets.arbitrageAssets.length ||
+  reviewTargets.cryptoIntervals.length ||
+  reviewTargets.futuresIntervals.length
+) {
+  throw new Error("Review-only cron group should not scan market data");
+}
+
+const weakTargets = selectScanTargets("dynamic-weak-spot");
+if (
+  weakTargets.cryptoAssets.length ||
+  weakTargets.futuresAssets.length ||
+  weakTargets.arbitrageAssets.length ||
+  weakTargets.cryptoIntervals.length ||
+  weakTargets.futuresIntervals.length
+) {
+  throw new Error("Dynamic weak spot group should not fall back to broad market scans");
+}
+
+const weakExisting = new Set();
+if (!isDynamicWeakSpotCandidate({ symbol: "WIFUSDT", priceChangePercent: -6.5, quoteVolume: 3500000 }, weakExisting)) {
+  throw new Error("Dynamic weak spot candidate should accept liquid falling USDT symbols");
+}
+if (isDynamicWeakSpotCandidate({ symbol: "THINUSDT", priceChangePercent: -6.5, quoteVolume: 100000 }, weakExisting)) {
+  throw new Error("Dynamic weak spot candidate should reject illiquid symbols");
+}
+if (isDynamicWeakSpotCandidate({ symbol: "SLOWUSDT", priceChangePercent: -1.2, quoteVolume: 3500000 }, weakExisting)) {
+  throw new Error("Dynamic weak spot candidate should reject symbols without enough downside momentum");
 }
 
 const driftWarnings = [];
@@ -100,6 +136,7 @@ const spotEmail = renderSignalEmail([{
   strategyName: "放量突破",
   strategyId: "dynamic_relative_strength_breakout",
   recommendationScore: 82,
+  rawScore: 94,
   close: 100,
   validUntil: Date.UTC(2026, 5, 21, 10, 0),
   details: {
@@ -108,10 +145,10 @@ const spotEmail = renderSignalEmail([{
   }
 }]);
 
-if (!spotEmail.subject.includes("BTCUSDT") || !spotEmail.subject.includes("82/100")) {
-  throw new Error("Single-signal subject should include asset and score");
+if (!spotEmail.subject.includes("BTCUSDT") || !spotEmail.subject.includes("94/100")) {
+  throw new Error("Single-signal subject should include asset and display score");
 }
-for (const required of ["BTCUSDT", "方向：做多观察", "推荐指数：82/100", "参考价：100", "止损：97", "止盈：105.4", "有效期：", "原因："]) {
+for (const required of ["BTCUSDT", "方向：做多观察", "推荐指数：94/100", "参考价：100", "止损：97", "止盈：105.4", "有效期：", "原因："]) {
   if (!spotEmail.text.includes(required)) {
     throw new Error(`Compact spot email missing: ${required}`);
   }
@@ -139,6 +176,25 @@ const futuresEmail = renderSignalEmail([{
 for (const required of ["ETHUSDT", "方向：做空观察", "参考价：2000", "止损：2040", "止盈：1928"]) {
   if (!futuresEmail.text.includes(required)) {
     throw new Error(`Compact futures email missing: ${required}`);
+  }
+}
+
+const weakSpotEmail = renderSignalEmail([{
+  asset: "WIFUSDT",
+  direction: "做空观察",
+  strategyId: "dynamic_relative_weakness_breakdown",
+  strategyName: "动态弱势币放量跌破",
+  recommendationScore: 88,
+  close: 1.2,
+  validUntil: Date.UTC(2026, 5, 21, 11, 0),
+  details: {
+    volumeMultiple: 2.2,
+    relativeWeakness: -0.07
+  }
+}]);
+for (const required of ["WIFUSDT", "方向：做空观察", "推荐指数：88/100", "止损：1.236", "止盈：1.1352"]) {
+  if (!weakSpotEmail.text.includes(required)) {
+    throw new Error(`Compact weak spot email missing: ${required}`);
   }
 }
 
