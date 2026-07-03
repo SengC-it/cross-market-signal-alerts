@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { parseCronGroups } from "../api/cron.js";
 import { renderSignalEmail, renderTestEmail } from "../lib/report.js";
 import { reviewAlertWithCandles, reviewArbitrageAlert } from "../lib/alert-review.js";
-import { filterSignalsByCurrentPrice, isDynamicSpotCoolingDown, isDynamicWeakSpotCandidate, selectScanTargets, shouldReviewRecentAlerts } from "../lib/scanner.js";
+import { evaluateDynamicSpotOpportunity, filterSignalsByCurrentPrice, isDynamicSpotCoolingDown, isDynamicWeakSpotCandidate, selectScanTargets, shouldReviewRecentAlerts } from "../lib/scanner.js";
 import { hasProcessedScanCandle, recordProcessedScanCandle } from "../lib/storage.js";
 import { STRATEGIES } from "../lib/strategies.js";
 
@@ -19,12 +19,35 @@ if (!dashboardHtml.includes('return "待复盘";') || !dashboardHtml.includes("�
   throw new Error("Dashboard review text should distinguish pending reviews from live-performance sample gaps");
 }
 
+if (!dashboardHtml.includes("historyPerformanceText")) {
+  throw new Error("Dashboard should show historical live performance in a separate column");
+}
+if (dashboardHtml.includes("reviewText(alert.payload?.review, alert.payload?.livePerformance)")) {
+  throw new Error("Dashboard review column should not fall back to historical live performance");
+}
+
 const schedulerSql = readFileSync(new URL("../sql/supabase-hourly-cron.example.sql", import.meta.url), "utf8");
 if (!schedulerSql.includes("'cross_market_signal_review_4h'") || !schedulerSql.includes("'0 */4 * * *'") || !schedulerSql.includes("'group',") || !schedulerSql.includes("'review'")) {
   throw new Error("Scheduler should run a dedicated review job every 4 hours");
 }
 if (!schedulerSql.includes("dynamic-weak-spot")) {
   throw new Error("Scheduler should include the dynamic weak spot scan group");
+}
+for (const removedScheduledGroup of [
+  "futures-scalp-a",
+  "futures-scalp-b",
+  "crypto-core-a-1h",
+  "crypto-alt-a-1h",
+  "futures-core-1h",
+  "futures-arbitrage",
+  "crypto-core-a-mid",
+  "futures-core-mid",
+  "crypto-core-a-daily",
+  "futures-daily"
+]) {
+  if (schedulerSql.includes(removedScheduledGroup)) {
+    throw new Error(`Scheduler should not include fixed low-signal scan group: ${removedScheduledGroup}`);
+  }
 }
 
 const parsedGroups = parseCronGroups({
@@ -87,6 +110,39 @@ if (isDynamicWeakSpotCandidate({ symbol: "THINUSDT", priceChangePercent: -6.5, q
 }
 if (isDynamicWeakSpotCandidate({ symbol: "SLOWUSDT", priceChangePercent: -1.2, quoteVolume: 3500000 }, weakExisting)) {
   throw new Error("Dynamic weak spot candidate should reject symbols without enough downside momentum");
+}
+
+const moderateDynamicSpot = evaluateDynamicSpotOpportunity({
+  momentum24h: 0.12,
+  relativeStrength: 0.09,
+  volumeMultiple: 1.8,
+  breakout: true,
+  hasOrderBook: true
+});
+if (!moderateDynamicSpot.passed || moderateDynamicSpot.score < 80 || moderateDynamicSpot.score >= 90) {
+  throw new Error("Dynamic spot quality gate should pass moderate 8%-15% momentum with 1.5x-4x volume");
+}
+
+const overheatedMomentumSpot = evaluateDynamicSpotOpportunity({
+  momentum24h: 0.28,
+  relativeStrength: 0.25,
+  volumeMultiple: 2.2,
+  breakout: true,
+  hasOrderBook: true
+});
+if (overheatedMomentumSpot.passed || !overheatedMomentumSpot.reason?.includes("overheated_momentum")) {
+  throw new Error("Dynamic spot quality gate should reject overheated 24h momentum");
+}
+
+const overheatedVolumeSpot = evaluateDynamicSpotOpportunity({
+  momentum24h: 0.11,
+  relativeStrength: 0.08,
+  volumeMultiple: 9,
+  breakout: true,
+  hasOrderBook: true
+});
+if (overheatedVolumeSpot.passed || !overheatedVolumeSpot.reason?.includes("overheated_volume")) {
+  throw new Error("Dynamic spot quality gate should reject extreme volume spikes");
 }
 
 const driftWarnings = [];
@@ -294,6 +350,24 @@ const pendingReview = reviewAlertWithCandles({
 ], Date.UTC(2026, 5, 21, 9, 30));
 if (pendingReview.status !== "pending") {
   throw new Error("Alert review should stay pending before validUntil");
+}
+
+const sentTimeReview = reviewAlertWithCandles({
+  trigger_time: new Date(Date.UTC(2026, 5, 21, 8, 0)).toISOString(),
+  sent_at: new Date(Date.UTC(2026, 5, 21, 9, 30)).toISOString(),
+  interval: "1h",
+  payload: {
+    close: 100,
+    validUntil: Date.UTC(2026, 5, 21, 11, 0),
+    direction: "鍋氬瑙傚療",
+    executionPlan: { entryReference: 100, stopLoss: 97, takeProfit: 105 }
+  }
+}, [
+  { openTime: Date.UTC(2026, 5, 21, 9, 0), high: 101, low: 96.5, close: 97 },
+  { openTime: Date.UTC(2026, 5, 21, 10, 0), high: 106, low: 99, close: 105.5 }
+], reviewNow);
+if (sentTimeReview.status !== "reviewed" || sentTimeReview.exitTime !== Date.UTC(2026, 5, 21, 10, 0) || sentTimeReview.returnPct <= 0) {
+  throw new Error("Alert review should ignore candles that opened before the email was sent");
 }
 
 const arbitrageReview = reviewArbitrageAlert({

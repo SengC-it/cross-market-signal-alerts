@@ -4,8 +4,8 @@ Cloud-ready signal scanner for crypto spot, USDT perpetual futures, and funding-
 
 ## What It Does
 
-- Runs from GitHub Actions on a tiered schedule and calls the deployed Vercel API.
-- Scans multiple asset groups and strategies in smaller batches to avoid cloud function timeouts.
+- Runs from Supabase `pg_cron` and calls the deployed Vercel API.
+- Schedules only the dynamic spot strength/weakness pools by default to keep cloud CPU usage low.
 - Scores each signal with historical performance, risk, current environment, and liquidity.
 - Sends a decision-card style email only for new medium/high confidence signals.
 - Stores sent signal keys in Supabase to avoid duplicate alerts.
@@ -17,16 +17,8 @@ Scheduled groups:
 
 - `dynamic-spot`: dynamically selected high-volume, high-momentum Binance spot symbols; scans every 30 minutes on `1h`.
 - `dynamic-weak-spot`: dynamically selected high-volume, high-downside Binance spot symbols for short observation; scans every 30 minutes on `1h`.
-- `crypto-core-a-1h`, `crypto-core-b-1h`: major spot crypto groups; scan hourly on `1h`.
-- `crypto-alt-a-1h`, `crypto-alt-b-1h`, `crypto-alt-c-1h`: altcoin spot groups; scan hourly on `1h`.
-- `futures-scalp-a`, `futures-scalp-b`: USDT perpetual futures short-term groups; scan every 30 minutes on `15m` and `30m`.
-- `futures-core-1h`: major USDT perpetual futures; scans hourly on `1h`.
-- `futures-arbitrage`: funding-rate arbitrage watchlist; scans hourly.
-- `crypto-core-a-mid`, `crypto-core-b-mid`, `crypto-alt-a-mid`, `crypto-alt-b-mid`, `crypto-alt-c-mid`: spot crypto swing groups; scan every 4 hours on `2h` and `4h`.
-- `futures-core-mid`: perpetual futures swing group; scans every 4 hours on `2h` and `4h`.
-- `crypto-core-a-daily`, `crypto-core-b-daily`, `crypto-alt-a-daily`, `crypto-alt-b-daily`, `crypto-alt-c-daily`, `futures-daily`: slower daily crypto context scans; run once per day.
 
-Legacy group names such as `crypto-core-a`, `crypto-alt-a`, and `futures-core` are still supported for manual testing, but scheduled jobs use the frequency-specific group names above.
+Legacy group names such as `crypto-core-a`, `crypto-alt-a`, `futures-core`, and `futures-arbitrage` are still supported for manual testing, but they are no longer scheduled by default.
 
 Strategy families include trend-following, Donchian breakouts, moving-average crosses, RSI/Bollinger rebounds, defensive breakdown alerts, short-term momentum/pullback/breakdown signals, and futures-specific short-side observation signals.
 
@@ -73,12 +65,10 @@ alter table run_logs add column if not exists sent_alert_keys jsonb;
 
 ## Scheduling
 
-Production scheduling is handled by [sql/supabase-hourly-cron.example.sql](sql/supabase-hourly-cron.example.sql) using Supabase `pg_cron` and `pg_net`. The scheduler uses this cadence:
+Production scheduling is handled by [sql/supabase-hourly-cron.example.sql](sql/supabase-hourly-cron.example.sql) using Supabase `pg_cron` and `pg_net`. The scheduler uses this CPU-light cadence:
 
-- Every 30 minutes at minutes `0` and `30`: `dynamic-spot`, `dynamic-weak-spot`, `futures-scalp-a`, and `futures-scalp-b`
-- Every hour at minute `0`: `1h` crypto spot, `1h` futures, and futures arbitrage
-- Every 4 hours at minute `0`: `2h`/`4h` crypto spot and futures swing scans
-- Daily at `00:00 UTC`: split daily crypto spot and futures scans
+- Every 30 minutes at minutes `0` and `30`: `dynamic-spot` and `dynamic-weak-spot`
+- Every 4 hours at minute `0`: review recent sent alerts only; this does not scan the whole market
 
 Each scheduled job calls Vercel:
 
