@@ -10,6 +10,8 @@ market_extracted
 automations
 *.zip
 *.log
+status_full.json
+alert_performance_*.json
 .env
 .env.local
 .env.vercel.local
