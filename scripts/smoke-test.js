@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { parseCronGroups } from "../api/cron.js";
 import { renderSignalEmail, renderTestEmail } from "../lib/report.js";
 import { reviewAlertWithCandles, reviewArbitrageAlert } from "../lib/alert-review.js";
-import { evaluateDynamicSpotOpportunity, filterSignalsByCurrentPrice, isDynamicSpotCoolingDown, isDynamicWeakSpotCandidate, selectScanTargets, shouldReviewRecentAlerts } from "../lib/scanner.js";
+import { evaluateDynamicSpotOpportunity, filterSignalsByCurrentPrice, isDynamicSpotCandidate, isDynamicSpotCoolingDown, isDynamicWeakSpotCandidate, isFuturesPriceSignal, selectScanTargets, shouldReviewRecentAlerts } from "../lib/scanner.js";
 import { hasProcessedScanCandle, recordProcessedScanCandle } from "../lib/storage.js";
 import { STRATEGIES } from "../lib/strategies.js";
 
@@ -110,6 +110,21 @@ if (isDynamicWeakSpotCandidate({ symbol: "THINUSDT", priceChangePercent: -6.5, q
 }
 if (isDynamicWeakSpotCandidate({ symbol: "SLOWUSDT", priceChangePercent: -1.2, quoteVolume: 3500000 }, weakExisting)) {
   throw new Error("Dynamic weak spot candidate should reject symbols without enough downside momentum");
+}
+if (isDynamicSpotCandidate({ symbol: "NFPUSDT", priceChangePercent: 8.5, quoteVolume: 3500000 }, weakExisting, new Set(["WIFUSDT"]))) {
+  throw new Error("Dynamic strong candidate should reject spot symbols without a USDT perpetual contract");
+}
+if (!isDynamicSpotCandidate({ symbol: "WIFUSDT", priceChangePercent: 8.5, quoteVolume: 3500000 }, weakExisting, new Set(["WIFUSDT"]))) {
+  throw new Error("Dynamic strong candidate should accept liquid rising symbols with a USDT perpetual contract");
+}
+if (isDynamicWeakSpotCandidate({ symbol: "NFPUSDT", priceChangePercent: -6.5, quoteVolume: 3500000 }, weakExisting, new Set(["WIFUSDT"]))) {
+  throw new Error("Dynamic weak spot candidate should reject spot symbols without a USDT perpetual contract");
+}
+if (!isDynamicWeakSpotCandidate({ symbol: "WIFUSDT", priceChangePercent: -6.5, quoteVolume: 3500000 }, weakExisting, new Set(["WIFUSDT"]))) {
+  throw new Error("Dynamic weak spot candidate should accept liquid falling symbols with a USDT perpetual contract");
+}
+if (!isFuturesPriceSignal({ market: "USDT 永续合约（动态强势池）", strategyId: "dynamic_relative_strength_breakout" })) {
+  throw new Error("Current price guard should treat dynamic contract pool signals as futures signals");
 }
 
 const moderateDynamicSpot = evaluateDynamicSpotOpportunity({
