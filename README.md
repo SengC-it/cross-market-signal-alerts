@@ -5,7 +5,7 @@ Cloud-ready signal scanner for crypto spot, USDT perpetual futures, and funding-
 ## What It Does
 
 - Runs from Supabase `pg_cron` and calls the deployed Vercel API.
-- Schedules only the dynamic spot strength/weakness pools by default to keep cloud CPU usage low.
+- Schedules the dynamic spot strength/weakness pools plus controlled inverse-watch scans by default to keep cloud CPU usage low.
 - Scores each signal with historical performance, risk, current environment, and liquidity.
 - Sends a decision-card style email only for new medium/high confidence signals.
 - Stores sent signal keys in Supabase to avoid duplicate alerts.
@@ -17,6 +17,8 @@ Scheduled groups:
 
 - `dynamic-spot`: dynamically selected high-volume, high-momentum Binance spot symbols; scans every 30 minutes on `1h`.
 - `dynamic-weak-spot`: dynamically selected high-volume, high-downside Binance spot symbols for short observation; scans every 30 minutes on `1h`.
+- `inverse-watch-4h`: controlled USDT perpetual inverse-watch scan; scans historically weak inverse candidates every 4 hours and only emits observation-level alerts.
+- `inverse-watch-daily`: controlled daily inverse-watch scan; scans the same inverse candidate allowlist once per day and only emits observation-level alerts.
 
 Legacy group names such as `crypto-core-a`, `crypto-alt-a`, `futures-core`, and `futures-arbitrage` are still supported for manual testing, but they are no longer scheduled by default.
 
@@ -69,6 +71,8 @@ Production scheduling is handled by [sql/supabase-hourly-cron.example.sql](sql/s
 
 - Every 30 minutes at minutes `0` and `30`: `dynamic-spot` and `dynamic-weak-spot`
 - Every 4 hours at minute `0`: review recent sent alerts only; this does not scan the whole market
+- Every 4 hours at minute `15`: `inverse-watch-4h`
+- Daily at `00:30` UTC: `inverse-watch-daily`
 
 Each scheduled job calls Vercel:
 
@@ -114,8 +118,26 @@ Manual test:
 ```text
 GET /api/test-email?secret=YOUR_CRON_SECRET
 GET /api/cron?secret=YOUR_CRON_SECRET&quick=1
-GET /api/cron?secret=YOUR_CRON_SECRET&dryRun=1&group=crypto-core-a-1h
+GET /api/cron?secret=YOUR_CRON_SECRET&dryRun=1&group=inverse-watch-4h
 ```
+
+## Inverse Signal Research
+
+Run a local inverse-signal report before considering any production signal changes:
+
+```bash
+npm run inverse-report
+```
+
+By default this scans the futures core group on `1h` candles and writes `inverse_signal_report.json`. Useful narrower runs:
+
+```bash
+npm run inverse-report -- --assets BTCUSDT,ETHUSDT --intervals 1h,4h
+npm run inverse-report -- --market spot --group crypto-core --intervals 1h
+npm run inverse-report -- --market all --assets BTCUSDT --output inverse_signal_report.btc.json
+```
+
+Treat `inverse_candidate` as research output only. It means the inverse direction beat the original after configured trading cost, including out-of-sample checks in the available candle window. Scheduled `inverse-watch-*` scans are deliberately narrower: they only use the configured inverse-watch allowlist and cap any email at observation level. The system still does not place trades.
 
 ## Gmail SMTP
 

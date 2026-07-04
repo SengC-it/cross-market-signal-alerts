@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "test": "node scripts/smoke-test.js",
+    "inverse-report": "node scripts/inverse-signal-report.js",
     "dev": "vercel dev",
     "deploy": "vercel deploy --prod"
   },

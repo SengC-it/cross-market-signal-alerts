@@ -12,6 +12,8 @@ where jobname in (
   'cross_market_signal_dynamic_30m',
   'cross_market_signal_short_hourly',
   'cross_market_signal_mid_4h',
+  'cross_market_signal_inverse_watch_4h',
+  'cross_market_signal_inverse_watch_daily',
   'cross_market_signal_review_4h',
   'cross_market_signal_daily'
 );
@@ -58,6 +60,52 @@ begin
         params := jsonb_build_object(
           'group',
           'review'
+        ),
+        headers := jsonb_build_object(
+          'Authorization',
+          %L
+        ),
+        timeout_milliseconds := 60000
+      );
+      $job$,
+      app_url,
+      'Bearer ' || cron_secret
+    )
+  );
+
+  perform cron.schedule(
+    'cross_market_signal_inverse_watch_4h',
+    '15 */4 * * *',
+    format(
+      $job$
+      select net.http_get(
+        url := %L,
+        params := jsonb_build_object(
+          'group',
+          'inverse-watch-4h'
+        ),
+        headers := jsonb_build_object(
+          'Authorization',
+          %L
+        ),
+        timeout_milliseconds := 60000
+      );
+      $job$,
+      app_url,
+      'Bearer ' || cron_secret
+    )
+  );
+
+  perform cron.schedule(
+    'cross_market_signal_inverse_watch_daily',
+    '30 0 * * *',
+    format(
+      $job$
+      select net.http_get(
+        url := %L,
+        params := jsonb_build_object(
+          'group',
+          'inverse-watch-daily'
         ),
         headers := jsonb_build_object(
           'Authorization',

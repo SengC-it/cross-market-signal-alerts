@@ -5,13 +5,25 @@ import { renderSignalEmail, renderTestEmail } from "../lib/report.js";
 import { reviewAlertWithCandles, reviewArbitrageAlert } from "../lib/alert-review.js";
 import { evaluateDynamicSpotOpportunity, filterSignalsByCurrentPrice, isDynamicSpotCandidate, isDynamicSpotCoolingDown, isDynamicWeakSpotCandidate, isFuturesPriceSignal, selectScanTargets, shouldReviewRecentAlerts } from "../lib/scanner.js";
 import { hasProcessedScanCandle, recordProcessedScanCandle } from "../lib/storage.js";
-import { STRATEGIES } from "../lib/strategies.js";
+import { compareStrategyInversion, invertStrategyDirection, STRATEGIES } from "../lib/strategies.js";
 
 if (!STRATEGIES.length) {
   throw new Error("No strategies registered");
 }
 
 const dashboardHtml = readFileSync(new URL("../index.html", import.meta.url), "utf8");
+const cronApi = readFileSync(new URL("../api/cron.js", import.meta.url), "utf8");
+const packageJson = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
+const inverseReportScript = readFileSync(new URL("./inverse-signal-report.js", import.meta.url), "utf8");
+if (packageJson.scripts?.["inverse-report"] !== "node scripts/inverse-signal-report.js") {
+  throw new Error("package.json should expose npm run inverse-report");
+}
+if (!inverseReportScript.includes("compareStrategyInversion") || !inverseReportScript.includes("inverse_signal_report.json")) {
+  throw new Error("Inverse report script should compare strategy inversions and write the expected report");
+}
+if (!cronApi.includes('"inverse-watch-4h"') || !cronApi.includes('"inverse-watch-daily"')) {
+  throw new Error("Cron API should allow scheduled inverse-watch groups");
+}
 if (dashboardHtml.includes('return "样本不足";')) {
   throw new Error("Dashboard review text should not use a generic insufficient-sample fallback");
 }
@@ -29,6 +41,12 @@ if (dashboardHtml.includes("reviewText(alert.payload?.review, alert.payload?.liv
 const schedulerSql = readFileSync(new URL("../sql/supabase-hourly-cron.example.sql", import.meta.url), "utf8");
 if (!schedulerSql.includes("'cross_market_signal_review_4h'") || !schedulerSql.includes("'0 */4 * * *'") || !schedulerSql.includes("'group',") || !schedulerSql.includes("'review'")) {
   throw new Error("Scheduler should run a dedicated review job every 4 hours");
+}
+if (!schedulerSql.includes("'cross_market_signal_inverse_watch_4h'") || !schedulerSql.includes("'15 */4 * * *'") || !schedulerSql.includes("'inverse-watch-4h'")) {
+  throw new Error("Scheduler should run inverse-watch every 4 hours");
+}
+if (!schedulerSql.includes("'cross_market_signal_inverse_watch_daily'") || !schedulerSql.includes("'30 0 * * *'") || !schedulerSql.includes("'inverse-watch-daily'")) {
+  throw new Error("Scheduler should run inverse-watch once per day");
 }
 if (!schedulerSql.includes("dynamic-weak-spot")) {
   throw new Error("Scheduler should include the dynamic weak spot scan group");
@@ -72,7 +90,7 @@ if (!dynamicCooldown.active || dynamicCooldown.hoursSince !== 1) {
   throw new Error("Dynamic spot cooldown should block repeated same-asset alerts");
 }
 
-if (shouldReviewRecentAlerts("dynamic-spot") || shouldReviewRecentAlerts("futures-scalp-a") || shouldReviewRecentAlerts("crypto-core-a-1h")) {
+if (shouldReviewRecentAlerts("dynamic-spot") || shouldReviewRecentAlerts("futures-scalp-a") || shouldReviewRecentAlerts("crypto-core-a-1h") || shouldReviewRecentAlerts("inverse-watch-4h") || shouldReviewRecentAlerts("inverse-watch-daily")) {
   throw new Error("High-frequency scan groups should skip historical alert reviews");
 }
 if (!shouldReviewRecentAlerts("crypto-core-a-daily") || !shouldReviewRecentAlerts("futures-daily") || !shouldReviewRecentAlerts("all")) {
@@ -99,6 +117,16 @@ if (
   weakTargets.futuresIntervals.length
 ) {
   throw new Error("Dynamic weak spot group should not fall back to broad market scans");
+}
+
+const inverse4hTargets = selectScanTargets("inverse-watch-4h");
+if (!inverse4hTargets.inverseWatch || inverse4hTargets.futuresIntervals.join("|") !== "4h" || !inverse4hTargets.futuresAssets.includes("NEARUSDT")) {
+  throw new Error("Inverse watch 4h should scan only the controlled inverse-watch futures profile");
+}
+
+const inverseDailyTargets = selectScanTargets("inverse-watch-daily");
+if (!inverseDailyTargets.inverseWatch || inverseDailyTargets.futuresIntervals.join("|") !== "1d" || !inverseDailyTargets.futuresAssets.includes("INJUSDT")) {
+  throw new Error("Inverse watch daily should scan only the controlled inverse-watch daily profile");
 }
 
 const weakExisting = new Set();
@@ -395,6 +423,45 @@ const arbitrageReview = reviewArbitrageAlert({
 }, reviewNow);
 if (arbitrageReview.status !== "reviewed" || arbitrageReview.returnPct !== 0.0012) {
   throw new Error("Arbitrage review should use estimated funding return");
+}
+
+const inverseSourceStrategy = {
+  id: "test_inverse_bias",
+  name: "Test inverse bias",
+  direction: "LONG",
+  holdHours: 1,
+  evaluate(_candles, index) {
+    return { passed: index >= 220 && index % 2 === 0, details: { index } };
+  }
+};
+const invertedStrategy = invertStrategyDirection(inverseSourceStrategy);
+if (invertedStrategy.id !== "test_inverse_bias__inverse" || invertedStrategy.direction !== "SHORT") {
+  throw new Error("Inverted strategy should use an inverse id and opposite direction");
+}
+if (!invertedStrategy.evaluate([], 220).passed || invertedStrategy.evaluate([], 221).passed) {
+  throw new Error("Inverted strategy should keep the original trigger condition");
+}
+
+const inverseCandles = Array.from({ length: 260 }, (_, index) => ({
+  openTime: Date.UTC(2026, 0, 1, index),
+  open: 300 - index,
+  high: 300 - index,
+  low: 300 - index,
+  close: 300 - index,
+  volume: 1000
+}));
+const inverseComparison = compareStrategyInversion({
+  candles: inverseCandles,
+  strategy: inverseSourceStrategy,
+  interval: "1h",
+  tradingCost: 0.001,
+  minTrades: 8
+});
+if (!inverseComparison.inverse || inverseComparison.recommendation !== "inverse_candidate") {
+  throw new Error("Inverse comparison should flag a stable profitable inverse candidate");
+}
+if (inverseComparison.original.totalReturn >= 0 || inverseComparison.inverse.totalReturn <= 0) {
+  throw new Error("Inverse comparison should preserve original and inverse performance");
 }
 
 console.log("Smoke test passed");

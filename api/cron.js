@@ -4,7 +4,13 @@ export const config = {
   maxDuration: 60
 };
 
-const ENABLED_CRON_GROUPS = new Set(["dynamic-spot", "dynamic-weak-spot", "review"]);
+const ENABLED_CRON_GROUPS = new Set([
+  "dynamic-spot",
+  "dynamic-weak-spot",
+  "inverse-watch-4h",
+  "inverse-watch-daily",
+  "review"
+]);
 
 export default async function handler(req, res) {
   if (!isAuthorized(req)) {
