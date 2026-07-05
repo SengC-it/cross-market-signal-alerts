@@ -140,6 +140,9 @@ if (isDynamicWeakSpotCandidate({ symbol: "WIFUSDT", priceChangePercent: -6.5, qu
 if (!isDynamicWeakSpotCandidate({ symbol: "WIFUSDT", priceChangePercent: -10, quoteVolume: 3500000 }, weakExisting)) {
   throw new Error("Dynamic weak spot candidate should accept profitable-bucket falling USDT symbols");
 }
+if (isDynamicWeakSpotCandidate({ symbol: "WIFUSDT", priceChangePercent: -14, quoteVolume: 3500000 }, weakExisting)) {
+  throw new Error("Dynamic weak spot candidate should reject downside moves outside the profitable 8%-13% bucket");
+}
 if (isDynamicWeakSpotCandidate({ symbol: "THINUSDT", priceChangePercent: -6.5, quoteVolume: 100000 }, weakExisting)) {
   throw new Error("Dynamic weak spot candidate should reject illiquid symbols");
 }
@@ -151,6 +154,9 @@ if (isDynamicSpotCandidate({ symbol: "NFPUSDT", priceChangePercent: 8.5, quoteVo
 }
 if (!isDynamicSpotCandidate({ symbol: "WIFUSDT", priceChangePercent: 8.5, quoteVolume: 3500000 }, weakExisting, new Set(["WIFUSDT"]))) {
   throw new Error("Dynamic strong candidate should accept liquid rising symbols with a USDT perpetual contract");
+}
+if (isDynamicSpotCandidate({ symbol: "WIFUSDT", priceChangePercent: 11, quoteVolume: 3500000 }, weakExisting, new Set(["WIFUSDT"]))) {
+  throw new Error("Dynamic strong candidate should reject long setups above the profitable 8%-10% bucket");
 }
 if (isDynamicSpotCandidate({ symbol: "HOTUSDT", priceChangePercent: 22, quoteVolume: 3500000 }, weakExisting, new Set(["HOTUSDT"]))) {
   throw new Error("Dynamic strong candidate should reject overheated 24h movers before scanning");
@@ -169,18 +175,18 @@ if (!isFuturesPriceSignal({ market: "USDT 永续合约（动态强势池）", st
 }
 
 const moderateDynamicSpot = evaluateDynamicSpotOpportunity({
-  momentum24h: 0.12,
+  momentum24h: 0.085,
   relativeStrength: 0.09,
   volumeMultiple: 1.8,
   breakout: true,
   hasOrderBook: true
 });
-if (!moderateDynamicSpot.passed || moderateDynamicSpot.score < 80 || moderateDynamicSpot.score >= 90) {
-  throw new Error("Dynamic spot quality gate should pass moderate 8%-15% momentum with 1.5x-2x volume");
+if (!moderateDynamicSpot.passed || moderateDynamicSpot.score < 85 || moderateDynamicSpot.score >= 90) {
+  throw new Error("Dynamic spot quality gate should pass the trade-grade 8%-10% momentum and 1.5x-2x volume bucket");
 }
 
 const idealDynamicSpot = evaluateDynamicSpotOpportunity({
-  momentum24h: 0.115,
+  momentum24h: 0.09,
   relativeStrength: 0.3,
   volumeMultiple: 1.75,
   breakout: true,
@@ -191,9 +197,9 @@ if (!idealDynamicSpot.passed || idealDynamicSpot.score >= 90) {
 }
 
 const overheatedMomentumSpot = evaluateDynamicSpotOpportunity({
-  momentum24h: 0.28,
+  momentum24h: 0.11,
   relativeStrength: 0.25,
-  volumeMultiple: 2.2,
+  volumeMultiple: 1.8,
   breakout: true,
   hasOrderBook: true
 });
@@ -202,7 +208,7 @@ if (overheatedMomentumSpot.passed || !overheatedMomentumSpot.reason?.includes("o
 }
 
 const overheatedVolumeSpot = evaluateDynamicSpotOpportunity({
-  momentum24h: 0.11,
+  momentum24h: 0.09,
   relativeStrength: 0.08,
   volumeMultiple: 9,
   breakout: true,
@@ -213,7 +219,7 @@ if (overheatedVolumeSpot.passed || !overheatedVolumeSpot.reason?.includes("overh
 }
 
 const weakEdgeVolumeSpot = evaluateDynamicSpotOpportunity({
-  momentum24h: 0.11,
+  momentum24h: 0.09,
   relativeStrength: 0.08,
   volumeMultiple: 2.5,
   breakout: true,
