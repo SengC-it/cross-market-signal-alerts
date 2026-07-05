@@ -5,7 +5,7 @@ import { renderSignalEmail, renderTestEmail } from "../lib/report.js";
 import { reviewAlertWithCandles, reviewArbitrageAlert } from "../lib/alert-review.js";
 import { evaluateDynamicSpotOpportunity, filterSignalsByCurrentPrice, isDynamicSpotCandidate, isDynamicSpotCoolingDown, isDynamicWeakSpotCandidate, isFuturesPriceSignal, selectScanTargets, shouldReviewRecentAlerts } from "../lib/scanner.js";
 import { hasProcessedScanCandle, recordProcessedScanCandle } from "../lib/storage.js";
-import { compareStrategyInversion, invertStrategyDirection, STRATEGIES } from "../lib/strategies.js";
+import { compareStrategyInversion, CRYPTO_STRATEGIES, FUTURES_STRATEGIES, invertStrategyDirection, SHORT_TERM_STRATEGIES, STRATEGIES } from "../lib/strategies.js";
 
 if (!STRATEGIES.length) {
   throw new Error("No strategies registered");
@@ -42,11 +42,11 @@ const schedulerSql = readFileSync(new URL("../sql/supabase-hourly-cron.example.s
 if (!schedulerSql.includes("'cross_market_signal_review_4h'") || !schedulerSql.includes("'0 */4 * * *'") || !schedulerSql.includes("'group',") || !schedulerSql.includes("'review'")) {
   throw new Error("Scheduler should run a dedicated review job every 4 hours");
 }
-if (!schedulerSql.includes("'cross_market_signal_inverse_watch_4h'") || !schedulerSql.includes("'15 */4 * * *'") || !schedulerSql.includes("'inverse-watch-4h'")) {
-  throw new Error("Scheduler should run inverse-watch every 4 hours");
+if (schedulerSql.includes("'cross_market_signal_inverse_watch_4h'") || schedulerSql.includes("'inverse-watch-4h'")) {
+  throw new Error("Scheduler should not run unproven inverse-watch scans by default");
 }
-if (!schedulerSql.includes("'cross_market_signal_inverse_watch_daily'") || !schedulerSql.includes("'30 0 * * *'") || !schedulerSql.includes("'inverse-watch-daily'")) {
-  throw new Error("Scheduler should run inverse-watch once per day");
+if (schedulerSql.includes("'cross_market_signal_inverse_watch_daily'") || schedulerSql.includes("'inverse-watch-daily'")) {
+  throw new Error("Scheduler should keep inverse-watch manual until live performance is proven");
 }
 if (!schedulerSql.includes("dynamic-weak-spot")) {
   throw new Error("Scheduler should include the dynamic weak spot scan group");
@@ -129,9 +129,16 @@ if (!inverseDailyTargets.inverseWatch || inverseDailyTargets.futuresIntervals.jo
   throw new Error("Inverse watch daily should scan only the controlled inverse-watch daily profile");
 }
 
+if (CRYPTO_STRATEGIES.some((strategy) => strategy.id === "short_term_momentum_24h") || FUTURES_STRATEGIES.some((strategy) => strategy.id === "short_term_momentum_24h")) {
+  throw new Error("Loss-making short-term momentum should not be part of production scan strategy sets");
+}
+
 const weakExisting = new Set();
-if (!isDynamicWeakSpotCandidate({ symbol: "WIFUSDT", priceChangePercent: -6.5, quoteVolume: 3500000 }, weakExisting)) {
-  throw new Error("Dynamic weak spot candidate should accept liquid falling USDT symbols");
+if (isDynamicWeakSpotCandidate({ symbol: "WIFUSDT", priceChangePercent: -6.5, quoteVolume: 3500000 }, weakExisting)) {
+  throw new Error("Dynamic weak spot candidate should reject mild downside moves with weak edge");
+}
+if (!isDynamicWeakSpotCandidate({ symbol: "WIFUSDT", priceChangePercent: -10, quoteVolume: 3500000 }, weakExisting)) {
+  throw new Error("Dynamic weak spot candidate should accept profitable-bucket falling USDT symbols");
 }
 if (isDynamicWeakSpotCandidate({ symbol: "THINUSDT", priceChangePercent: -6.5, quoteVolume: 100000 }, weakExisting)) {
   throw new Error("Dynamic weak spot candidate should reject illiquid symbols");
@@ -145,11 +152,17 @@ if (isDynamicSpotCandidate({ symbol: "NFPUSDT", priceChangePercent: 8.5, quoteVo
 if (!isDynamicSpotCandidate({ symbol: "WIFUSDT", priceChangePercent: 8.5, quoteVolume: 3500000 }, weakExisting, new Set(["WIFUSDT"]))) {
   throw new Error("Dynamic strong candidate should accept liquid rising symbols with a USDT perpetual contract");
 }
+if (isDynamicSpotCandidate({ symbol: "HOTUSDT", priceChangePercent: 22, quoteVolume: 3500000 }, weakExisting, new Set(["HOTUSDT"]))) {
+  throw new Error("Dynamic strong candidate should reject overheated 24h movers before scanning");
+}
 if (isDynamicWeakSpotCandidate({ symbol: "NFPUSDT", priceChangePercent: -6.5, quoteVolume: 3500000 }, weakExisting, new Set(["WIFUSDT"]))) {
   throw new Error("Dynamic weak spot candidate should reject spot symbols without a USDT perpetual contract");
 }
-if (!isDynamicWeakSpotCandidate({ symbol: "WIFUSDT", priceChangePercent: -6.5, quoteVolume: 3500000 }, weakExisting, new Set(["WIFUSDT"]))) {
-  throw new Error("Dynamic weak spot candidate should accept liquid falling symbols with a USDT perpetual contract");
+if (!isDynamicWeakSpotCandidate({ symbol: "WIFUSDT", priceChangePercent: -10, quoteVolume: 3500000 }, weakExisting, new Set(["WIFUSDT"]))) {
+  throw new Error("Dynamic weak spot candidate should accept profitable-bucket falling symbols with a USDT perpetual contract");
+}
+if (isDynamicWeakSpotCandidate({ symbol: "CRASHUSDT", priceChangePercent: -18, quoteVolume: 3500000 }, weakExisting, new Set(["CRASHUSDT"]))) {
+  throw new Error("Dynamic weak spot candidate should reject crash-chasing downside moves");
 }
 if (!isFuturesPriceSignal({ market: "USDT 永续合约（动态强势池）", strategyId: "dynamic_relative_strength_breakout" })) {
   throw new Error("Current price guard should treat dynamic contract pool signals as futures signals");
@@ -163,7 +176,18 @@ const moderateDynamicSpot = evaluateDynamicSpotOpportunity({
   hasOrderBook: true
 });
 if (!moderateDynamicSpot.passed || moderateDynamicSpot.score < 80 || moderateDynamicSpot.score >= 90) {
-  throw new Error("Dynamic spot quality gate should pass moderate 8%-15% momentum with 1.5x-4x volume");
+  throw new Error("Dynamic spot quality gate should pass moderate 8%-15% momentum with 1.5x-2x volume");
+}
+
+const idealDynamicSpot = evaluateDynamicSpotOpportunity({
+  momentum24h: 0.115,
+  relativeStrength: 0.3,
+  volumeMultiple: 1.75,
+  breakout: true,
+  hasOrderBook: true
+});
+if (!idealDynamicSpot.passed || idealDynamicSpot.score >= 90) {
+  throw new Error("Dynamic spot quality gate should cap strong-pool scores below trade-grade levels");
 }
 
 const overheatedMomentumSpot = evaluateDynamicSpotOpportunity({
@@ -186,6 +210,30 @@ const overheatedVolumeSpot = evaluateDynamicSpotOpportunity({
 });
 if (overheatedVolumeSpot.passed || !overheatedVolumeSpot.reason?.includes("overheated_volume")) {
   throw new Error("Dynamic spot quality gate should reject extreme volume spikes");
+}
+
+const weakEdgeVolumeSpot = evaluateDynamicSpotOpportunity({
+  momentum24h: 0.11,
+  relativeStrength: 0.08,
+  volumeMultiple: 2.5,
+  breakout: true,
+  hasOrderBook: true
+});
+if (weakEdgeVolumeSpot.passed || !weakEdgeVolumeSpot.reason?.includes("weak_edge_volume")) {
+  throw new Error("Dynamic spot quality gate should reject 2x-4x volume after cost-negative performance");
+}
+
+const shortTermMomentum = SHORT_TERM_STRATEGIES.find((strategy) => strategy.id === "short_term_momentum_24h");
+const overheatedMomentumCandles = Array.from({ length: 60 }, (_, index) => ({
+  openTime: Date.UTC(2026, 5, 21, index),
+  open: index < 35 ? 100 : 120,
+  high: index < 35 ? 101 : 121,
+  low: index < 35 ? 99 : 119,
+  close: index < 35 ? 100 : 120,
+  volume: index === 59 ? 2500 : 1000
+}));
+if (shortTermMomentum.evaluate(overheatedMomentumCandles, 59, { interval: "1h" }).passed) {
+  throw new Error("Short-term momentum strategy should reject overheated 24h moves");
 }
 
 const driftWarnings = [];
