@@ -1,4 +1,5 @@
 import { buildEmailFrom } from "../lib/email.js";
+import { CONFIG } from "../lib/config.js";
 import { readFileSync } from "node:fs";
 import { parseCronGroups } from "../api/cron.js";
 import { renderSignalEmail, renderTestEmail } from "../lib/report.js";
@@ -133,12 +134,28 @@ if (CRYPTO_STRATEGIES.some((strategy) => strategy.id === "short_term_momentum_24
   throw new Error("Loss-making short-term momentum should not be part of production scan strategy sets");
 }
 
+if (CONFIG.futuresStopAtrMultiplier !== 2.08) {
+  throw new Error("Optimized execution plan should widen ATR stop distance to 1.3x the prior 1.6 multiplier");
+}
+if (CONFIG.futuresMinStopPct !== 0.0078) {
+  throw new Error("Optimized execution plan should widen the minimum futures stop to 0.78%");
+}
+if (CONFIG.futuresFallbackStopPct !== 0.0234) {
+  throw new Error("Optimized execution plan should widen fallback futures stop to 2.34%");
+}
+if (CONFIG.futuresRewardRiskRatio !== 1.5) {
+  throw new Error("Optimized execution plan should use 1.5R take-profit");
+}
+
 const weakExisting = new Set();
 if (isDynamicWeakSpotCandidate({ symbol: "WIFUSDT", priceChangePercent: -6.5, quoteVolume: 3500000 }, weakExisting)) {
   throw new Error("Dynamic weak spot candidate should reject mild downside moves with weak edge");
 }
 if (!isDynamicWeakSpotCandidate({ symbol: "WIFUSDT", priceChangePercent: -10, quoteVolume: 3500000 }, weakExisting)) {
   throw new Error("Dynamic weak spot candidate should accept profitable-bucket falling USDT symbols");
+}
+if (isDynamicWeakSpotCandidate({ symbol: "WIFUSDT", priceChangePercent: -12, quoteVolume: 3500000 }, weakExisting)) {
+  throw new Error("Dynamic weak spot candidate should reject downside moves beyond the profitable 8%-11% bucket");
 }
 if (isDynamicWeakSpotCandidate({ symbol: "WIFUSDT", priceChangePercent: -14, quoteVolume: 3500000 }, weakExisting)) {
   throw new Error("Dynamic weak spot candidate should reject downside moves outside the profitable 8%-13% bucket");
@@ -167,6 +184,9 @@ if (isDynamicWeakSpotCandidate({ symbol: "NFPUSDT", priceChangePercent: -6.5, qu
 if (!isDynamicWeakSpotCandidate({ symbol: "WIFUSDT", priceChangePercent: -10, quoteVolume: 3500000 }, weakExisting, new Set(["WIFUSDT"]))) {
   throw new Error("Dynamic weak spot candidate should accept profitable-bucket falling symbols with a USDT perpetual contract");
 }
+if (isDynamicWeakSpotCandidate({ symbol: "WIFUSDT", priceChangePercent: -12, quoteVolume: 3500000 }, weakExisting, new Set(["WIFUSDT"]))) {
+  throw new Error("Dynamic weak spot candidate should reject downside moves beyond the profitable 8%-11% bucket with a USDT perpetual contract");
+}
 if (isDynamicWeakSpotCandidate({ symbol: "CRASHUSDT", priceChangePercent: -18, quoteVolume: 3500000 }, weakExisting, new Set(["CRASHUSDT"]))) {
   throw new Error("Dynamic weak spot candidate should reject crash-chasing downside moves");
 }
@@ -176,13 +196,24 @@ if (!isFuturesPriceSignal({ market: "USDT 永续合约（动态强势池）", st
 
 const moderateDynamicSpot = evaluateDynamicSpotOpportunity({
   momentum24h: 0.085,
-  relativeStrength: 0.09,
+  relativeStrength: 0.12,
   volumeMultiple: 1.8,
   breakout: true,
   hasOrderBook: true
 });
 if (!moderateDynamicSpot.passed || moderateDynamicSpot.score < 85 || moderateDynamicSpot.score >= 90) {
   throw new Error("Dynamic spot quality gate should pass the trade-grade 8%-10% momentum and 1.5x-2x volume bucket");
+}
+
+const weakRelativeDynamicSpot = evaluateDynamicSpotOpportunity({
+  momentum24h: 0.09,
+  relativeStrength: 0.09,
+  volumeMultiple: 1.8,
+  breakout: true,
+  hasOrderBook: true
+});
+if (weakRelativeDynamicSpot.passed || weakRelativeDynamicSpot.reason !== "insufficient_relative_strength") {
+  throw new Error("Dynamic spot quality gate should reject longs without at least 12% relative strength versus BTC");
 }
 
 const idealDynamicSpot = evaluateDynamicSpotOpportunity({
@@ -209,7 +240,7 @@ if (overheatedMomentumSpot.passed || !overheatedMomentumSpot.reason?.includes("o
 
 const overheatedVolumeSpot = evaluateDynamicSpotOpportunity({
   momentum24h: 0.09,
-  relativeStrength: 0.08,
+  relativeStrength: 0.12,
   volumeMultiple: 9,
   breakout: true,
   hasOrderBook: true
@@ -220,7 +251,7 @@ if (overheatedVolumeSpot.passed || !overheatedVolumeSpot.reason?.includes("overh
 
 const weakEdgeVolumeSpot = evaluateDynamicSpotOpportunity({
   momentum24h: 0.09,
-  relativeStrength: 0.08,
+  relativeStrength: 0.12,
   volumeMultiple: 2.5,
   breakout: true,
   hasOrderBook: true
@@ -301,7 +332,7 @@ const spotEmail = renderSignalEmail([{
 if (!spotEmail.subject.includes("BTCUSDT") || !spotEmail.subject.includes("94/100")) {
   throw new Error("Single-signal subject should include asset and display score");
 }
-for (const required of ["BTCUSDT", "方向：做多观察", "推荐指数：94/100", "参考价：100", "止损：97", "止盈：105.4", "有效期：", "原因："]) {
+for (const required of ["BTCUSDT", "方向：做多观察", "推荐指数：94/100", "参考价：100", "止损：97", "止盈：104.5", "有效期：", "原因："]) {
   if (!spotEmail.text.includes(required)) {
     throw new Error(`Compact spot email missing: ${required}`);
   }
@@ -345,7 +376,7 @@ const weakSpotEmail = renderSignalEmail([{
     relativeWeakness: -0.07
   }
 }]);
-for (const required of ["WIFUSDT", "方向：做空观察", "推荐指数：88/100", "止损：1.236", "止盈：1.1352"]) {
+for (const required of ["WIFUSDT", "方向：做空观察", "推荐指数：88/100", "止损：1.236", "止盈：1.146"]) {
   if (!weakSpotEmail.text.includes(required)) {
     throw new Error(`Compact weak spot email missing: ${required}`);
   }

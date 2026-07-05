@@ -13,7 +13,13 @@ automations
 status_full.json
 alert_performance_*.json
 production_dynamic*.json
+combined_strategy_optimization*.json
+exit_plan_optimization*.json
+variant_*.json
 .backtest-cache
+scripts/backtest-production-dynamic.js
+scripts/optimize-*.js
+scripts/replay-tp-sl-only.js
 .env
 .env.local
 .env.vercel.local
