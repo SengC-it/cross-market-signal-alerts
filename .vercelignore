@@ -12,6 +12,8 @@ automations
 *.log
 status_full.json
 alert_performance_*.json
+production_dynamic*.json
+.backtest-cache
 .env
 .env.local
 .env.vercel.local
