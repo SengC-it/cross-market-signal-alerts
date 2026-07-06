@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 import { parseCronGroups } from "../api/cron.js";
 import { renderSignalEmail, renderTestEmail } from "../lib/report.js";
 import { reviewAlertWithCandles, reviewArbitrageAlert } from "../lib/alert-review.js";
-import { evaluateDynamicSpotOpportunity, filterSignalsByCurrentPrice, isDynamicSpotCandidate, isDynamicSpotCoolingDown, isDynamicWeakSpotCandidate, isFuturesPriceSignal, selectScanTargets, shouldReviewRecentAlerts } from "../lib/scanner.js";
+import { evaluateDynamicSpotOpportunity, filterSignalsByCurrentPrice, isDynamicSpotCandidate, isDynamicSpotCoolingDown, isDynamicWeakSpotCandidate, isFuturesPriceSignal, selectScanTargets, shouldReviewAlert, shouldReviewRecentAlerts } from "../lib/scanner.js";
 import { hasProcessedScanCandle, recordProcessedScanCandle } from "../lib/storage.js";
 import { compareStrategyInversion, CRYPTO_STRATEGIES, FUTURES_STRATEGIES, invertStrategyDirection, SHORT_TERM_STRATEGIES, STRATEGIES } from "../lib/strategies.js";
 
@@ -96,6 +96,12 @@ if (shouldReviewRecentAlerts("dynamic-spot") || shouldReviewRecentAlerts("future
 }
 if (!shouldReviewRecentAlerts("crypto-core-a-daily") || !shouldReviewRecentAlerts("futures-daily") || !shouldReviewRecentAlerts("all")) {
   throw new Error("Daily and full scan groups should keep historical alert reviews");
+}
+if (!shouldReviewAlert({ payload: { review: { status: "reviewed", outcome: "盈利" } } })) {
+  throw new Error("Previously manual close reviews should be rechecked under strict email TP/SL rules");
+}
+if (shouldReviewAlert({ payload: { review: { status: "reviewed", outcome: "止盈" } } })) {
+  throw new Error("Already finalized TP/SL reviews should not be rechecked");
 }
 
 const reviewTargets = selectScanTargets("review");
@@ -478,6 +484,40 @@ const pendingReview = reviewAlertWithCandles({
 ], Date.UTC(2026, 5, 21, 9, 30));
 if (pendingReview.status !== "pending") {
   throw new Error("Alert review should stay pending before validUntil");
+}
+
+const tpAfterValidUntilReview = reviewAlertWithCandles({
+  trigger_time: new Date(Date.UTC(2026, 5, 21, 8, 0)).toISOString(),
+  interval: "1h",
+  payload: {
+    close: 100,
+    validUntil: Date.UTC(2026, 5, 21, 10, 0),
+    direction: "鍋氬瑙傚療",
+    executionPlan: { entryReference: 100, stopLoss: 97, takeProfit: 105 }
+  }
+}, [
+  { openTime: Date.UTC(2026, 5, 21, 9, 0), high: 101, low: 99, close: 100.5 },
+  { openTime: Date.UTC(2026, 5, 21, 11, 0), high: 106, low: 100, close: 105.5 }
+], reviewNow);
+if (tpAfterValidUntilReview.status !== "reviewed" || tpAfterValidUntilReview.exitTime !== Date.UTC(2026, 5, 21, 11, 0) || tpAfterValidUntilReview.returnPct <= 0) {
+  throw new Error("Alert review should keep watching after validUntil until email take-profit or stop-loss is touched");
+}
+
+const unresolvedTpSlReview = reviewAlertWithCandles({
+  trigger_time: new Date(Date.UTC(2026, 5, 21, 8, 0)).toISOString(),
+  interval: "1h",
+  payload: {
+    close: 100,
+    validUntil: Date.UTC(2026, 5, 21, 10, 0),
+    direction: "鍋氬瑙傚療",
+    executionPlan: { entryReference: 100, stopLoss: 97, takeProfit: 105 }
+  }
+}, [
+  { openTime: Date.UTC(2026, 5, 21, 9, 0), high: 101, low: 99, close: 100.5 },
+  { openTime: Date.UTC(2026, 5, 21, 11, 0), high: 104, low: 98, close: 103 }
+], reviewNow);
+if (unresolvedTpSlReview.status !== "pending" || Number.isFinite(Number(unresolvedTpSlReview.exitPrice))) {
+  throw new Error("Alert review should not create a manual close review when neither email take-profit nor stop-loss is touched");
 }
 
 const sentTimeReview = reviewAlertWithCandles({
