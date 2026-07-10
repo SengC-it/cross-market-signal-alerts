@@ -1,6 +1,7 @@
 node_modules
 .vercel
 .npm-cache/
+.worktrees/
 .env
 .env.local
 .env.vercel.local
