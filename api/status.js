@@ -40,6 +40,7 @@ export default async function handler(req, res) {
     const runLogs = normalizeRunLogs(unwrapResult(runLogsResult, "run_logs", warnings));
     const sentAlerts = unwrapResult(sentAlertsResult, "sent_alerts", warnings);
     const paperModelRuns = unwrapResult(paperRunsResult, "paper_model_runs", warnings);
+    const emailNotifications = buildEmailNotifications(sentAlerts, paperModelRuns);
 
     if ([runLogsResult, sentAlertsResult, paperRunsResult].every((result) => result.status === "rejected")) {
       throw new Error(warnings.map((warning) => `${warning.source}: ${warning.message}`).join("; "));
@@ -49,10 +50,11 @@ export default async function handler(req, res) {
       ok: true,
       generatedAt: new Date().toISOString(),
       warnings,
-      summary: buildSummary(runLogs, sentAlerts, paperModelRuns),
+      summary: buildSummary(runLogs, sentAlerts, emailNotifications, paperModelRuns),
       runLogs,
       sentAlerts,
-      paperModelRuns
+      paperModelRuns,
+      emailNotifications
     });
   } catch (error) {
     console.error(error);
@@ -88,7 +90,7 @@ function unwrapResult(result, source, warnings) {
   return [];
 }
 
-function buildSummary(runLogs, sentAlerts, paperModelRuns = []) {
+function buildSummary(runLogs, sentAlerts, emailNotifications = [], paperModelRuns = []) {
   const sentAlertKeys = new Set(sentAlerts.map((alert) => alert.signal_key).filter(Boolean));
   const groups = new Map();
   for (const group of EXPECTED_GROUPS) {
@@ -121,7 +123,7 @@ function buildSummary(runLogs, sentAlerts, paperModelRuns = []) {
   }
 
   const latestRun = runLogs[0] || null;
-  const latestAlert = sentAlerts[0] || null;
+  const latestAlert = emailNotifications[0] || null;
   const latestPaperRun = paperModelRuns[0] || null;
   const newestRunMs = latestRun?.created_at ? Date.now() - new Date(latestRun.created_at).getTime() : null;
 
@@ -136,7 +138,7 @@ function buildSummary(runLogs, sentAlerts, paperModelRuns = []) {
     latestRunWarnings: Array.isArray(latestRun?.warnings) ? latestRun.warnings.length : 0,
     latestAlertAt: latestAlert?.sent_at || null,
     totalRunsReturned: runLogs.length,
-    totalAlertsReturned: sentAlerts.length,
+    totalAlertsReturned: emailNotifications.length,
     paperModel: latestPaperRun ? {
       modelId: latestPaperRun.model_id,
       rebalanceTime: latestPaperRun.rebalance_time,
@@ -146,10 +148,68 @@ function buildSummary(runLogs, sentAlerts, paperModelRuns = []) {
       predictedBeta: Number(latestPaperRun.predicted_beta),
       emailStatus: latestPaperRun.email_status,
       emailSentAt: latestPaperRun.email_sent_at,
-      targetCount: Array.isArray(latestPaperRun.targets) ? latestPaperRun.targets.length : 0
+      targetCount: Array.isArray(latestPaperRun.targets) ? latestPaperRun.targets.length : 0,
+      review: latestPaperRun.review || { status: "pending", reason: "持仓周期未结束" }
     } : null,
     groups: [...groups.values()].sort((a, b) => String(a.group).localeCompare(String(b.group)))
   };
+}
+
+export function buildEmailNotifications(sentAlerts = [], paperModelRuns = []) {
+  const legacyNotifications = sentAlerts.map((alert) => ({
+    ...alert,
+    model_version: inferLegacyModelVersion(alert)
+  }));
+  const paperNotifications = paperModelRuns
+    .filter((run) => run.email_status === "sent" && run.email_sent_at)
+    .map((run) => {
+      const targets = Array.isArray(run.targets) ? run.targets : [];
+      return {
+        signal_key: `paper:${run.model_id}:${run.rebalance_time}`,
+        sent_at: run.email_sent_at,
+        asset: `组合（${targets.length}项）`,
+        strategy_id: run.model_id,
+        interval: "168h",
+        trigger_time: run.rebalance_time,
+        recommendation_score: null,
+        model_version: "V3.1 PAPER",
+        payload: {
+          kind: "v3_paper_portfolio",
+          market: "USDT 永续合约组合",
+          strategyName: "残差动量 beta 中性",
+          modelVersion: "V3.1 PAPER",
+          alertTierLabel: "PAPER 验证",
+          executionPlan: {
+            kind: "v3_paper_portfolio",
+            targets,
+            grossExposure: Number(run.gross_exposure),
+            predictedBeta: Number(run.predicted_beta)
+          },
+          scoringBreakdown: {
+            kind: "v3_paper",
+            eligibleSymbols: Number(run.eligible_symbols),
+            predictedBeta: Number(run.predicted_beta),
+            grossExposure: Number(run.gross_exposure)
+          },
+          review: run.review || {
+            status: "pending",
+            reason: "持仓周期未结束"
+          }
+        }
+      };
+    });
+
+  return [...legacyNotifications, ...paperNotifications]
+    .sort((a, b) => new Date(b.sent_at).getTime() - new Date(a.sent_at).getTime());
+}
+
+function inferLegacyModelVersion(alert) {
+  const explicit = alert?.payload?.modelVersion
+    || alert?.payload?.executionPlan?.modelVersion
+    || alert?.payload?.review?.modelVersion;
+  if (explicit === "trade_plan_v2") return "交易计划 V2";
+  if (explicit && explicit !== "legacy") return String(explicit);
+  return "旧版信号模型";
 }
 
 function isBatchGroup(group) {

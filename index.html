@@ -487,10 +487,11 @@
         els.latestEmail.textContent = emailText(summary.latestRunEmailed, summary.latestRunEmailConsistency);
         els.groupCount.textContent = `${summary.groups?.length || 0} 组`;
         els.runCount.textContent = `${data.runLogs?.length || 0} 条`;
-        els.alertCount.textContent = `${data.sentAlerts?.length || 0} 条`;
+        const emailNotifications = data.emailNotifications || data.sentAlerts || [];
+        els.alertCount.textContent = `${emailNotifications.length} 条`;
         renderGroupsV2(summary.groups || []);
         renderRuns(data.runLogs || []);
-        renderAlertsV2(data.sentAlerts || []);
+        renderAlertsV2(emailNotifications);
       }
 
       function renderAlertsV2(alerts) {
@@ -499,13 +500,14 @@
           return;
         }
         els.sentAlerts.innerHTML = table(
-          ["发送时间", "资产", "市场", "周期", "策略", "推荐指数", "执行计划", "评分拆解", "已发复盘", "历史表现", "触发时间"],
+          ["发送时间", "资产", "市场", "周期", "策略", "模型版本", "推荐指数", "执行计划", "评分拆解", "已发复盘", "历史表现", "触发时间"],
           alerts.map((alert) => [
             formatDate(alert.sent_at),
             alert.asset || "--",
             alert.payload?.market || "--",
             alert.interval || "--",
             `${tierText(alert.payload)} / ${alert.payload?.strategyName || alert.strategy_id || "--"}`,
+            alert.model_version || alert.payload?.modelVersion || "旧版信号模型",
             alert.recommendation_score == null ? "--" : Math.round(Number(alert.recommendation_score)),
             executionPlanText(alert.payload?.executionPlan),
             scoringBreakdownText(alert.payload?.scoringBreakdown),
@@ -706,6 +708,9 @@
         if (review?.status === "reviewed") {
           const outcome = review.outcome || "已复盘";
           const value = Number.isFinite(Number(review.returnPct)) ? ` ${pct(review.returnPct)}` : "";
+          if (Number.isFinite(Number(review.priceReturn)) && Number.isFinite(Number(review.fundingReturn)) && Number.isFinite(Number(review.tradingCost))) {
+            return `${outcome}${value} / 价格 ${pct(review.priceReturn)} / 资金费 ${pct(review.fundingReturn)} / 成本 -${pct(review.tradingCost)}`;
+          }
           const price = Number.isFinite(Number(review.exitPrice)) ? ` / 退出 ${formatNumber(review.exitPrice)}` : "";
           return `${outcome}${value}${price}`;
         }
@@ -731,6 +736,12 @@
 
       function executionPlanText(plan) {
         if (!plan) return "--";
+        if (plan.kind === "v3_paper_portfolio") {
+          const targets = Array.isArray(plan.targets) ? plan.targets : [];
+          const longs = targets.filter((target) => target.side === "LONG").map(formatPaperPosition).join("、");
+          const shorts = targets.filter((target) => target.side === "SHORT").map(formatPaperPosition).join("、");
+          return `多：${longs || "--"} / 空：${shorts || "--"} / 总敞口 ${formatNumber(plan.grossExposure)}x`;
+        }
         return [
           `止损 ${formatNumber(plan.stopLoss)}`,
           `目标 ${formatNumber(plan.takeProfit)}`,
@@ -741,7 +752,14 @@
 
       function scoringBreakdownText(breakdown) {
         if (!breakdown) return "旧记录暂无";
+        if (breakdown.kind === "v3_paper") {
+          return `合格币种 ${breakdown.eligibleSymbols ?? "--"} / 预测 beta ${formatNumber(breakdown.predictedBeta)} / 总敞口 ${formatNumber(breakdown.grossExposure)}x`;
+        }
         return `样本外 ${breakdown.outOfSample ?? "--"} / 环境 ${breakdown.environment ?? "--"} / 真实 ${breakdown.livePerformance ?? "--"} / 风险 ${breakdown.risk ?? "--"} / 成本 ${breakdown.costLiquidity ?? "--"} / 效率 ${breakdown.capitalEfficiency ?? "--"}`;
+      }
+
+      function formatPaperPosition(target) {
+        return `${target.symbol} ${pct(Math.abs(Number(target.targetWeight || 0)))}`;
       }
 
       function pct(value) {

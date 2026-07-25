@@ -2,13 +2,14 @@ import { buildEmailFrom } from "../lib/email.js";
 import { CONFIG } from "../lib/config.js";
 import { readFileSync } from "node:fs";
 import { parseCronGroups } from "../api/cron.js";
+import { buildEmailNotifications } from "../api/status.js";
 import { renderSignalEmail, renderTestEmail } from "../lib/report.js";
 import { reviewAlertWithCandles, reviewArbitrageAlert } from "../lib/alert-review.js";
 import { evaluateDynamicFamilyGate, evaluateDynamicSpotOpportunity, filterSignalsByCurrentPrice, isDynamicSpotCandidate, isDynamicSpotCoolingDown, isDynamicWeakSpotCandidate, isFuturesPriceSignal, selectScanTargets, shouldReviewAlert, shouldReviewRecentAlerts } from "../lib/scanner.js";
 import { hasProcessedScanCandle, recordProcessedScanCandle } from "../lib/storage.js";
 import { compareStrategyInversion, CRYPTO_STRATEGIES, FUTURES_STRATEGIES, invertStrategyDirection, scoreFuturesSentiment, SHORT_TERM_STRATEGIES, STRATEGIES } from "../lib/strategies.js";
 import { isAuthorizedRequest } from "../lib/api-auth.js";
-import { buildV31Portfolio, latestV31RebalanceTime, renderV31PaperEmail, V31_MODEL } from "../lib/v3-paper.js";
+import { buildV31Portfolio, latestV31RebalanceTime, renderV31PaperEmail, reviewV31PaperRun, V31_MODEL } from "../lib/v3-paper.js";
 
 if (!STRATEGIES.length) {
   throw new Error("No strategies registered");
@@ -52,6 +53,9 @@ if (!dashboardHtml.includes('return "待复盘";') || !dashboardHtml.includes("�
 
 if (!dashboardHtml.includes("historyPerformanceText")) {
   throw new Error("Dashboard should show historical live performance in a separate column");
+}
+if (!dashboardHtml.includes('"模型版本"') || !dashboardHtml.includes("data.emailNotifications")) {
+  throw new Error("Dashboard should render a unified email history with model versions");
 }
 if (dashboardHtml.includes("reviewText(alert.payload?.review, alert.payload?.livePerformance)")) {
   throw new Error("Dashboard review column should not fall back to historical live performance");
@@ -157,6 +161,48 @@ for (const required of ["【PAPER】V3.1 新信号", "做多目标：", "做空�
   if (!v31Email.subject.includes(required) && !v31Email.text.includes(required)) {
     throw new Error(`V3.1 PAPER email missing: ${required}`);
   }
+}
+const v31ReviewExit = v31RebalanceTime + V31_MODEL.rebalanceHours * 60 * 60 * 1000;
+const reviewExitCandles = new Map();
+const reviewFunding = new Map();
+for (const [index, target] of v31Portfolio.targets.entries()) {
+  const move = target.side === "LONG" ? 1.02 + index * 0.001 : 0.98 - index * 0.001;
+  reviewExitCandles.set(target.symbol, [{
+    openTime: v31ReviewExit,
+    open: target.referencePrice * move
+  }]);
+  reviewFunding.set(target.symbol, [{
+    fundingTime: v31RebalanceTime + 8 * 60 * 60 * 1000,
+    fundingRate: 0.0001
+  }]);
+}
+const v31Review = reviewV31PaperRun({
+  run: {
+    rebalance_time: new Date(v31RebalanceTime).toISOString(),
+    targets: v31Portfolio.targets
+  },
+  exitCandlesBySymbol: reviewExitCandles,
+  fundingBySymbol: reviewFunding,
+  exitTime: v31ReviewExit,
+  reviewedAt: v31ReviewExit
+});
+if (v31Review.status !== "reviewed" || v31Review.outcome !== "盈利" || v31Review.returnPct <= 0 || v31Review.tradingCost !== 0.0012 || v31Review.positions.length !== 6) {
+  throw new Error("V3.1 review should record positive net portfolio return after funding and round-trip costs");
+}
+const emailNotifications = buildEmailNotifications([{
+  signal_key: "legacy-1",
+  sent_at: new Date(v31RebalanceTime).toISOString(),
+  payload: { executionPlan: { modelVersion: "trade_plan_v2" } }
+}], [{
+  model_id: V31_MODEL.id,
+  rebalance_time: new Date(v31RebalanceTime).toISOString(),
+  email_status: "sent",
+  email_sent_at: new Date(v31RebalanceTime + 1000).toISOString(),
+  targets: v31Portfolio.targets,
+  review: { status: "pending", reason: "持仓周期未结束" }
+}]);
+if (emailNotifications.length !== 2 || emailNotifications[0].model_version !== "V3.1 PAPER" || emailNotifications[1].model_version !== "交易计划 V2" || emailNotifications[0].payload.review.status !== "pending") {
+  throw new Error("Unified email history should include V3.1 and legacy model versions with reviews");
 }
 if (!emailSource.includes('"Idempotency-Key": idempotencyKey') || !emailSource.includes("X-Signal-Idempotency-Key")) {
   throw new Error("Email providers should receive the deterministic V3.1 idempotency key");
