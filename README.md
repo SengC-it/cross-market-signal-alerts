@@ -18,7 +18,7 @@ Scheduled groups:
 
 - `dynamic-spot`: dynamically selected high-volume, high-momentum Binance spot symbols; scans every 30 minutes on `1h`.
 - `dynamic-weak-spot`: dynamically selected high-volume, high-downside Binance spot symbols for short observation; scans every 30 minutes on `1h`.
-- `v3-paper`: checks hourly for a new 168-hour V3.1 rebalance, then stores three long and three short beta-neutral PAPER targets. It never sends orders and its live capital weight is fixed at zero.
+- `v3-paper`: checks hourly for a new 168-hour V3.1 rebalance, stores three long and three short beta-neutral PAPER targets, and sends one de-duplicated PAPER email for each new weekly portfolio. It never sends orders and its live capital weight is fixed at zero.
 
 Legacy group names remain available in scanner code for local research. The protected production cron endpoint allows only dynamic strength/weakness scans, review, and the isolated V3.1 PAPER group; unproven inverse-watch and legacy groups are rejected.
 

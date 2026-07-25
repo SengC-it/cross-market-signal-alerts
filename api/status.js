@@ -144,6 +144,8 @@ function buildSummary(runLogs, sentAlerts, paperModelRuns = []) {
       deploymentGatePassed: latestPaperRun.deployment_gate_passed,
       capitalWeight: Number(latestPaperRun.capital_weight),
       predictedBeta: Number(latestPaperRun.predicted_beta),
+      emailStatus: latestPaperRun.email_status,
+      emailSentAt: latestPaperRun.email_sent_at,
       targetCount: Array.isArray(latestPaperRun.targets) ? latestPaperRun.targets.length : 0
     } : null,
     groups: [...groups.values()].sort((a, b) => String(a.group).localeCompare(String(b.group)))

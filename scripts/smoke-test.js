@@ -8,7 +8,7 @@ import { evaluateDynamicFamilyGate, evaluateDynamicSpotOpportunity, filterSignal
 import { hasProcessedScanCandle, recordProcessedScanCandle } from "../lib/storage.js";
 import { compareStrategyInversion, CRYPTO_STRATEGIES, FUTURES_STRATEGIES, invertStrategyDirection, scoreFuturesSentiment, SHORT_TERM_STRATEGIES, STRATEGIES } from "../lib/strategies.js";
 import { isAuthorizedRequest } from "../lib/api-auth.js";
-import { buildV31Portfolio, latestV31RebalanceTime, V31_MODEL } from "../lib/v3-paper.js";
+import { buildV31Portfolio, latestV31RebalanceTime, renderV31PaperEmail, V31_MODEL } from "../lib/v3-paper.js";
 
 if (!STRATEGIES.length) {
   throw new Error("No strategies registered");
@@ -18,6 +18,7 @@ const dashboardHtml = readFileSync(new URL("../index.html", import.meta.url), "u
 const cronApi = readFileSync(new URL("../api/cron.js", import.meta.url), "utf8");
 const packageJson = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
 const inverseReportScript = readFileSync(new URL("./inverse-signal-report.js", import.meta.url), "utf8");
+const emailSource = readFileSync(new URL("../lib/email.js", import.meta.url), "utf8");
 if (dashboardHtml.includes("localStorage") || dashboardHtml.includes("secret=${") || !dashboardHtml.includes("Authorization: `Bearer ${secret}`")) {
   throw new Error("Dashboard should keep the secret out of persistent storage and request URLs");
 }
@@ -140,6 +141,25 @@ if (v31Portfolio.targets.length !== 6 || v31Portfolio.targets.filter((target) =>
 }
 if (Math.abs(v31Portfolio.grossExposure - 1) > 1e-9 || Math.abs(v31Portfolio.predictedBeta) > 1e-8) {
   throw new Error("V3.1 target weights should have 1x gross exposure and near-zero predicted BTC beta");
+}
+const v31Email = renderV31PaperEmail({
+  model_id: V31_MODEL.id,
+  rebalance_time: new Date(v31RebalanceTime).toISOString(),
+  state: "PAPER",
+  deployment_gate_passed: false,
+  capital_weight: 0,
+  predicted_beta: v31Portfolio.predictedBeta,
+  gross_exposure: v31Portfolio.grossExposure,
+  eligible_symbols: v31Portfolio.eligibleSymbols,
+  targets: v31Portfolio.targets
+});
+for (const required of ["【PAPER】V3.1 新信号", "做多目标：", "做空目标：", "实盘部署门槛：未通过", "实盘资金权重：0.00%", "系统不会连接交易账户"]) {
+  if (!v31Email.subject.includes(required) && !v31Email.text.includes(required)) {
+    throw new Error(`V3.1 PAPER email missing: ${required}`);
+  }
+}
+if (!emailSource.includes('"Idempotency-Key": idempotencyKey') || !emailSource.includes("X-Signal-Idempotency-Key")) {
+  throw new Error("Email providers should receive the deterministic V3.1 idempotency key");
 }
 
 const dynamicCooldown = isDynamicSpotCoolingDown({

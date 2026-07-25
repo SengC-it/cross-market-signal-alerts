@@ -58,7 +58,9 @@ export default async function handler(req, res) {
       latestRebalanceAt: latest?.rebalance_time || null,
       state: latest?.state || "not_started",
       deploymentGatePassed: latest?.deployment_gate_passed ?? false,
-      capitalWeight: Number(latest?.capital_weight || 0)
+      capitalWeight: Number(latest?.capital_weight || 0),
+      emailStatus: latest?.email_status || "not_started",
+      emailSentAt: latest?.email_sent_at || null
     };
   });
 

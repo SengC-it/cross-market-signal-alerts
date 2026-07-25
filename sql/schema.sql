@@ -42,6 +42,10 @@ create table if not exists paper_model_runs (
   eligible_symbols integer,
   targets jsonb not null default '[]'::jsonb,
   diagnostics jsonb not null default '{}'::jsonb,
+  email_status text not null default 'pending' check (email_status in ('pending', 'sending', 'sent', 'failed')),
+  email_claimed_at timestamptz,
+  email_sent_at timestamptz,
+  email_result jsonb,
   created_at timestamptz not null default now(),
   primary key (model_id, rebalance_time),
   check (state <> 'LIVE' or deployment_gate_passed),
@@ -53,6 +57,10 @@ alter table run_logs add column if not exists email_status text;
 alter table run_logs add column if not exists warnings jsonb;
 alter table run_logs add column if not exists email_result jsonb;
 alter table run_logs add column if not exists sent_alert_keys jsonb;
+alter table paper_model_runs add column if not exists email_status text not null default 'pending';
+alter table paper_model_runs add column if not exists email_claimed_at timestamptz;
+alter table paper_model_runs add column if not exists email_sent_at timestamptz;
+alter table paper_model_runs add column if not exists email_result jsonb;
 
 create index if not exists sent_alerts_asset_time_idx on sent_alerts (asset, trigger_time desc);
 create index if not exists run_logs_created_at_idx on run_logs (created_at desc);
