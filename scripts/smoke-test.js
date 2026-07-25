@@ -186,7 +186,7 @@ const v31Review = reviewV31PaperRun({
   exitTime: v31ReviewExit,
   reviewedAt: v31ReviewExit
 });
-if (v31Review.status !== "reviewed" || v31Review.outcome !== "盈利" || v31Review.returnPct <= 0 || v31Review.tradingCost !== 0.0012 || v31Review.positions.length !== 6) {
+if (v31Review.status !== "reviewed" || v31Review.outcome !== "盈利" || v31Review.returnPct <= 0 || v31Review.tradingCost !== 0.0012 || v31Review.positions.length !== 6 || v31Review.positions.some((position) => !Number.isFinite(position.returnPct))) {
   throw new Error("V3.1 review should record positive net portfolio return after funding and round-trip costs");
 }
 const emailNotifications = buildEmailNotifications([{
@@ -201,8 +201,28 @@ const emailNotifications = buildEmailNotifications([{
   targets: v31Portfolio.targets,
   review: { status: "pending", reason: "持仓周期未结束" }
 }]);
-if (emailNotifications.length !== 2 || emailNotifications[0].model_version !== "V3.1 PAPER" || emailNotifications[1].model_version !== "交易计划 V2" || emailNotifications[0].payload.review.status !== "pending") {
-  throw new Error("Unified email history should include V3.1 and legacy model versions with reviews");
+const paperEmailNotifications = emailNotifications.filter((item) => item.model_version === "V3.1 PAPER");
+if (
+  emailNotifications.length !== 7
+  || paperEmailNotifications.length !== 6
+  || new Set(paperEmailNotifications.map((item) => item.asset)).size !== 6
+  || paperEmailNotifications.some((item) => item.asset.startsWith("组合"))
+  || paperEmailNotifications.some((item) => item.payload.executionPlan.kind !== "v3_paper_position")
+  || paperEmailNotifications.some((item) => item.payload.review.status !== "pending")
+  || emailNotifications.at(-1).model_version !== "交易计划 V2"
+) {
+  throw new Error("Unified email history should render one V3.1 row per trading pair");
+}
+const reviewedPaperNotifications = buildEmailNotifications([], [{
+  model_id: V31_MODEL.id,
+  rebalance_time: new Date(v31RebalanceTime).toISOString(),
+  email_status: "sent",
+  email_sent_at: new Date(v31ReviewExit).toISOString(),
+  targets: v31Portfolio.targets,
+  review: v31Review
+}]);
+if (reviewedPaperNotifications.some((item) => item.payload.review.status !== "reviewed" || !Number.isFinite(item.payload.review.returnPct))) {
+  throw new Error("Each V3.1 trading-pair row should expose its own cost-adjusted review");
 }
 if (!emailSource.includes('"Idempotency-Key": idempotencyKey') || !emailSource.includes("X-Signal-Idempotency-Key")) {
   throw new Error("Email providers should receive the deterministic V3.1 idempotency key");

@@ -736,11 +736,9 @@
 
       function executionPlanText(plan) {
         if (!plan) return "--";
-        if (plan.kind === "v3_paper_portfolio") {
-          const targets = Array.isArray(plan.targets) ? plan.targets : [];
-          const longs = targets.filter((target) => target.side === "LONG").map(formatPaperPosition).join("、");
-          const shorts = targets.filter((target) => target.side === "SHORT").map(formatPaperPosition).join("、");
-          return `多：${longs || "--"} / 空：${shorts || "--"} / 总敞口 ${formatNumber(plan.grossExposure)}x`;
+        if (plan.kind === "v3_paper_position") {
+          const side = plan.side === "LONG" ? "做多" : "做空";
+          return `${side} / 权重 ${pct(Math.abs(Number(plan.targetWeight || 0)))} / 参考价 ${formatNumber(plan.referencePrice)}`;
         }
         return [
           `止损 ${formatNumber(plan.stopLoss)}`,
@@ -752,14 +750,12 @@
 
       function scoringBreakdownText(breakdown) {
         if (!breakdown) return "旧记录暂无";
-        if (breakdown.kind === "v3_paper") {
-          return `合格币种 ${breakdown.eligibleSymbols ?? "--"} / 预测 beta ${formatNumber(breakdown.predictedBeta)} / 总敞口 ${formatNumber(breakdown.grossExposure)}x`;
+        if (breakdown.kind === "v3_paper_position") {
+          const volume = Number(breakdown.quoteVolume24h);
+          const volumeText = Number.isFinite(volume) ? `${(volume / 1_000_000).toFixed(1)}m USDT` : "--";
+          return `分数 ${formatNumber(breakdown.score)} / beta ${formatNumber(breakdown.beta)} / 24h 量 ${volumeText}`;
         }
         return `样本外 ${breakdown.outOfSample ?? "--"} / 环境 ${breakdown.environment ?? "--"} / 真实 ${breakdown.livePerformance ?? "--"} / 风险 ${breakdown.risk ?? "--"} / 成本 ${breakdown.costLiquidity ?? "--"} / 效率 ${breakdown.capitalEfficiency ?? "--"}`;
-      }
-
-      function formatPaperPosition(target) {
-        return `${target.symbol} ${pct(Math.abs(Number(target.targetWeight || 0)))}`;
       }
 
       function pct(value) {

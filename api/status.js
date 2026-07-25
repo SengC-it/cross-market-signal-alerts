@@ -162,12 +162,12 @@ export function buildEmailNotifications(sentAlerts = [], paperModelRuns = []) {
   }));
   const paperNotifications = paperModelRuns
     .filter((run) => run.email_status === "sent" && run.email_sent_at)
-    .map((run) => {
+    .flatMap((run) => {
       const targets = Array.isArray(run.targets) ? run.targets : [];
-      return {
-        signal_key: `paper:${run.model_id}:${run.rebalance_time}`,
+      return targets.map((target) => ({
+        signal_key: `paper:${run.model_id}:${run.rebalance_time}:${target.symbol}`,
         sent_at: run.email_sent_at,
-        asset: `组合（${targets.length}项）`,
+        asset: target.symbol,
         strategy_id: run.model_id,
         interval: "168h",
         trigger_time: run.rebalance_time,
@@ -180,27 +180,62 @@ export function buildEmailNotifications(sentAlerts = [], paperModelRuns = []) {
           modelVersion: "V3.1 PAPER",
           alertTierLabel: "PAPER 验证",
           executionPlan: {
-            kind: "v3_paper_portfolio",
-            targets,
+            kind: "v3_paper_position",
+            side: target.side,
+            targetWeight: Number(target.targetWeight),
+            referencePrice: Number(target.referencePrice),
+            beta: Number(target.beta),
+            score: Number(target.score),
             grossExposure: Number(run.gross_exposure),
             predictedBeta: Number(run.predicted_beta)
           },
           scoringBreakdown: {
-            kind: "v3_paper",
+            kind: "v3_paper_position",
             eligibleSymbols: Number(run.eligible_symbols),
-            predictedBeta: Number(run.predicted_beta),
-            grossExposure: Number(run.gross_exposure)
+            beta: Number(target.beta),
+            score: Number(target.score),
+            quoteVolume24h: Number(target.quoteVolume24h)
           },
-          review: run.review || {
-            status: "pending",
-            reason: "持仓周期未结束"
-          }
+          review: buildPaperTargetReview(run.review, target)
         }
-      };
+      }));
     });
 
   return [...legacyNotifications, ...paperNotifications]
     .sort((a, b) => new Date(b.sent_at).getTime() - new Date(a.sent_at).getTime());
+}
+
+function buildPaperTargetReview(review, target) {
+  if (review?.status !== "reviewed") {
+    return review || {
+      status: "pending",
+      reason: "持仓周期未结束"
+    };
+  }
+
+  const position = Array.isArray(review.positions)
+    ? review.positions.find((item) => item.symbol === target.symbol)
+    : null;
+  if (!position) return review;
+
+  return {
+    status: "reviewed",
+    outcome: position.outcome || "已复盘",
+    modelVersion: review.modelVersion || "V3.1 PAPER",
+    method: review.method,
+    holdingHours: review.holdingHours,
+    entryTime: review.entryTime,
+    exitTime: review.exitTime,
+    reviewedAt: review.reviewedAt,
+    entryPrice: position.entryPrice,
+    exitPrice: position.exitPrice,
+    priceReturn: position.directionalPriceReturn,
+    fundingReturn: position.fundingReturn,
+    tradingCost: position.tradingCost,
+    returnPct: position.returnPct,
+    netOfCosts: true,
+    portfolioReturnPct: review.returnPct
+  };
 }
 
 function inferLegacyModelVersion(alert) {
