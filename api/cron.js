@@ -1,4 +1,6 @@
 import { runSignalBatch, runSignalScan } from "../lib/scanner.js";
+import { isAuthorizedRequest, setPrivateResponseHeaders } from "../lib/api-auth.js";
+import { runV31PaperScan } from "../lib/v3-paper.js";
 
 export const config = {
   maxDuration: 60
@@ -7,13 +9,13 @@ export const config = {
 const ENABLED_CRON_GROUPS = new Set([
   "dynamic-spot",
   "dynamic-weak-spot",
-  "inverse-watch-4h",
-  "inverse-watch-daily",
-  "review"
+  "review",
+  "v3-paper"
 ]);
 
 export default async function handler(req, res) {
-  if (!isAuthorized(req)) {
+  setPrivateResponseHeaders(res);
+  if (!isAuthorizedRequest(req)) {
     console.warn("Unauthorized cron request", {
       hasAuthorizationHeader: Boolean(req.headers.authorization),
       hasQuerySecret: Boolean(req.query?.secret),
@@ -43,6 +45,20 @@ export default async function handler(req, res) {
       return;
     }
 
+    if (groups.includes("v3-paper") && groups.length > 1) {
+      res.status(400).json({
+        ok: false,
+        error: "v3_paper_must_run_as_a_dedicated_group"
+      });
+      return;
+    }
+
+    if (groups[0] === "v3-paper") {
+      const result = await runV31PaperScan({ dryRun: req.query?.dryRun === "1" });
+      res.status(200).json({ ok: true, skippedGroups, ...result });
+      return;
+    }
+
     const result = groups.length > 1
       ? await runSignalBatch({ dryRun: req.query?.dryRun === "1", groups })
       : await runSignalScan({
@@ -68,13 +84,4 @@ export function parseCronGroups(query) {
   }
   if (query?.group) return [String(query.group).trim()].filter(Boolean);
   return ["all"];
-}
-
-function isAuthorized(req) {
-  const secret = process.env.CRON_SECRET;
-  if (!secret) return true;
-
-  const auth = req.headers.authorization || "";
-  const querySecret = req.query?.secret;
-  return auth === `Bearer ${secret}` || querySecret === secret;
 }

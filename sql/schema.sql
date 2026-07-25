@@ -30,6 +30,24 @@ create table if not exists processed_scan_candles (
   primary key (scan_group, asset, interval, candle_open_time)
 );
 
+create table if not exists paper_model_runs (
+  model_id text not null,
+  rebalance_time timestamptz not null,
+  data_cutoff_time timestamptz not null,
+  state text not null default 'PAPER' check (state in ('PAPER', 'HALTED', 'LIVE')),
+  deployment_gate_passed boolean not null default false,
+  capital_weight numeric not null default 0 check (capital_weight >= 0 and capital_weight <= 1),
+  predicted_beta numeric,
+  gross_exposure numeric,
+  eligible_symbols integer,
+  targets jsonb not null default '[]'::jsonb,
+  diagnostics jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  primary key (model_id, rebalance_time),
+  check (state <> 'LIVE' or deployment_gate_passed),
+  check (state <> 'LIVE' or capital_weight > 0)
+);
+
 alter table run_logs add column if not exists scan_group text;
 alter table run_logs add column if not exists email_status text;
 alter table run_logs add column if not exists warnings jsonb;
@@ -38,3 +56,8 @@ alter table run_logs add column if not exists sent_alert_keys jsonb;
 
 create index if not exists sent_alerts_asset_time_idx on sent_alerts (asset, trigger_time desc);
 create index if not exists run_logs_created_at_idx on run_logs (created_at desc);
+create index if not exists paper_model_runs_rebalance_idx on paper_model_runs (rebalance_time desc);
+
+alter table paper_model_runs enable row level security;
+revoke all on table paper_model_runs from anon, authenticated;
+grant select, insert, update on table paper_model_runs to service_role;

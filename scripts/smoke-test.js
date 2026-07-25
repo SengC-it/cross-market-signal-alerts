@@ -4,9 +4,11 @@ import { readFileSync } from "node:fs";
 import { parseCronGroups } from "../api/cron.js";
 import { renderSignalEmail, renderTestEmail } from "../lib/report.js";
 import { reviewAlertWithCandles, reviewArbitrageAlert } from "../lib/alert-review.js";
-import { evaluateDynamicSpotOpportunity, filterSignalsByCurrentPrice, isDynamicSpotCandidate, isDynamicSpotCoolingDown, isDynamicWeakSpotCandidate, isFuturesPriceSignal, selectScanTargets, shouldReviewAlert, shouldReviewRecentAlerts } from "../lib/scanner.js";
+import { evaluateDynamicFamilyGate, evaluateDynamicSpotOpportunity, filterSignalsByCurrentPrice, isDynamicSpotCandidate, isDynamicSpotCoolingDown, isDynamicWeakSpotCandidate, isFuturesPriceSignal, selectScanTargets, shouldReviewAlert, shouldReviewRecentAlerts } from "../lib/scanner.js";
 import { hasProcessedScanCandle, recordProcessedScanCandle } from "../lib/storage.js";
-import { compareStrategyInversion, CRYPTO_STRATEGIES, FUTURES_STRATEGIES, invertStrategyDirection, SHORT_TERM_STRATEGIES, STRATEGIES } from "../lib/strategies.js";
+import { compareStrategyInversion, CRYPTO_STRATEGIES, FUTURES_STRATEGIES, invertStrategyDirection, scoreFuturesSentiment, SHORT_TERM_STRATEGIES, STRATEGIES } from "../lib/strategies.js";
+import { isAuthorizedRequest } from "../lib/api-auth.js";
+import { buildV31Portfolio, latestV31RebalanceTime, V31_MODEL } from "../lib/v3-paper.js";
 
 if (!STRATEGIES.length) {
   throw new Error("No strategies registered");
@@ -16,14 +18,29 @@ const dashboardHtml = readFileSync(new URL("../index.html", import.meta.url), "u
 const cronApi = readFileSync(new URL("../api/cron.js", import.meta.url), "utf8");
 const packageJson = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
 const inverseReportScript = readFileSync(new URL("./inverse-signal-report.js", import.meta.url), "utf8");
+if (dashboardHtml.includes("localStorage") || dashboardHtml.includes("secret=${") || !dashboardHtml.includes("Authorization: `Bearer ${secret}`")) {
+  throw new Error("Dashboard should keep the secret out of persistent storage and request URLs");
+}
+
+const previousCronSecret = process.env.CRON_SECRET;
+delete process.env.CRON_SECRET;
+if (isAuthorizedRequest({ headers: {}, query: {} })) {
+  throw new Error("Protected APIs should fail closed when CRON_SECRET is missing");
+}
+process.env.CRON_SECRET = "test-secret";
+if (!isAuthorizedRequest({ headers: { authorization: "Bearer test-secret" }, query: {} })) {
+  throw new Error("Protected APIs should accept a matching Bearer secret");
+}
+if (previousCronSecret == null) delete process.env.CRON_SECRET;
+else process.env.CRON_SECRET = previousCronSecret;
 if (packageJson.scripts?.["inverse-report"] !== "node scripts/inverse-signal-report.js") {
   throw new Error("package.json should expose npm run inverse-report");
 }
 if (!inverseReportScript.includes("compareStrategyInversion") || !inverseReportScript.includes("inverse_signal_report.json")) {
   throw new Error("Inverse report script should compare strategy inversions and write the expected report");
 }
-if (!cronApi.includes('"inverse-watch-4h"') || !cronApi.includes('"inverse-watch-daily"')) {
-  throw new Error("Cron API should allow scheduled inverse-watch groups");
+if (cronApi.includes('"inverse-watch-4h"') || cronApi.includes('"inverse-watch-daily"')) {
+  throw new Error("Cron API should not allow unproven inverse-watch groups");
 }
 if (dashboardHtml.includes('return "样本不足";')) {
   throw new Error("Dashboard review text should not use a generic insufficient-sample fallback");
@@ -52,6 +69,9 @@ if (schedulerSql.includes("'cross_market_signal_inverse_watch_daily'") || schedu
 if (!schedulerSql.includes("dynamic-weak-spot")) {
   throw new Error("Scheduler should include the dynamic weak spot scan group");
 }
+if (!schedulerSql.includes("'cross_market_signal_v3_paper_hourly'") || !schedulerSql.includes("'15 * * * *'") || !schedulerSql.includes("'v3-paper'")) {
+  throw new Error("Scheduler should check the V3.1 PAPER rebalance once per hour");
+}
 for (const removedScheduledGroup of [
   "futures-scalp-a",
   "futures-scalp-b",
@@ -75,6 +95,51 @@ const parsedGroups = parseCronGroups({
 });
 if (parsedGroups.join("|") !== "futures-scalp-a|futures-scalp-b") {
   throw new Error("Cron groups parser should prefer comma-separated groups");
+}
+
+const v31RebalanceTime = Date.UTC(2026, 6, 23);
+if (latestV31RebalanceTime(v31RebalanceTime + 37 * 60 * 60 * 1000) !== v31RebalanceTime) {
+  throw new Error("V3.1 should align to one deterministic 168-hour rebalance boundary");
+}
+if (V31_MODEL.state !== "PAPER" || V31_MODEL.deploymentGatePassed || V31_MODEL.capitalWeight !== 0) {
+  throw new Error("V3.1 must remain PAPER with a zero live-capital weight");
+}
+
+const v31Series = new Map();
+const v31Symbols = ["BTCUSDT", ...V31_MODEL.universe.slice(1, 9)];
+for (const [symbolIndex, symbol] of v31Symbols.entries()) {
+  const candles = [];
+  const beta = symbol === "BTCUSDT" ? 1 : 0.65 + symbolIndex * 0.08;
+  const residualDrift = symbol === "BTCUSDT" ? 0 : (symbolIndex - 4.5) * 0.00008;
+  let price = 100 + symbolIndex * 10;
+  const firstOpenTime = v31RebalanceTime
+    - (V31_MODEL.lookbackHours + V31_MODEL.skipHours + 4) * 60 * 60 * 1000;
+  for (let openTime = firstOpenTime, index = 0; openTime <= v31RebalanceTime; openTime += 4 * 60 * 60 * 1000, index++) {
+    const marketReturn = 0.0005 + 0.002 * Math.sin(index / 7);
+    const residual = symbol === "BTCUSDT" ? 0 : residualDrift + 0.001 * Math.sin(index / 5 + symbolIndex);
+    const open = price;
+    price *= Math.exp(beta * marketReturn + residual);
+    candles.push({
+      openTime,
+      open,
+      high: Math.max(open, price) * 1.001,
+      low: Math.min(open, price) * 0.999,
+      close: price,
+      volume: 1000,
+      quoteVolume: 10_000_000
+    });
+  }
+  v31Series.set(symbol, candles);
+}
+const v31Portfolio = buildV31Portfolio({
+  seriesBySymbol: v31Series,
+  rebalanceTime: v31RebalanceTime
+});
+if (v31Portfolio.targets.length !== 6 || v31Portfolio.targets.filter((target) => target.side === "LONG").length !== 3 || v31Portfolio.targets.filter((target) => target.side === "SHORT").length !== 3) {
+  throw new Error("V3.1 should produce exactly three long and three short PAPER targets");
+}
+if (Math.abs(v31Portfolio.grossExposure - 1) > 1e-9 || Math.abs(v31Portfolio.predictedBeta) > 1e-8) {
+  throw new Error("V3.1 target weights should have 1x gross exposure and near-zero predicted BTC beta");
 }
 
 const dynamicCooldown = isDynamicSpotCoolingDown({
@@ -154,46 +219,46 @@ if (CONFIG.futuresRewardRiskRatio !== 1.5) {
 }
 
 const weakExisting = new Set();
-if (isDynamicWeakSpotCandidate({ symbol: "WIFUSDT", priceChangePercent: -6.5, quoteVolume: 3500000 }, weakExisting)) {
+if (isDynamicWeakSpotCandidate({ symbol: "WIFUSDT", priceChangePercent: -6.5, quoteVolume: 60000000 }, weakExisting)) {
   throw new Error("Dynamic weak spot candidate should reject mild downside moves with weak edge");
 }
-if (!isDynamicWeakSpotCandidate({ symbol: "WIFUSDT", priceChangePercent: -10, quoteVolume: 3500000 }, weakExisting)) {
+if (!isDynamicWeakSpotCandidate({ symbol: "WIFUSDT", priceChangePercent: -10, quoteVolume: 60000000 }, weakExisting)) {
   throw new Error("Dynamic weak spot candidate should accept profitable-bucket falling USDT symbols");
 }
-if (isDynamicWeakSpotCandidate({ symbol: "WIFUSDT", priceChangePercent: -12, quoteVolume: 3500000 }, weakExisting)) {
+if (isDynamicWeakSpotCandidate({ symbol: "WIFUSDT", priceChangePercent: -12, quoteVolume: 60000000 }, weakExisting)) {
   throw new Error("Dynamic weak spot candidate should reject downside moves beyond the profitable 8%-11% bucket");
 }
-if (isDynamicWeakSpotCandidate({ symbol: "WIFUSDT", priceChangePercent: -14, quoteVolume: 3500000 }, weakExisting)) {
+if (isDynamicWeakSpotCandidate({ symbol: "WIFUSDT", priceChangePercent: -14, quoteVolume: 60000000 }, weakExisting)) {
   throw new Error("Dynamic weak spot candidate should reject downside moves outside the profitable 8%-13% bucket");
 }
 if (isDynamicWeakSpotCandidate({ symbol: "THINUSDT", priceChangePercent: -6.5, quoteVolume: 100000 }, weakExisting)) {
   throw new Error("Dynamic weak spot candidate should reject illiquid symbols");
 }
-if (isDynamicWeakSpotCandidate({ symbol: "SLOWUSDT", priceChangePercent: -1.2, quoteVolume: 3500000 }, weakExisting)) {
+if (isDynamicWeakSpotCandidate({ symbol: "SLOWUSDT", priceChangePercent: -1.2, quoteVolume: 60000000 }, weakExisting)) {
   throw new Error("Dynamic weak spot candidate should reject symbols without enough downside momentum");
 }
-if (isDynamicSpotCandidate({ symbol: "NFPUSDT", priceChangePercent: 8.5, quoteVolume: 3500000 }, weakExisting, new Set(["WIFUSDT"]))) {
+if (isDynamicSpotCandidate({ symbol: "NFPUSDT", priceChangePercent: 8.5, quoteVolume: 60000000 }, weakExisting, new Set(["WIFUSDT"]))) {
   throw new Error("Dynamic strong candidate should reject spot symbols without a USDT perpetual contract");
 }
-if (!isDynamicSpotCandidate({ symbol: "WIFUSDT", priceChangePercent: 8.5, quoteVolume: 3500000 }, weakExisting, new Set(["WIFUSDT"]))) {
+if (!isDynamicSpotCandidate({ symbol: "WIFUSDT", priceChangePercent: 8.5, quoteVolume: 60000000 }, weakExisting, new Set(["WIFUSDT"]))) {
   throw new Error("Dynamic strong candidate should accept liquid rising symbols with a USDT perpetual contract");
 }
-if (isDynamicSpotCandidate({ symbol: "WIFUSDT", priceChangePercent: 11, quoteVolume: 3500000 }, weakExisting, new Set(["WIFUSDT"]))) {
+if (isDynamicSpotCandidate({ symbol: "WIFUSDT", priceChangePercent: 11, quoteVolume: 60000000 }, weakExisting, new Set(["WIFUSDT"]))) {
   throw new Error("Dynamic strong candidate should reject long setups above the profitable 8%-10% bucket");
 }
-if (isDynamicSpotCandidate({ symbol: "HOTUSDT", priceChangePercent: 22, quoteVolume: 3500000 }, weakExisting, new Set(["HOTUSDT"]))) {
+if (isDynamicSpotCandidate({ symbol: "HOTUSDT", priceChangePercent: 22, quoteVolume: 60000000 }, weakExisting, new Set(["HOTUSDT"]))) {
   throw new Error("Dynamic strong candidate should reject overheated 24h movers before scanning");
 }
-if (isDynamicWeakSpotCandidate({ symbol: "NFPUSDT", priceChangePercent: -6.5, quoteVolume: 3500000 }, weakExisting, new Set(["WIFUSDT"]))) {
+if (isDynamicWeakSpotCandidate({ symbol: "NFPUSDT", priceChangePercent: -6.5, quoteVolume: 60000000 }, weakExisting, new Set(["WIFUSDT"]))) {
   throw new Error("Dynamic weak spot candidate should reject spot symbols without a USDT perpetual contract");
 }
-if (!isDynamicWeakSpotCandidate({ symbol: "WIFUSDT", priceChangePercent: -10, quoteVolume: 3500000 }, weakExisting, new Set(["WIFUSDT"]))) {
+if (!isDynamicWeakSpotCandidate({ symbol: "WIFUSDT", priceChangePercent: -10, quoteVolume: 60000000 }, weakExisting, new Set(["WIFUSDT"]))) {
   throw new Error("Dynamic weak spot candidate should accept profitable-bucket falling symbols with a USDT perpetual contract");
 }
-if (isDynamicWeakSpotCandidate({ symbol: "WIFUSDT", priceChangePercent: -12, quoteVolume: 3500000 }, weakExisting, new Set(["WIFUSDT"]))) {
+if (isDynamicWeakSpotCandidate({ symbol: "WIFUSDT", priceChangePercent: -12, quoteVolume: 60000000 }, weakExisting, new Set(["WIFUSDT"]))) {
   throw new Error("Dynamic weak spot candidate should reject downside moves beyond the profitable 8%-11% bucket with a USDT perpetual contract");
 }
-if (isDynamicWeakSpotCandidate({ symbol: "CRASHUSDT", priceChangePercent: -18, quoteVolume: 3500000 }, weakExisting, new Set(["CRASHUSDT"]))) {
+if (isDynamicWeakSpotCandidate({ symbol: "CRASHUSDT", priceChangePercent: -18, quoteVolume: 60000000 }, weakExisting, new Set(["CRASHUSDT"]))) {
   throw new Error("Dynamic weak spot candidate should reject crash-chasing downside moves");
 }
 if (!isFuturesPriceSignal({ market: "USDT 永续合约（动态强势池）", strategyId: "dynamic_relative_strength_breakout" })) {
@@ -303,8 +368,41 @@ const missingPriceKept = filterSignalsByCurrentPrice({
   maxDriftPct: 0.02,
   warnings: missingPriceWarnings
 });
-if (missingPriceKept.length !== 1 || missingPriceWarnings.length !== 1) {
-  throw new Error("Current price guard should keep signals when live price is unavailable and warn");
+if (missingPriceKept.length !== 0 || missingPriceWarnings.length !== 1) {
+  throw new Error("Current price guard should fail closed when live price is unavailable");
+}
+
+const crowdedChecks = [];
+const crowdedLongScore = scoreFuturesSentiment({
+  checks: crowdedChecks,
+  sentiment: { topPositions: { ratio: 3 } },
+  wantsLong: true,
+  wantsShort: false
+});
+if (crowdedLongScore !== -2 || !crowdedChecks.some((check) => check[1] === "风险")) {
+  throw new Error("Extreme same-direction top-trader crowding should be penalized before directional support");
+}
+
+const reviewedDynamicAlerts = Array.from({ length: 30 }, (_, index) => ({
+  strategy_id: index % 2 ? "dynamic_relative_strength_breakout" : "dynamic_relative_weakness_breakdown",
+  payload: { review: { status: "reviewed", returnPct: index % 3 ? -0.03 : 0.045 } }
+}));
+const haltedDynamicFamily = evaluateDynamicFamilyGate({ sentAlerts: reviewedDynamicAlerts });
+if (haltedDynamicFamily.passed || haltedDynamicFamily.state !== "HALTED" || haltedDynamicFamily.performance.trades !== 30) {
+  throw new Error("Dynamic family gate should halt a cost-negative reviewed strategy family");
+}
+const unprovenDynamicFamily = evaluateDynamicFamilyGate({ sentAlerts: reviewedDynamicAlerts.slice(0, 10) });
+if (unprovenDynamicFamily.passed || unprovenDynamicFamily.state !== "PAPER") {
+  throw new Error("Dynamic family gate should keep insufficient live samples in paper mode");
+}
+const provenDynamicFamily = evaluateDynamicFamilyGate({
+  sentAlerts: Array.from({ length: 30 }, () => ({
+    strategy_id: "dynamic_relative_strength_breakout",
+    payload: { review: { status: "reviewed", returnPct: 0.01 } }
+  }))
+});
+if (!provenDynamicFamily.passed || provenDynamicFamily.state !== "LIVE") {
+  throw new Error("Dynamic family gate should allow a statistically positive cost-adjusted family");
 }
 
 if (await hasProcessedScanCandle({ scanGroup: "dynamic-spot", asset: "BTCUSDT", interval: "1h", candleOpenTime: 1780000000000 })) {
@@ -536,6 +634,46 @@ const sentTimeReview = reviewAlertWithCandles({
 ], reviewNow);
 if (sentTimeReview.status !== "reviewed" || sentTimeReview.exitTime !== Date.UTC(2026, 5, 21, 10, 0) || sentTimeReview.returnPct <= 0) {
   throw new Error("Alert review should ignore candles that opened before the email was sent");
+}
+
+const exactBoundaryReview = reviewAlertWithCandles({
+  trigger_time: new Date(Date.UTC(2026, 5, 21, 8, 0)).toISOString(),
+  sent_at: new Date(Date.UTC(2026, 5, 21, 9, 0)).toISOString(),
+  interval: "1h",
+  payload: {
+    close: 100,
+    direction: "做多观察",
+    executionPlan: { entryReference: 100, stopLoss: 97, takeProfit: 105 }
+  }
+}, [
+  { openTime: Date.UTC(2026, 5, 21, 9, 0), open: 95, high: 99, low: 94, close: 96 }
+], Date.UTC(2026, 5, 21, 10, 1));
+if (exactBoundaryReview.outcome !== "止损" || exactBoundaryReview.exitPrice !== 95 || exactBoundaryReview.returnPct > -0.049) {
+  throw new Error("Alert review should include an exact-boundary candle and use a gap-aware stop fill");
+}
+
+const timeStopReview = reviewAlertWithCandles({
+  trigger_time: new Date(Date.UTC(2026, 5, 21, 8, 0)).toISOString(),
+  sent_at: new Date(Date.UTC(2026, 5, 21, 9, 0)).toISOString(),
+  interval: "1h",
+  payload: {
+    close: 100,
+    direction: "做多观察",
+    executionPlan: {
+      modelVersion: "trade_plan_v2",
+      entryReference: 100,
+      stopLoss: 97,
+      takeProfit: 105,
+      maxHoldingHours: 2,
+      modeledRoundTripCostPct: 0.0012
+    }
+  }
+}, [
+  { openTime: Date.UTC(2026, 5, 21, 9, 0), open: 100, high: 101, low: 99, close: 100.5 },
+  { openTime: Date.UTC(2026, 5, 21, 10, 0), open: 100.5, high: 102, low: 99.5, close: 101 }
+], Date.UTC(2026, 5, 21, 11, 1));
+if (timeStopReview.outcome !== "时间退出" || Math.abs(timeStopReview.returnPct - 0.0088) > 1e-9 || timeStopReview.netOfCosts !== true) {
+  throw new Error("Trade plan v2 review should time-exit and report net-of-cost return");
 }
 
 const arbitrageReview = reviewArbitrageAlert({

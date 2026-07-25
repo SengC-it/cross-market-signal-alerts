@@ -1,13 +1,20 @@
 import { sendEmail } from "../lib/email.js";
 import { CONFIG } from "../lib/config.js";
-import { fetchRecentRunLogs, fetchRecentSentAlerts, isSupabaseConfigured } from "../lib/storage.js";
+import {
+  fetchRecentPaperModelRuns,
+  fetchRecentRunLogs,
+  fetchRecentSentAlerts,
+  isSupabaseConfigured
+} from "../lib/storage.js";
+import { isAuthorizedRequest, setPrivateResponseHeaders } from "../lib/api-auth.js";
 
 export const config = {
   maxDuration: 60
 };
 
 export default async function handler(req, res) {
-  if (!isAuthorized(req)) {
+  setPrivateResponseHeaders(res);
+  if (!isAuthorizedRequest(req)) {
     res.status(401).json({ ok: false, error: "unauthorized" });
     return;
   }
@@ -40,6 +47,18 @@ export default async function handler(req, res) {
       count: rows.length,
       latestAlertAt: rows[0]?.sent_at || null,
       latestAsset: rows[0]?.asset || null
+    };
+  });
+
+  await runCheck(checks, "Supabase V3.1 PAPER", async () => {
+    const rows = await fetchRecentPaperModelRuns(2);
+    const latest = rows[0] || null;
+    return {
+      count: rows.length,
+      latestRebalanceAt: latest?.rebalance_time || null,
+      state: latest?.state || "not_started",
+      deploymentGatePassed: latest?.deployment_gate_passed ?? false,
+      capitalWeight: Number(latest?.capital_weight || 0)
     };
   });
 
@@ -163,13 +182,4 @@ function formatDate(value) {
     minute: "2-digit",
     second: "2-digit"
   }).format(value);
-}
-
-function isAuthorized(req) {
-  const secret = process.env.CRON_SECRET;
-  if (!secret) return true;
-
-  const auth = req.headers.authorization || "";
-  const querySecret = req.query?.secret;
-  return auth === `Bearer ${secret}` || querySecret === secret;
 }

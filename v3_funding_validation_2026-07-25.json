@@ -1,0 +1,607 @@
+{
+  "generatedAt": "2026-07-25T06:17:30.492Z",
+  "fingerprint": "1472565f5cd821662338764b9650b8d331acc0952a05ae61cfd7a084b39f5fd9",
+  "fundingCoverage": {
+    "symbols": 20,
+    "totalRecords": 76252,
+    "minimumRecords": 3463,
+    "maximumRecords": 3831,
+    "details": [
+      {
+        "symbol": "AAVEUSDT",
+        "records": 3831,
+        "start": "2023-01-01T00:00:00.000Z",
+        "end": "2026-06-30T16:00:00.005Z"
+      },
+      {
+        "symbol": "ADAUSDT",
+        "records": 3831,
+        "start": "2023-01-01T00:00:00.000Z",
+        "end": "2026-06-30T16:00:00.005Z"
+      },
+      {
+        "symbol": "APTUSDT",
+        "records": 3831,
+        "start": "2023-01-01T00:00:00.000Z",
+        "end": "2026-06-30T16:00:00.005Z"
+      },
+      {
+        "symbol": "AVAXUSDT",
+        "records": 3831,
+        "start": "2023-01-01T00:00:00.000Z",
+        "end": "2026-06-30T16:00:00.005Z"
+      },
+      {
+        "symbol": "BCHUSDT",
+        "records": 3831,
+        "start": "2023-01-01T00:00:00.000Z",
+        "end": "2026-06-30T16:00:00.005Z"
+      },
+      {
+        "symbol": "BNBUSDT",
+        "records": 3831,
+        "start": "2023-01-01T00:00:00.000Z",
+        "end": "2026-06-30T16:00:00.005Z"
+      },
+      {
+        "symbol": "BTCUSDT",
+        "records": 3831,
+        "start": "2023-01-01T00:00:00.000Z",
+        "end": "2026-06-30T16:00:00.005Z"
+      },
+      {
+        "symbol": "DOGEUSDT",
+        "records": 3831,
+        "start": "2023-01-01T00:00:00.000Z",
+        "end": "2026-06-30T16:00:00.005Z"
+      },
+      {
+        "symbol": "DOTUSDT",
+        "records": 3831,
+        "start": "2023-01-01T00:00:00.000Z",
+        "end": "2026-06-30T16:00:00.005Z"
+      },
+      {
+        "symbol": "ETHUSDT",
+        "records": 3831,
+        "start": "2023-01-01T00:00:00.000Z",
+        "end": "2026-06-30T16:00:00.005Z"
+      },
+      {
+        "symbol": "FILUSDT",
+        "records": 3831,
+        "start": "2023-01-01T00:00:00.000Z",
+        "end": "2026-06-30T16:00:00.005Z"
+      },
+      {
+        "symbol": "INJUSDT",
+        "records": 3831,
+        "start": "2023-01-01T00:00:00.000Z",
+        "end": "2026-06-30T16:00:00.005Z"
+      },
+      {
+        "symbol": "LINKUSDT",
+        "records": 3831,
+        "start": "2023-01-01T00:00:00.000Z",
+        "end": "2026-06-30T16:00:00.005Z"
+      },
+      {
+        "symbol": "LTCUSDT",
+        "records": 3831,
+        "start": "2023-01-01T00:00:00.000Z",
+        "end": "2026-06-30T16:00:00.005Z"
+      },
+      {
+        "symbol": "NEARUSDT",
+        "records": 3831,
+        "start": "2023-01-01T00:00:00.000Z",
+        "end": "2026-06-30T16:00:00.005Z"
+      },
+      {
+        "symbol": "SOLUSDT",
+        "records": 3831,
+        "start": "2023-01-01T00:00:00.000Z",
+        "end": "2026-06-30T16:00:00.005Z"
+      },
+      {
+        "symbol": "SUIUSDT",
+        "records": 3463,
+        "start": "2023-05-03T16:00:00.011Z",
+        "end": "2026-06-30T16:00:00.005Z"
+      },
+      {
+        "symbol": "TRXUSDT",
+        "records": 3831,
+        "start": "2023-01-01T00:00:00.000Z",
+        "end": "2026-06-30T16:00:00.005Z"
+      },
+      {
+        "symbol": "UNIUSDT",
+        "records": 3831,
+        "start": "2023-01-01T00:00:00.000Z",
+        "end": "2026-06-30T16:00:00.005Z"
+      },
+      {
+        "symbol": "XRPUSDT",
+        "records": 3831,
+        "start": "2023-01-01T00:00:00.000Z",
+        "end": "2026-06-30T16:00:00.005Z"
+      }
+    ]
+  },
+  "splits": {
+    "train": {
+      "cost1x": {
+        "observations": 99,
+        "totalReturn": 0.76174052,
+        "averageNetReturn": 0.00652184,
+        "lowerConfidenceBound95": -0.00131333,
+        "winRate": 0.56565657,
+        "profitFactor": 1.60127275,
+        "maxDrawdown": -0.22370077,
+        "positiveMonthRate": 0.7826087,
+        "marketPnlSum": 0.66547663,
+        "fundingPnlSum": 0.03398566,
+        "longMarketPnlSum": 1.04979495,
+        "shortMarketPnlSum": -0.38431832,
+        "longFundingPnlSum": -0.05000273,
+        "shortFundingPnlSum": 0.08398839,
+        "totalModeledCost": 0.0538,
+        "averageTurnover": 0.90572391,
+        "byMonth": {
+          "2023-02": -0.05891923,
+          "2023-03": -0.04310623,
+          "2023-04": 0.05586995,
+          "2023-05": 0.05055746,
+          "2023-06": 0.15730245,
+          "2023-07": -0.1760144,
+          "2023-08": -0.05669827,
+          "2023-09": 0.00046305,
+          "2023-10": 0.12666579,
+          "2023-11": 0.07719277,
+          "2023-12": 0.0299618,
+          "2024-01": 0.03545794,
+          "2024-02": 0.04776191,
+          "2024-03": -0.11438101,
+          "2024-04": 0.0096888,
+          "2024-05": 0.04572861,
+          "2024-06": 0.02236647,
+          "2024-07": 0.02140941,
+          "2024-08": 0.00664739,
+          "2024-09": 0.11035435,
+          "2024-10": 0.10038191,
+          "2024-11": 0.12673086,
+          "2024-12": 0.06791249
+        },
+        "topContributors": [
+          {
+            "symbol": "DOGEUSDT",
+            "value": 0.29559632
+          },
+          {
+            "symbol": "AVAXUSDT",
+            "value": 0.21403269
+          },
+          {
+            "symbol": "SOLUSDT",
+            "value": 0.16807859
+          },
+          {
+            "symbol": "UNIUSDT",
+            "value": -0.16078784
+          },
+          {
+            "symbol": "NEARUSDT",
+            "value": -0.14810629
+          },
+          {
+            "symbol": "BTCUSDT",
+            "value": 0.12962395
+          },
+          {
+            "symbol": "LINKUSDT",
+            "value": 0.10433345
+          },
+          {
+            "symbol": "BNBUSDT",
+            "value": -0.09406375
+          },
+          {
+            "symbol": "TRXUSDT",
+            "value": 0.08536999
+          },
+          {
+            "symbol": "LTCUSDT",
+            "value": -0.07544411
+          }
+        ]
+      },
+      "cost2x": {
+        "observations": 99,
+        "totalReturn": 0.67000103,
+        "averageNetReturn": 0.00597841,
+        "lowerConfidenceBound95": -0.00185355,
+        "winRate": 0.55555556,
+        "profitFactor": 1.53994845,
+        "maxDrawdown": -0.22864847,
+        "positiveMonthRate": 0.73913043,
+        "marketPnlSum": 0.66547663,
+        "fundingPnlSum": 0.03398566,
+        "longMarketPnlSum": 1.04979495,
+        "shortMarketPnlSum": -0.38431832,
+        "longFundingPnlSum": -0.05000273,
+        "shortFundingPnlSum": 0.08398839,
+        "totalModeledCost": 0.1076,
+        "averageTurnover": 0.90572391
+      },
+      "cost3x": {
+        "observations": 99,
+        "totalReturn": 0.58298343,
+        "averageNetReturn": 0.00543497,
+        "lowerConfidenceBound95": -0.00239408,
+        "winRate": 0.52525253,
+        "profitFactor": 1.48058529,
+        "maxDrawdown": -0.23487802,
+        "positiveMonthRate": 0.73913043,
+        "marketPnlSum": 0.66547663,
+        "fundingPnlSum": 0.03398566,
+        "longMarketPnlSum": 1.04979495,
+        "shortMarketPnlSum": -0.38431832,
+        "longFundingPnlSum": -0.05000273,
+        "shortFundingPnlSum": 0.08398839,
+        "totalModeledCost": 0.1614,
+        "averageTurnover": 0.90572391
+      },
+      "delay1hCost1x": {
+        "observations": 99,
+        "totalReturn": 0.71309352,
+        "averageNetReturn": 0.00623349,
+        "lowerConfidenceBound95": -0.00156004,
+        "winRate": 0.61616162,
+        "profitFactor": 1.56948296,
+        "maxDrawdown": -0.22806357,
+        "positiveMonthRate": 0.7826087,
+        "marketPnlSum": 0.63674567,
+        "fundingPnlSum": 0.03416976,
+        "longMarketPnlSum": 1.00083056,
+        "shortMarketPnlSum": -0.36408489,
+        "longFundingPnlSum": -0.04984495,
+        "shortFundingPnlSum": 0.08401472,
+        "totalModeledCost": 0.0538,
+        "averageTurnover": 0.90572391
+      },
+      "delay4hCost1x": {
+        "observations": 99,
+        "totalReturn": 0.83991863,
+        "averageNetReturn": 0.00693785,
+        "lowerConfidenceBound95": -0.0007614,
+        "winRate": 0.61616162,
+        "profitFactor": 1.67788479,
+        "maxDrawdown": -0.23096404,
+        "positiveMonthRate": 0.7826087,
+        "marketPnlSum": 0.70647781,
+        "fundingPnlSum": 0.03416976,
+        "longMarketPnlSum": 1.04155591,
+        "shortMarketPnlSum": -0.3350781,
+        "longFundingPnlSum": -0.04984495,
+        "shortFundingPnlSum": 0.08401472,
+        "totalModeledCost": 0.0538,
+        "averageTurnover": 0.90572391
+      },
+      "bootstrapCost2x": {
+        "iterations": 10000,
+        "blockLength": 4,
+        "probabilityPositive": 0.9167,
+        "p05": -0.09478229,
+        "median": 0.6813334,
+        "p95": 2.01907128
+      }
+    },
+    "validation": {
+      "cost1x": {
+        "observations": 52,
+        "totalReturn": 0.10970862,
+        "averageNetReturn": 0.00247737,
+        "lowerConfidenceBound95": -0.00587133,
+        "winRate": 0.61538462,
+        "profitFactor": 1.2447169,
+        "maxDrawdown": -0.11132813,
+        "positiveMonthRate": 0.58333333,
+        "marketPnlSum": 0.15073869,
+        "fundingPnlSum": 0.00728453,
+        "longMarketPnlSum": -0.14143265,
+        "shortMarketPnlSum": 0.29217134,
+        "longFundingPnlSum": -0.00517394,
+        "shortFundingPnlSum": 0.01245846,
+        "totalModeledCost": 0.0292,
+        "averageTurnover": 0.93589744,
+        "byMonth": {
+          "2025-01": 0.04184894,
+          "2025-02": -0.0536116,
+          "2025-03": -0.01909833,
+          "2025-04": 0.0842945,
+          "2025-05": -0.01755782,
+          "2025-06": 0.05221541,
+          "2025-07": -0.04760896,
+          "2025-08": 0.00235922,
+          "2025-09": 0.02526003,
+          "2025-10": 0.08515919,
+          "2025-11": 0.03240884,
+          "2025-12": -0.06646087
+        },
+        "topContributors": [
+          {
+            "symbol": "SUIUSDT",
+            "value": 0.12014558
+          },
+          {
+            "symbol": "ADAUSDT",
+            "value": -0.08354016
+          },
+          {
+            "symbol": "LINKUSDT",
+            "value": -0.07248776
+          },
+          {
+            "symbol": "BCHUSDT",
+            "value": -0.07031371
+          },
+          {
+            "symbol": "AVAXUSDT",
+            "value": 0.06745699
+          },
+          {
+            "symbol": "BNBUSDT",
+            "value": 0.04677865
+          },
+          {
+            "symbol": "ETHUSDT",
+            "value": 0.04425167
+          },
+          {
+            "symbol": "LTCUSDT",
+            "value": 0.04373536
+          },
+          {
+            "symbol": "SOLUSDT",
+            "value": -0.04193889
+          },
+          {
+            "symbol": "XRPUSDT",
+            "value": 0.04015956
+          }
+        ]
+      },
+      "cost2x": {
+        "observations": 52,
+        "totalReturn": 0.07787995,
+        "averageNetReturn": 0.00191583,
+        "lowerConfidenceBound95": -0.00642251,
+        "winRate": 0.61538462,
+        "profitFactor": 1.1855121,
+        "maxDrawdown": -0.11368345,
+        "positiveMonthRate": 0.58333333,
+        "marketPnlSum": 0.15073869,
+        "fundingPnlSum": 0.00728453,
+        "longMarketPnlSum": -0.14143265,
+        "shortMarketPnlSum": 0.29217134,
+        "longFundingPnlSum": -0.00517394,
+        "shortFundingPnlSum": 0.01245846,
+        "totalModeledCost": 0.0584,
+        "averageTurnover": 0.93589744
+      },
+      "cost3x": {
+        "observations": 52,
+        "totalReturn": 0.04694411,
+        "averageNetReturn": 0.00135429,
+        "lowerConfidenceBound95": -0.00697419,
+        "winRate": 0.59615385,
+        "profitFactor": 1.12842711,
+        "maxDrawdown": -0.11603415,
+        "positiveMonthRate": 0.5,
+        "marketPnlSum": 0.15073869,
+        "fundingPnlSum": 0.00728453,
+        "longMarketPnlSum": -0.14143265,
+        "shortMarketPnlSum": 0.29217134,
+        "longFundingPnlSum": -0.00517394,
+        "shortFundingPnlSum": 0.01245846,
+        "totalModeledCost": 0.0876,
+        "averageTurnover": 0.93589744
+      },
+      "delay1hCost1x": {
+        "observations": 52,
+        "totalReturn": 0.10937804,
+        "averageNetReturn": 0.00247228,
+        "lowerConfidenceBound95": -0.0058727,
+        "winRate": 0.61538462,
+        "profitFactor": 1.2442871,
+        "maxDrawdown": -0.11166909,
+        "positiveMonthRate": 0.58333333,
+        "marketPnlSum": 0.15067739,
+        "fundingPnlSum": 0.00708135,
+        "longMarketPnlSum": -0.13754975,
+        "shortMarketPnlSum": 0.28822715,
+        "longFundingPnlSum": -0.0052034,
+        "shortFundingPnlSum": 0.01228475,
+        "totalModeledCost": 0.0292,
+        "averageTurnover": 0.93589744
+      },
+      "delay4hCost1x": {
+        "observations": 52,
+        "totalReturn": 0.11932501,
+        "averageNetReturn": 0.00261962,
+        "lowerConfidenceBound95": -0.00550558,
+        "winRate": 0.61538462,
+        "profitFactor": 1.26750904,
+        "maxDrawdown": -0.11798981,
+        "positiveMonthRate": 0.58333333,
+        "marketPnlSum": 0.15833886,
+        "fundingPnlSum": 0.00708135,
+        "longMarketPnlSum": -0.14456963,
+        "shortMarketPnlSum": 0.3029085,
+        "longFundingPnlSum": -0.0052034,
+        "shortFundingPnlSum": 0.01228475,
+        "totalModeledCost": 0.0292,
+        "averageTurnover": 0.93589744
+      },
+      "bootstrapCost2x": {
+        "iterations": 10000,
+        "blockLength": 4,
+        "probabilityPositive": 0.6648,
+        "p05": -0.21183134,
+        "median": 0.08248346,
+        "p95": 0.43939627
+      }
+    },
+    "test": {
+      "cost1x": {
+        "observations": 25,
+        "totalReturn": -0.02036906,
+        "averageNetReturn": 0.00003026,
+        "lowerConfidenceBound95": -0.01677347,
+        "winRate": 0.44,
+        "profitFactor": 1.00216698,
+        "maxDrawdown": -0.13051408,
+        "positiveMonthRate": 0.33333333,
+        "marketPnlSum": 0.01078902,
+        "fundingPnlSum": 0.00436752,
+        "longMarketPnlSum": -0.207348,
+        "shortMarketPnlSum": 0.21813702,
+        "longFundingPnlSum": 0.01003387,
+        "shortFundingPnlSum": -0.00566636,
+        "totalModeledCost": 0.0144,
+        "averageTurnover": 0.96,
+        "byMonth": {
+          "2026-01": -0.06509658,
+          "2026-02": -0.03983071,
+          "2026-03": -0.03040008,
+          "2026-04": 0.00749085,
+          "2026-05": 0.26227963,
+          "2026-06": -0.11496861
+        },
+        "topContributors": [
+          {
+            "symbol": "BCHUSDT",
+            "value": 0.10880725
+          },
+          {
+            "symbol": "BNBUSDT",
+            "value": -0.07038763
+          },
+          {
+            "symbol": "NEARUSDT",
+            "value": 0.06500702
+          },
+          {
+            "symbol": "LTCUSDT",
+            "value": 0.05145133
+          },
+          {
+            "symbol": "DOGEUSDT",
+            "value": -0.04937784
+          },
+          {
+            "symbol": "ETHUSDT",
+            "value": 0.04760429
+          },
+          {
+            "symbol": "DOTUSDT",
+            "value": -0.04416828
+          },
+          {
+            "symbol": "LINKUSDT",
+            "value": 0.0365882
+          },
+          {
+            "symbol": "UNIUSDT",
+            "value": -0.02526613
+          },
+          {
+            "symbol": "SOLUSDT",
+            "value": -0.02483283
+          }
+        ]
+      },
+      "cost2x": {
+        "observations": 25,
+        "totalReturn": -0.03443339,
+        "averageNetReturn": -0.00054574,
+        "lowerConfidenceBound95": -0.01736248,
+        "winRate": 0.44,
+        "profitFactor": 0.96186021,
+        "maxDrawdown": -0.1392832,
+        "positiveMonthRate": 0.33333333,
+        "marketPnlSum": 0.01078902,
+        "fundingPnlSum": 0.00436752,
+        "longMarketPnlSum": -0.207348,
+        "shortMarketPnlSum": 0.21813702,
+        "longFundingPnlSum": 0.01003387,
+        "shortFundingPnlSum": -0.00566636,
+        "totalModeledCost": 0.0288,
+        "averageTurnover": 0.96
+      },
+      "cost3x": {
+        "observations": 25,
+        "totalReturn": -0.0483048,
+        "averageNetReturn": -0.00112174,
+        "lowerConfidenceBound95": -0.01795185,
+        "winRate": 0.44,
+        "profitFactor": 0.92344597,
+        "maxDrawdown": -0.1484572,
+        "positiveMonthRate": 0.33333333,
+        "marketPnlSum": 0.01078902,
+        "fundingPnlSum": 0.00436752,
+        "longMarketPnlSum": -0.207348,
+        "shortMarketPnlSum": 0.21813702,
+        "longFundingPnlSum": 0.01003387,
+        "shortFundingPnlSum": -0.00566636,
+        "totalModeledCost": 0.0432,
+        "averageTurnover": 0.96
+      },
+      "delay1hCost1x": {
+        "observations": 25,
+        "totalReturn": -0.02496338,
+        "averageNetReturn": -0.00019628,
+        "lowerConfidenceBound95": -0.01659273,
+        "winRate": 0.44,
+        "profitFactor": 0.98587776,
+        "maxDrawdown": -0.13544413,
+        "positiveMonthRate": 0.33333333,
+        "marketPnlSum": 0.00483717,
+        "fundingPnlSum": 0.00465584,
+        "longMarketPnlSum": -0.21896889,
+        "shortMarketPnlSum": 0.22380606,
+        "longFundingPnlSum": 0.01027408,
+        "shortFundingPnlSum": -0.00561823,
+        "totalModeledCost": 0.0144,
+        "averageTurnover": 0.96
+      },
+      "delay4hCost1x": {
+        "observations": 25,
+        "totalReturn": -0.02085011,
+        "averageNetReturn": -0.00014701,
+        "lowerConfidenceBound95": -0.01528663,
+        "winRate": 0.4,
+        "profitFactor": 0.98827814,
+        "maxDrawdown": -0.12922815,
+        "positiveMonthRate": 0.33333333,
+        "marketPnlSum": 0.00606883,
+        "fundingPnlSum": 0.00465584,
+        "longMarketPnlSum": -0.22731515,
+        "shortMarketPnlSum": 0.23338397,
+        "longFundingPnlSum": 0.01027408,
+        "shortFundingPnlSum": -0.00561823,
+        "totalModeledCost": 0.0144,
+        "averageTurnover": 0.96
+      },
+      "bootstrapCost2x": {
+        "iterations": 10000,
+        "blockLength": 4,
+        "probabilityPositive": 0.4265,
+        "p05": -0.34160466,
+        "median": -0.04261228,
+        "p95": 0.45289767
+      }
+    }
+  }
+}

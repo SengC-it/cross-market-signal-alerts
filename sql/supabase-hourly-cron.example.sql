@@ -1,5 +1,6 @@
 -- Primary cloud scheduler for Supabase.
--- Replace YOUR_CRON_SECRET once in the scheduler block before running this in Supabase SQL Editor.
+-- Before running this script, create a Supabase Vault secret named
+-- cross_market_cron_secret with the same value as Vercel CRON_SECRET.
 -- GitHub Actions is kept for manual dispatch only.
 
 create extension if not exists pg_cron with schema extensions;
@@ -10,6 +11,7 @@ from cron.job
 where jobname in (
   'cross_market_signal_hourly',
   'cross_market_signal_dynamic_30m',
+  'cross_market_signal_v3_paper_hourly',
   'cross_market_signal_short_hourly',
   'cross_market_signal_mid_4h',
   'cross_market_signal_review_4h',
@@ -19,10 +21,14 @@ where jobname in (
 do $scheduler$
 declare
   app_url text := 'https://cross-market-signal-alerts.vercel.app/api/cron';
-  cron_secret text := 'YOUR_CRON_SECRET';
 begin
-  if cron_secret = 'YOUR_CRON_SECRET' or length(cron_secret) < 16 then
-    raise exception 'Replace cron_secret with the Vercel CRON_SECRET before scheduling jobs';
+  if not exists (
+    select 1
+    from vault.decrypted_secrets
+    where name = 'cross_market_cron_secret'
+      and length(decrypted_secret) >= 16
+  ) then
+    raise exception 'Create a Vault secret named cross_market_cron_secret before scheduling jobs';
   end if;
 
   perform cron.schedule(
@@ -38,13 +44,42 @@ begin
         ),
         headers := jsonb_build_object(
           'Authorization',
-          %L
+          'Bearer ' || (
+            select decrypted_secret
+            from vault.decrypted_secrets
+            where name = 'cross_market_cron_secret'
+          )
         ),
         timeout_milliseconds := 60000
       );
       $job$,
-      app_url,
-      'Bearer ' || cron_secret
+      app_url
+    )
+  );
+
+  perform cron.schedule(
+    'cross_market_signal_v3_paper_hourly',
+    '15 * * * *',
+    format(
+      $job$
+      select net.http_get(
+        url := %L,
+        params := jsonb_build_object(
+          'group',
+          'v3-paper'
+        ),
+        headers := jsonb_build_object(
+          'Authorization',
+          'Bearer ' || (
+            select decrypted_secret
+            from vault.decrypted_secrets
+            where name = 'cross_market_cron_secret'
+          )
+        ),
+        timeout_milliseconds := 60000
+      );
+      $job$,
+      app_url
     )
   );
 
@@ -61,13 +96,16 @@ begin
         ),
         headers := jsonb_build_object(
           'Authorization',
-          %L
+          'Bearer ' || (
+            select decrypted_secret
+            from vault.decrypted_secrets
+            where name = 'cross_market_cron_secret'
+          )
         ),
         timeout_milliseconds := 60000
       );
       $job$,
-      app_url,
-      'Bearer ' || cron_secret
+      app_url
     )
   );
 end;

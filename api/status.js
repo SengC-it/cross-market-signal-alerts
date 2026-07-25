@@ -1,4 +1,10 @@
-import { fetchRecentRunLogs, fetchRecentSentAlerts, isSupabaseConfigured } from "../lib/storage.js";
+import {
+  fetchRecentPaperModelRuns,
+  fetchRecentRunLogs,
+  fetchRecentSentAlerts,
+  isSupabaseConfigured
+} from "../lib/storage.js";
+import { isAuthorizedRequest, setPrivateResponseHeaders } from "../lib/api-auth.js";
 
 const EXPECTED_GROUPS = [
   "dynamic-spot",
@@ -6,7 +12,8 @@ const EXPECTED_GROUPS = [
 ];
 
 export default async function handler(req, res) {
-  if (!isAuthorized(req)) {
+  setPrivateResponseHeaders(res);
+  if (!isAuthorizedRequest(req)) {
     res.status(401).json({ ok: false, error: "unauthorized" });
     return;
   }
@@ -23,15 +30,18 @@ export default async function handler(req, res) {
   try {
     const limit = clampLimit(req.query?.limit, 10, 100, 50);
     const alertLimit = clampLimit(req.query?.alertLimit, 5, 200, 100);
-    const [runLogsResult, sentAlertsResult] = await Promise.allSettled([
+    const paperLimit = clampLimit(req.query?.paperLimit, 1, 52, 12);
+    const [runLogsResult, sentAlertsResult, paperRunsResult] = await Promise.allSettled([
       fetchRecentRunLogs(limit),
-      fetchRecentSentAlerts(alertLimit)
+      fetchRecentSentAlerts(alertLimit),
+      fetchRecentPaperModelRuns(paperLimit)
     ]);
     const warnings = [];
     const runLogs = normalizeRunLogs(unwrapResult(runLogsResult, "run_logs", warnings));
     const sentAlerts = unwrapResult(sentAlertsResult, "sent_alerts", warnings);
+    const paperModelRuns = unwrapResult(paperRunsResult, "paper_model_runs", warnings);
 
-    if (runLogsResult.status === "rejected" && sentAlertsResult.status === "rejected") {
+    if ([runLogsResult, sentAlertsResult, paperRunsResult].every((result) => result.status === "rejected")) {
       throw new Error(warnings.map((warning) => `${warning.source}: ${warning.message}`).join("; "));
     }
 
@@ -39,9 +49,10 @@ export default async function handler(req, res) {
       ok: true,
       generatedAt: new Date().toISOString(),
       warnings,
-      summary: buildSummary(runLogs, sentAlerts),
+      summary: buildSummary(runLogs, sentAlerts, paperModelRuns),
       runLogs,
-      sentAlerts
+      sentAlerts,
+      paperModelRuns
     });
   } catch (error) {
     console.error(error);
@@ -77,7 +88,7 @@ function unwrapResult(result, source, warnings) {
   return [];
 }
 
-function buildSummary(runLogs, sentAlerts) {
+function buildSummary(runLogs, sentAlerts, paperModelRuns = []) {
   const sentAlertKeys = new Set(sentAlerts.map((alert) => alert.signal_key).filter(Boolean));
   const groups = new Map();
   for (const group of EXPECTED_GROUPS) {
@@ -111,6 +122,7 @@ function buildSummary(runLogs, sentAlerts) {
 
   const latestRun = runLogs[0] || null;
   const latestAlert = sentAlerts[0] || null;
+  const latestPaperRun = paperModelRuns[0] || null;
   const newestRunMs = latestRun?.created_at ? Date.now() - new Date(latestRun.created_at).getTime() : null;
 
   return {
@@ -125,6 +137,15 @@ function buildSummary(runLogs, sentAlerts) {
     latestAlertAt: latestAlert?.sent_at || null,
     totalRunsReturned: runLogs.length,
     totalAlertsReturned: sentAlerts.length,
+    paperModel: latestPaperRun ? {
+      modelId: latestPaperRun.model_id,
+      rebalanceTime: latestPaperRun.rebalance_time,
+      state: latestPaperRun.state,
+      deploymentGatePassed: latestPaperRun.deployment_gate_passed,
+      capitalWeight: Number(latestPaperRun.capital_weight),
+      predictedBeta: Number(latestPaperRun.predicted_beta),
+      targetCount: Array.isArray(latestPaperRun.targets) ? latestPaperRun.targets.length : 0
+    } : null,
     groups: [...groups.values()].sort((a, b) => String(a.group).localeCompare(String(b.group)))
   };
 }
@@ -167,13 +188,4 @@ function clampLimit(value, min, max, fallback) {
   const parsed = Number(value);
   if (!Number.isFinite(parsed)) return fallback;
   return Math.max(min, Math.min(max, Math.trunc(parsed)));
-}
-
-function isAuthorized(req) {
-  const secret = process.env.CRON_SECRET;
-  if (!secret) return true;
-
-  const auth = req.headers.authorization || "";
-  const querySecret = req.query?.secret;
-  return auth === `Bearer ${secret}` || querySecret === secret;
 }

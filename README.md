@@ -5,10 +5,11 @@ Cloud-ready signal scanner for crypto spot, USDT perpetual futures, and funding-
 ## What It Does
 
 - Runs from Supabase `pg_cron` and calls the deployed Vercel API.
-- Schedules only data-backed dynamic strength/weakness pools by default to keep cloud CPU usage low and avoid unproven alert families.
+- Keeps dynamic strength/weakness alerts behind a family-level reviewed-performance circuit breaker.
 - Scores each signal with historical performance, risk, current environment, and liquidity.
 - Sends a decision-card style email only for new medium/high confidence signals.
 - Stores sent signal keys in Supabase to avoid duplicate alerts.
+- Persists V3.1 residual-momentum portfolio targets for forward PAPER validation only.
 - Does not trade and does not access any brokerage/exchange account.
 
 ## Scan Coverage
@@ -17,8 +18,9 @@ Scheduled groups:
 
 - `dynamic-spot`: dynamically selected high-volume, high-momentum Binance spot symbols; scans every 30 minutes on `1h`.
 - `dynamic-weak-spot`: dynamically selected high-volume, high-downside Binance spot symbols for short observation; scans every 30 minutes on `1h`.
+- `v3-paper`: checks hourly for a new 168-hour V3.1 rebalance, then stores three long and three short beta-neutral PAPER targets. It never sends orders and its live capital weight is fixed at zero.
 
-Legacy group names such as `crypto-core-a`, `crypto-alt-a`, `futures-core`, `futures-arbitrage`, `inverse-watch-4h`, and `inverse-watch-daily` are still supported for manual testing, but they are no longer scheduled by default.
+Legacy group names remain available in scanner code for local research. The protected production cron endpoint allows only dynamic strength/weakness scans, review, and the isolated V3.1 PAPER group; unproven inverse-watch and legacy groups are rejected.
 
 Strategy families include trend-following, Donchian breakouts, moving-average crosses, RSI/Bollinger rebounds, defensive breakdown alerts, short-term momentum/pullback/breakdown signals, and futures-specific short-side observation signals.
 
@@ -29,7 +31,7 @@ ALERT_EMAIL_TO=sheng.chi@qq.com
 ALERT_EMAIL_FROM=Signal Alerts <alerts@your-domain.com>
 EMAIL_FROM_NAME=Crypto Signal Bot
 CRON_SECRET=choose-a-long-random-secret
-MAX_SIGNAL_CURRENT_PRICE_DRIFT_PCT=0.02
+MAX_SIGNAL_CURRENT_PRICE_DRIFT_PCT=0.003
 
 # Choose one email provider.
 # Recommended if you do not own a domain:
@@ -54,6 +56,7 @@ The tables are:
 
 - `sent_alerts`: de-duplicates sent signals.
 - `run_logs`: records each scan run, system errors, and recoverable market-data warnings.
+- `paper_model_runs`: stores immutable weekly V3.1 PAPER targets, model state, zero capital weight, and diagnostics.
 
 If your project was created before the warning/error split, run this once in Supabase SQL Editor:
 
@@ -68,18 +71,19 @@ alter table run_logs add column if not exists sent_alert_keys jsonb;
 Production scheduling is handled by [sql/supabase-hourly-cron.example.sql](sql/supabase-hourly-cron.example.sql) using Supabase `pg_cron` and `pg_net`. The scheduler uses this CPU-light cadence:
 
 - Every 30 minutes at minutes `0` and `30`: `dynamic-spot` and `dynamic-weak-spot`
+- Hourly at minute `15`: check whether V3.1 has a new weekly PAPER rebalance to persist
 - Every 4 hours at minute `0`: review recent sent alerts only; this does not scan the whole market
 
 Each scheduled job calls Vercel:
 
 ```text
-GET /api/cron?secret=YOUR_CRON_SECRET&group=GROUP_NAME
-GET /api/cron?secret=YOUR_CRON_SECRET&groups=GROUP_A,GROUP_B,GROUP_C
+GET /api/cron?group=GROUP_NAME
+Authorization: Bearer YOUR_CRON_SECRET
 ```
 
 Use `groups` for scheduled batches. The API scans each group, de-duplicates new signals, and sends one combined email with a subject that includes the signal count, top asset, direction, and highest recommendation score.
 
-Before running the scheduler SQL, replace the single `cron_secret` value with the same `CRON_SECRET` configured in Vercel. The SQL intentionally raises an error if the placeholder is left unchanged.
+Before running the scheduler SQL, create a Supabase Vault secret named `cross_market_cron_secret` with the same value as Vercel `CRON_SECRET`. The scheduled command resolves the secret from Vault at execution time instead of storing the plaintext value in `cron.job`.
 
 To verify scheduled jobs and recent HTTP results in Supabase SQL Editor:
 
@@ -109,12 +113,12 @@ Vercel Hobby cron is intentionally not used because the free plan only allows da
 
 Vercel hosts the API endpoints. Keep the same environment variables in Vercel as listed above.
 
-Manual test:
+Manual tests should send the secret in an `Authorization: Bearer ...` header, not in the URL:
 
 ```text
-GET /api/test-email?secret=YOUR_CRON_SECRET
-GET /api/cron?secret=YOUR_CRON_SECRET&quick=1
-GET /api/cron?secret=YOUR_CRON_SECRET&dryRun=1&group=inverse-watch-4h
+GET /api/test-email
+GET /api/cron?quick=1
+GET /api/cron?dryRun=1&group=v3-paper
 ```
 
 ## Inverse Signal Research

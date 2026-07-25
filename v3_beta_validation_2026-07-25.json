@@ -1,0 +1,52 @@
+{
+  "generatedAt": "2026-07-25T06:19:37.118Z",
+  "fingerprint": "1472565f5cd821662338764b9650b8d331acc0952a05ae61cfd7a084b39f5fd9",
+  "note": "OLS uses weekly price returns before funding and trading costs",
+  "splits": {
+    "train": {
+      "observations": 99,
+      "weeklyAlpha": 0.00551509,
+      "annualizedLinearAlpha": 0.28678452,
+      "alphaTStatistic": 1.3422919,
+      "btcBeta": 0.07189807,
+      "correlation": 0.12338764,
+      "rSquared": 0.01522451,
+      "averageBtcReturn": 0.01678625,
+      "averageStrategyRawReturn": 0.00672199,
+      "averageLongLegReturn": 0.01060399,
+      "averageShortLegReturn": -0.003882,
+      "sumLongLegReturn": 1.04979495,
+      "sumShortLegReturn": -0.38431832
+    },
+    "validation": {
+      "observations": 52,
+      "weeklyAlpha": 0.00281706,
+      "annualizedLinearAlpha": 0.14648737,
+      "alphaTStatistic": 0.73350369,
+      "btcBeta": -0.28631981,
+      "correlation": -0.45402487,
+      "rSquared": 0.20613858,
+      "averageBtcReturn": -0.00028554,
+      "averageStrategyRawReturn": 0.00289882,
+      "averageLongLegReturn": -0.00271986,
+      "averageShortLegReturn": 0.00561868,
+      "sumLongLegReturn": -0.14143265,
+      "sumShortLegReturn": 0.29217134
+    },
+    "test": {
+      "observations": 25,
+      "weeklyAlpha": -0.00349874,
+      "annualizedLinearAlpha": -0.18193455,
+      "alphaTStatistic": -0.44578811,
+      "btcBeta": -0.3201256,
+      "correlation": -0.47703735,
+      "rSquared": 0.22756463,
+      "averageBtcReturn": -0.01227738,
+      "averageStrategyRawReturn": 0.00043156,
+      "averageLongLegReturn": -0.00829392,
+      "averageShortLegReturn": 0.00872548,
+      "sumLongLegReturn": -0.207348,
+      "sumShortLegReturn": 0.21813702
+    }
+  }
+}

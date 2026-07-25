@@ -435,7 +435,7 @@
         alertCount: document.querySelector("#alertCount")
       };
 
-      const savedSecret = localStorage.getItem("signal-dashboard-secret");
+      const savedSecret = sessionStorage.getItem("signal-dashboard-secret");
       if (savedSecret) els.secret.value = savedSecret;
 
       els.form.addEventListener("submit", (event) => {
@@ -444,7 +444,7 @@
       });
 
       els.clear.addEventListener("click", () => {
-        localStorage.removeItem("signal-dashboard-secret");
+        sessionStorage.removeItem("signal-dashboard-secret");
         els.secret.value = "";
         setState("warn", "等待查询");
       });
@@ -457,11 +457,14 @@
           setState("bad", "需要密钥");
           return;
         }
-        localStorage.setItem("signal-dashboard-secret", secret);
+        sessionStorage.setItem("signal-dashboard-secret", secret);
         setState("warn", "查询中");
 
         try {
-          const response = await fetch(`/api/status?limit=80&alertLimit=120&secret=${encodeURIComponent(secret)}`);
+          const response = await fetch("/api/status?limit=80&alertLimit=120", {
+            headers: { Authorization: `Bearer ${secret}` },
+            cache: "no-store"
+          });
           const data = await response.json();
           if (!response.ok || !data.ok) throw new Error(data.message || data.error || `HTTP ${response.status}`);
           render(data);
