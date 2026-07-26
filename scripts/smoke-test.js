@@ -369,15 +369,27 @@ const v33EmailRun = {
 };
 const v33Email = renderV33PaperEmail(v33EmailRun);
 for (const required of [
-  "V3.3",
-  "SHADOW PAPER",
-  "组合灾难止损",
-  "回撤熔断",
-  "无固定止盈",
-  "不会自动下单"
+  "模拟交易提醒",
+  "看涨（价格上涨时受益）",
+  "看跌（价格下跌时受益）",
+  "模拟亏损达到 8.00%",
+  "最多观察 7 天",
+  "暂停建立新仓位 4 周",
+  "不是投资建议"
 ]) {
   if (!v33Email.subject.includes(required) && !v33Email.text.includes(required)) {
     throw new Error(`V3.3 email missing: ${required}`);
+  }
+}
+for (const jargon of [
+  "预测年化波动率",
+  "组合总敞口",
+  "残差分数",
+  "beta",
+  "部署门槛"
+]) {
+  if (v33Email.subject.includes(jargon) || v33Email.text.includes(jargon)) {
+    throw new Error(`V3.3 plain-language email still contains jargon: ${jargon}`);
   }
 }
 const v33Notifications = buildEmailNotifications([], [v33EmailRun]);
