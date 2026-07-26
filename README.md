@@ -33,6 +33,7 @@ ALERT_EMAIL_TO=sheng.chi@qq.com
 ALERT_EMAIL_FROM=Signal Alerts <alerts@your-domain.com>
 EMAIL_FROM_NAME=Crypto Signal Bot
 CRON_SECRET=choose-a-long-random-secret
+DASHBOARD_SECRET=choose-a-separate-query-password
 MAX_SIGNAL_CURRENT_PRICE_DRIFT_PCT=0.003
 
 # Choose one email provider.

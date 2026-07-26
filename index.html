@@ -330,7 +330,7 @@
           <p class="subtitle">查看每小时扫描、合约套利、策略触发、邮件发送、数据源警告和系统错误。</p>
         </div>
         <form class="controls" id="statusForm">
-          <input class="secret" id="secretInput" type="password" autocomplete="current-password" placeholder="输入 CRON_SECRET" />
+          <input class="secret" id="secretInput" type="password" autocomplete="current-password" placeholder="输入查询密码" />
           <button class="button" type="submit">查询</button>
           <button class="button secondary" id="clearButton" type="button">清除密钥</button>
         </form>
@@ -466,6 +466,7 @@
             cache: "no-store"
           });
           const data = await response.json();
+          if (response.status === 401) throw new Error("查询密码不正确或已更新");
           if (!response.ok || !data.ok) throw new Error(data.message || data.error || `HTTP ${response.status}`);
           render(data);
           setState("ok", "连接正常");

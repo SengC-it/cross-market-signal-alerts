@@ -4,7 +4,7 @@ import {
   fetchRecentSentAlerts,
   isSupabaseConfigured
 } from "../lib/storage.js";
-import { isAuthorizedRequest, setPrivateResponseHeaders } from "../lib/api-auth.js";
+import { isDashboardAuthorizedRequest, setPrivateResponseHeaders } from "../lib/api-auth.js";
 
 const EXPECTED_GROUPS = [
   "dynamic-spot",
@@ -13,7 +13,7 @@ const EXPECTED_GROUPS = [
 
 export default async function handler(req, res) {
   setPrivateResponseHeaders(res);
-  if (!isAuthorizedRequest(req)) {
+  if (!isDashboardAuthorizedRequest(req)) {
     res.status(401).json({ ok: false, error: "unauthorized" });
     return;
   }

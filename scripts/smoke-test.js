@@ -8,7 +8,7 @@ import { reviewAlertWithCandles, reviewArbitrageAlert } from "../lib/alert-revie
 import { evaluateDynamicFamilyGate, evaluateDynamicSpotOpportunity, filterSignalsByCurrentPrice, isDynamicSpotCandidate, isDynamicSpotCoolingDown, isDynamicWeakSpotCandidate, isFuturesPriceSignal, selectScanTargets, shouldReviewAlert, shouldReviewRecentAlerts } from "../lib/scanner.js";
 import { hasProcessedScanCandle, recordProcessedScanCandle } from "../lib/storage.js";
 import { compareStrategyInversion, CRYPTO_STRATEGIES, FUTURES_STRATEGIES, invertStrategyDirection, scoreFuturesSentiment, SHORT_TERM_STRATEGIES, STRATEGIES } from "../lib/strategies.js";
-import { isAuthorizedRequest } from "../lib/api-auth.js";
+import { isAuthorizedRequest, isDashboardAuthorizedRequest } from "../lib/api-auth.js";
 import { buildV31Portfolio, latestV31RebalanceTime, renderV31PaperEmail, reviewV31PaperRun, V31_MODEL } from "../lib/v3-paper.js";
 import {
   applyV33VolatilityTarget,
@@ -33,16 +33,33 @@ if (dashboardHtml.includes("localStorage") || dashboardHtml.includes("secret=${"
 }
 
 const previousCronSecret = process.env.CRON_SECRET;
+const previousDashboardSecret = process.env.DASHBOARD_SECRET;
 delete process.env.CRON_SECRET;
+delete process.env.DASHBOARD_SECRET;
 if (isAuthorizedRequest({ headers: {}, query: {} })) {
   throw new Error("Protected APIs should fail closed when CRON_SECRET is missing");
 }
-process.env.CRON_SECRET = "test-secret";
-if (!isAuthorizedRequest({ headers: { authorization: "Bearer test-secret" }, query: {} })) {
+if (isDashboardAuthorizedRequest({ headers: {}, query: {} })) {
+  throw new Error("Dashboard API should fail closed when both secrets are missing");
+}
+process.env.CRON_SECRET = "cron-secret";
+process.env.DASHBOARD_SECRET = "dashboard-secret";
+if (!isAuthorizedRequest({ headers: { authorization: "Bearer cron-secret" }, query: {} })) {
   throw new Error("Protected APIs should accept a matching Bearer secret");
+}
+if (isAuthorizedRequest({ headers: { authorization: "Bearer dashboard-secret" }, query: {} })) {
+  throw new Error("Dashboard password must not authorize cron or email actions");
+}
+if (!isDashboardAuthorizedRequest({ headers: { authorization: "Bearer dashboard-secret" }, query: {} })) {
+  throw new Error("Dashboard API should accept DASHBOARD_SECRET");
+}
+if (!isDashboardAuthorizedRequest({ headers: { authorization: "Bearer cron-secret" }, query: {} })) {
+  throw new Error("Dashboard API should preserve internal CRON_SECRET access");
 }
 if (previousCronSecret == null) delete process.env.CRON_SECRET;
 else process.env.CRON_SECRET = previousCronSecret;
+if (previousDashboardSecret == null) delete process.env.DASHBOARD_SECRET;
+else process.env.DASHBOARD_SECRET = previousDashboardSecret;
 if (packageJson.scripts?.["inverse-report"] !== "node scripts/inverse-signal-report.js") {
   throw new Error("package.json should expose npm run inverse-report");
 }
