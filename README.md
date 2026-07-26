@@ -10,6 +10,7 @@ Cloud-ready signal scanner for crypto spot, USDT perpetual futures, and funding-
 - Sends a decision-card style email only for new medium/high confidence signals.
 - Stores sent signal keys in Supabase to avoid duplicate alerts.
 - Persists V3.1 residual-momentum portfolio targets for forward PAPER validation only.
+- Runs V3.3 as a separate zero-capital SHADOW PAPER model with a 15% annualized volatility target, an 8% portfolio catastrophe stop, and a 10% drawdown/4-week breaker.
 - Does not trade and does not access any brokerage/exchange account.
 
 ## Scan Coverage
@@ -19,8 +20,9 @@ Scheduled groups:
 - `dynamic-spot`: dynamically selected high-volume, high-momentum Binance spot symbols; scans every 30 minutes on `1h`.
 - `dynamic-weak-spot`: dynamically selected high-volume, high-downside Binance spot symbols for short observation; scans every 30 minutes on `1h`.
 - `v3-paper`: checks hourly for a new 168-hour V3.1 rebalance, stores three long and three short beta-neutral PAPER targets, and sends one de-duplicated PAPER email for each new weekly portfolio. It never sends orders and its live capital weight is fixed at zero.
+- `v3-3-paper`: checks hourly at a separate offset, scales the same six-pair base portfolio from 0.25x to 1.25x using a 30-day volatility forecast, monitors the portfolio catastrophe stop at hourly closes, and records time/stop exits for review. Its failed research gate keeps it in SHADOW PAPER with zero live capital.
 
-Legacy group names remain available in scanner code for local research. The protected production cron endpoint allows only dynamic strength/weakness scans, review, and the isolated V3.1 PAPER group; unproven inverse-watch and legacy groups are rejected.
+Legacy group names remain available in scanner code for local research. The protected production cron endpoint allows only dynamic strength/weakness scans, review, and the isolated V3.1/V3.3 PAPER groups; unproven inverse-watch and legacy groups are rejected.
 
 Strategy families include trend-following, Donchian breakouts, moving-average crosses, RSI/Bollinger rebounds, defensive breakdown alerts, short-term momentum/pullback/breakdown signals, and futures-specific short-side observation signals.
 
@@ -56,7 +58,7 @@ The tables are:
 
 - `sent_alerts`: de-duplicates sent signals.
 - `run_logs`: records each scan run, system errors, and recoverable market-data warnings.
-- `paper_model_runs`: stores immutable weekly V3.1 PAPER targets, model state, zero capital weight, and diagnostics.
+- `paper_model_runs`: stores versioned V3.1/V3.3 PAPER targets, risk state, email delivery state, zero capital weight, diagnostics, and cost-adjusted reviews.
 
 If your project was created before the warning/error split, run this once in Supabase SQL Editor:
 
@@ -72,6 +74,7 @@ Production scheduling is handled by [sql/supabase-hourly-cron.example.sql](sql/s
 
 - Every 30 minutes at minutes `0` and `30`: `dynamic-spot` and `dynamic-weak-spot`
 - Hourly at minute `15`: check whether V3.1 has a new weekly PAPER rebalance to persist
+- Hourly at minute `35`: create or monitor the V3.3 SHADOW PAPER portfolio
 - Every 4 hours at minute `0`: review recent sent alerts only; this does not scan the whole market
 
 Each scheduled job calls Vercel:

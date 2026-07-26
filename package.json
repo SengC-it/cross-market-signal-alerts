@@ -6,6 +6,8 @@
   "scripts": {
     "test": "node scripts/smoke-test.js",
     "inverse-report": "node scripts/inverse-signal-report.js",
+    "v3.2-backtest": "node scripts/backtest-v3-2-exits.js",
+    "v3.3-backtest": "node scripts/backtest-v3-3-risk-controls.js",
     "dev": "vercel dev",
     "deploy": "vercel deploy --prod"
   },

@@ -10,6 +10,14 @@ import { hasProcessedScanCandle, recordProcessedScanCandle } from "../lib/storag
 import { compareStrategyInversion, CRYPTO_STRATEGIES, FUTURES_STRATEGIES, invertStrategyDirection, scoreFuturesSentiment, SHORT_TERM_STRATEGIES, STRATEGIES } from "../lib/strategies.js";
 import { isAuthorizedRequest } from "../lib/api-auth.js";
 import { buildV31Portfolio, latestV31RebalanceTime, renderV31PaperEmail, reviewV31PaperRun, V31_MODEL } from "../lib/v3-paper.js";
+import {
+  applyV33VolatilityTarget,
+  deriveV33BreakerState,
+  forecastV33PortfolioVolatility,
+  renderV33PaperEmail,
+  reviewV33PaperRun,
+  V33_MODEL
+} from "../lib/v3-3-paper.js";
 
 if (!STRATEGIES.length) {
   throw new Error("No strategies registered");
@@ -77,6 +85,9 @@ if (!schedulerSql.includes("dynamic-weak-spot")) {
 if (!schedulerSql.includes("'cross_market_signal_v3_paper_hourly'") || !schedulerSql.includes("'15 * * * *'") || !schedulerSql.includes("'v3-paper'")) {
   throw new Error("Scheduler should check the V3.1 PAPER rebalance once per hour");
 }
+if (!schedulerSql.includes("'cross_market_signal_v3_3_paper_hourly'") || !schedulerSql.includes("'35 * * * *'") || !schedulerSql.includes("'v3-3-paper'")) {
+  throw new Error("Scheduler should monitor V3.3 SHADOW PAPER once per hour");
+}
 for (const removedScheduledGroup of [
   "futures-scalp-a",
   "futures-scalp-b",
@@ -108,6 +119,15 @@ if (latestV31RebalanceTime(v31RebalanceTime + 37 * 60 * 60 * 1000) !== v31Rebala
 }
 if (V31_MODEL.state !== "PAPER" || V31_MODEL.deploymentGatePassed || V31_MODEL.capitalWeight !== 0) {
   throw new Error("V3.1 must remain PAPER with a zero live-capital weight");
+}
+if (
+  V33_MODEL.state !== "PAPER"
+  || V33_MODEL.deploymentGatePassed
+  || V33_MODEL.capitalWeight !== 0
+  || V33_MODEL.catastropheStop !== 0.08
+  || V33_MODEL.breakerDrawdown !== 0.1
+) {
+  throw new Error("V3.3 must remain zero-capital SHADOW PAPER with frozen risk limits");
 }
 
 const v31Series = new Map();
@@ -223,6 +243,151 @@ const reviewedPaperNotifications = buildEmailNotifications([], [{
 }]);
 if (reviewedPaperNotifications.some((item) => item.payload.review.status !== "reviewed" || !Number.isFinite(item.payload.review.returnPct))) {
   throw new Error("Each V3.1 trading-pair row should expose its own cost-adjusted review");
+}
+
+const v33Targets = [
+  {
+    symbol: "BTCUSDT",
+    side: "LONG",
+    targetWeight: 0.5,
+    beta: 1,
+    score: 1,
+    quoteVolume24h: 100_000_000,
+    referencePrice: 100
+  },
+  {
+    symbol: "ETHUSDT",
+    side: "SHORT",
+    targetWeight: -0.5,
+    beta: 1,
+    score: -1,
+    quoteVolume24h: 100_000_000,
+    referencePrice: 100
+  }
+];
+const v33VolatilitySeries = new Map();
+for (const [index, target] of v33Targets.entries()) {
+  const direction = index === 0 ? 1 : -1;
+  v33VolatilitySeries.set(target.symbol, Array.from(
+    { length: 3 },
+    (_, day) => ({
+      openTime: v31RebalanceTime - 60 * 60 * 1000 - (2 - day) * 24 * 60 * 60 * 1000,
+      close: 100 * (1 + direction * day * 0.01)
+    })
+  ));
+}
+const v33Forecast = forecastV33PortfolioVolatility({
+  targets: v33Targets,
+  hourlySeriesBySymbol: v33VolatilitySeries,
+  rebalanceTime: v31RebalanceTime,
+  lookbackDays: 2
+});
+const v33Scaled = applyV33VolatilityTarget({
+  portfolio: {
+    targets: v33Targets,
+    grossExposure: 1,
+    predictedBeta: 0,
+    eligibleSymbols: 2,
+    excluded: []
+  },
+  forecastAnnualVolatility: v33Forecast
+});
+if (
+  !(v33Forecast > 0)
+  || v33Scaled.grossExposure < V33_MODEL.minimumGrossExposure
+  || v33Scaled.grossExposure > V33_MODEL.maximumGrossExposure
+  || Math.abs(v33Scaled.targets.reduce((sum, target) => sum + target.targetWeight, 0)) > 1e-12
+) {
+  throw new Error("V3.3 should scale the beta-neutral portfolio inside the frozen volatility bounds");
+}
+
+const v33ExitTime = v31RebalanceTime + 60 * 60 * 1000;
+const v33Review = reviewV33PaperRun({
+  run: {
+    rebalance_time: new Date(v31RebalanceTime).toISOString(),
+    gross_exposure: 1,
+    targets: v33Targets
+  },
+  hourlyCandlesBySymbol: new Map([
+    ["BTCUSDT", [
+      { openTime: v31RebalanceTime, open: 100, close: 90 },
+      { openTime: v33ExitTime, open: 91, close: 91 }
+    ]],
+    ["ETHUSDT", [
+      { openTime: v31RebalanceTime, open: 100, close: 110 },
+      { openTime: v33ExitTime, open: 109, close: 109 }
+    ]]
+  ]),
+  fundingBySymbol: new Map([
+    ["BTCUSDT", []],
+    ["ETHUSDT", []]
+  ]),
+  now: v33ExitTime + 30 * 60 * 1000,
+  reviewedAt: v33ExitTime + 30 * 60 * 1000
+});
+if (
+  v33Review.status !== "reviewed"
+  || v33Review.exitReason !== "catastrophe_stop"
+  || new Date(v33Review.exitTime).getTime() !== v33ExitTime
+  || v33Review.returnPct >= -0.08
+  || v33Review.positions.length !== 2
+) {
+  throw new Error("V3.3 catastrophe stop should exit the full portfolio at the next hourly open");
+}
+
+const v33Breaker = deriveV33BreakerState([{
+  rebalance_time: new Date(v31RebalanceTime).toISOString(),
+  review: {
+    status: "reviewed",
+    breakerReturnPct: -0.11
+  }
+}]);
+if (v33Breaker.cooldownRemaining !== 4 || v33Breaker.currentDrawdown > -0.1) {
+  throw new Error("V3.3 drawdown breaker should start a four-week cash cooldown");
+}
+const v33EmailRun = {
+  model_id: V33_MODEL.id,
+  model_version: V33_MODEL.version,
+  rebalance_time: new Date(v31RebalanceTime).toISOString(),
+  state: "PAPER",
+  deployment_gate_passed: false,
+  capital_weight: 0,
+  predicted_beta: 0,
+  gross_exposure: 1,
+  eligible_symbols: 2,
+  targets: v33Targets,
+  risk_state: {
+    forecastAnnualVolatility: 0.12,
+    targetAnnualVolatility: 0.15,
+    catastropheStop: 0.08,
+    breakerDrawdown: 0.1,
+    breakerCooldownWeeks: 4
+  },
+  review: { status: "pending", reason: "等待监控" },
+  email_status: "sent",
+  email_sent_at: new Date(v31RebalanceTime + 2000).toISOString()
+};
+const v33Email = renderV33PaperEmail(v33EmailRun);
+for (const required of [
+  "V3.3",
+  "SHADOW PAPER",
+  "组合灾难止损",
+  "回撤熔断",
+  "无固定止盈",
+  "不会自动下单"
+]) {
+  if (!v33Email.subject.includes(required) && !v33Email.text.includes(required)) {
+    throw new Error(`V3.3 email missing: ${required}`);
+  }
+}
+const v33Notifications = buildEmailNotifications([], [v33EmailRun]);
+if (
+  v33Notifications.length !== 2
+  || v33Notifications.some((item) => item.model_version !== V33_MODEL.version)
+  || v33Notifications.some((item) => item.payload.executionPlan.catastropheStopPct !== 0.08)
+  || new Set(v33Notifications.map((item) => item.asset)).size !== 2
+) {
+  throw new Error("Email history should expose one versioned V3.3 row per trading pair");
 }
 if (!emailSource.includes('"Idempotency-Key": idempotencyKey') || !emailSource.includes("X-Signal-Idempotency-Key")) {
   throw new Error("Email providers should receive the deterministic V3.1 idempotency key");

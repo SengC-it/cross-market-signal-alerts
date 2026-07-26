@@ -141,6 +141,7 @@ function buildSummary(runLogs, sentAlerts, emailNotifications = [], paperModelRu
     totalAlertsReturned: emailNotifications.length,
     paperModel: latestPaperRun ? {
       modelId: latestPaperRun.model_id,
+      modelVersion: latestPaperRun.model_version || "V3.1 PAPER",
       rebalanceTime: latestPaperRun.rebalance_time,
       state: latestPaperRun.state,
       deploymentGatePassed: latestPaperRun.deployment_gate_passed,
@@ -164,6 +165,9 @@ export function buildEmailNotifications(sentAlerts = [], paperModelRuns = []) {
     .filter((run) => run.email_status === "sent" && run.email_sent_at)
     .flatMap((run) => {
       const targets = Array.isArray(run.targets) ? run.targets : [];
+      const modelVersion = run.model_version || "V3.1 PAPER";
+      const isV33 = modelVersion.startsWith("V3.3");
+      const riskState = run.risk_state || {};
       return targets.map((target) => ({
         signal_key: `paper:${run.model_id}:${run.rebalance_time}:${target.symbol}`,
         sent_at: run.email_sent_at,
@@ -172,13 +176,15 @@ export function buildEmailNotifications(sentAlerts = [], paperModelRuns = []) {
         interval: "168h",
         trigger_time: run.rebalance_time,
         recommendation_score: null,
-        model_version: "V3.1 PAPER",
+        model_version: modelVersion,
         payload: {
           kind: "v3_paper_portfolio",
           market: "USDT 永续合约组合",
-          strategyName: "残差动量 beta 中性",
-          modelVersion: "V3.1 PAPER",
-          alertTierLabel: "PAPER 验证",
+          strategyName: isV33
+            ? "组合波动率目标 + 灾难止损 + 回撤熔断"
+            : "残差动量 beta 中性",
+          modelVersion,
+          alertTierLabel: isV33 ? "SHADOW PAPER 验证" : "PAPER 验证",
           executionPlan: {
             kind: "v3_paper_position",
             side: target.side,
@@ -187,16 +193,25 @@ export function buildEmailNotifications(sentAlerts = [], paperModelRuns = []) {
             beta: Number(target.beta),
             score: Number(target.score),
             grossExposure: Number(run.gross_exposure),
-            predictedBeta: Number(run.predicted_beta)
+            predictedBeta: Number(run.predicted_beta),
+            catastropheStopPct: numberOrNull(riskState.catastropheStop),
+            maxHoldingHours: isV33 ? 168 : null,
+            takeProfit: null
           },
           scoringBreakdown: {
             kind: "v3_paper_position",
             eligibleSymbols: Number(run.eligible_symbols),
             beta: Number(target.beta),
             score: Number(target.score),
-            quoteVolume24h: Number(target.quoteVolume24h)
+            quoteVolume24h: Number(target.quoteVolume24h),
+            forecastAnnualVolatility: numberOrNull(
+              riskState.forecastAnnualVolatility
+            ),
+            targetAnnualVolatility: numberOrNull(
+              riskState.targetAnnualVolatility
+            )
           },
-          review: buildPaperTargetReview(run.review, target)
+          review: buildPaperTargetReview(run.review, target, modelVersion)
         }
       }));
     });
@@ -205,7 +220,7 @@ export function buildEmailNotifications(sentAlerts = [], paperModelRuns = []) {
     .sort((a, b) => new Date(b.sent_at).getTime() - new Date(a.sent_at).getTime());
 }
 
-function buildPaperTargetReview(review, target) {
+function buildPaperTargetReview(review, target, modelVersion) {
   if (review?.status !== "reviewed") {
     return review || {
       status: "pending",
@@ -221,8 +236,9 @@ function buildPaperTargetReview(review, target) {
   return {
     status: "reviewed",
     outcome: position.outcome || "已复盘",
-    modelVersion: review.modelVersion || "V3.1 PAPER",
+    modelVersion: review.modelVersion || modelVersion || "V3.1 PAPER",
     method: review.method,
+    exitReason: review.exitReason,
     holdingHours: review.holdingHours,
     entryTime: review.entryTime,
     exitTime: review.exitTime,
@@ -236,6 +252,11 @@ function buildPaperTargetReview(review, target) {
     netOfCosts: true,
     portfolioReturnPct: review.returnPct
   };
+}
+
+function numberOrNull(value) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
 }
 
 function inferLegacyModelVersion(alert) {

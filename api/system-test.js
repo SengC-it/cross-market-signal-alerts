@@ -50,11 +50,12 @@ export default async function handler(req, res) {
     };
   });
 
-  await runCheck(checks, "Supabase V3.1 PAPER", async () => {
-    const rows = await fetchRecentPaperModelRuns(2);
+  await runCheck(checks, "Supabase PAPER 模型", async () => {
+    const rows = await fetchRecentPaperModelRuns(4);
     const latest = rows[0] || null;
     return {
       count: rows.length,
+      modelVersion: latest?.model_version || "not_started",
       latestRebalanceAt: latest?.rebalance_time || null,
       state: latest?.state || "not_started",
       deploymentGatePassed: latest?.deployment_gate_passed ?? false,

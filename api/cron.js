@@ -1,6 +1,7 @@
 import { runSignalBatch, runSignalScan } from "../lib/scanner.js";
 import { isAuthorizedRequest, setPrivateResponseHeaders } from "../lib/api-auth.js";
 import { runV31PaperScan } from "../lib/v3-paper.js";
+import { runV33PaperScan } from "../lib/v3-3-paper.js";
 
 export const config = {
   maxDuration: 60
@@ -10,7 +11,8 @@ const ENABLED_CRON_GROUPS = new Set([
   "dynamic-spot",
   "dynamic-weak-spot",
   "review",
-  "v3-paper"
+  "v3-paper",
+  "v3-3-paper"
 ]);
 
 export default async function handler(req, res) {
@@ -45,16 +47,25 @@ export default async function handler(req, res) {
       return;
     }
 
-    if (groups.includes("v3-paper") && groups.length > 1) {
+    const paperGroups = groups.filter((group) =>
+      group === "v3-paper" || group === "v3-3-paper"
+    );
+    if (paperGroups.length && groups.length > 1) {
       res.status(400).json({
         ok: false,
-        error: "v3_paper_must_run_as_a_dedicated_group"
+        error: "paper_model_must_run_as_a_dedicated_group"
       });
       return;
     }
 
     if (groups[0] === "v3-paper") {
       const result = await runV31PaperScan({ dryRun: req.query?.dryRun === "1" });
+      res.status(200).json({ ok: true, skippedGroups, ...result });
+      return;
+    }
+
+    if (groups[0] === "v3-3-paper") {
+      const result = await runV33PaperScan({ dryRun: req.query?.dryRun === "1" });
       res.status(200).json({ ok: true, skippedGroups, ...result });
       return;
     }

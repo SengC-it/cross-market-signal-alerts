@@ -12,6 +12,7 @@ where jobname in (
   'cross_market_signal_hourly',
   'cross_market_signal_dynamic_30m',
   'cross_market_signal_v3_paper_hourly',
+  'cross_market_signal_v3_3_paper_hourly',
   'cross_market_signal_short_hourly',
   'cross_market_signal_mid_4h',
   'cross_market_signal_review_4h',
@@ -67,6 +68,32 @@ begin
         params := jsonb_build_object(
           'group',
           'v3-paper'
+        ),
+        headers := jsonb_build_object(
+          'Authorization',
+          'Bearer ' || (
+            select decrypted_secret
+            from vault.decrypted_secrets
+            where name = 'cross_market_cron_secret'
+          )
+        ),
+        timeout_milliseconds := 60000
+      );
+      $job$,
+      app_url
+    )
+  );
+
+  perform cron.schedule(
+    'cross_market_signal_v3_3_paper_hourly',
+    '35 * * * *',
+    format(
+      $job$
+      select net.http_get(
+        url := %L,
+        params := jsonb_build_object(
+          'group',
+          'v3-3-paper'
         ),
         headers := jsonb_build_object(
           'Authorization',
