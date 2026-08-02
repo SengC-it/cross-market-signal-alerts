@@ -388,6 +388,9 @@
         "crypto-alt-c": "山寨币 C",
         "futures-core": "合约趋势",
         "futures-arbitrage": "合约套利",
+        "v3-paper": "V3.1 静默基准",
+        "v3-3-paper": "V3.3 过渡复盘",
+        "v3-4-paper": "V3.4 统一策略",
       };
 
       Object.assign(GROUP_LABELS, {
@@ -721,6 +724,34 @@
           return `${outcome}${value}${exitReason}${price}`;
         }
         if (review?.status === "pending") {
+          const hasPositionReturn = review.returnPct != null
+            && Number.isFinite(Number(review.returnPct));
+          const hasPortfolioReturn = review.portfolioReturnPct != null
+            && Number.isFinite(Number(review.portfolioReturnPct));
+          const hasLatestPortfolioReturn = review.latestMarkedReturn != null
+            && Number.isFinite(Number(review.latestMarkedReturn));
+          if (hasPositionReturn) {
+            const outcome = review.outcome || (Number(review.returnPct) >= 0 ? "持仓中盈利" : "持仓中亏损");
+            const portfolio = hasPortfolioReturn
+              ? ` / 组合 ${pct(review.portfolioReturnPct)}`
+              : "";
+            const markPrice = review.markPrice != null && Number.isFinite(Number(review.markPrice))
+              ? ` / 标记价 ${formatNumber(review.markPrice)}`
+              : "";
+            const markTime = review.markTime ? ` / 更新 ${formatDate(review.markTime)}` : "";
+            const expectedExit = review.expectedExitTime
+              ? ` / 预计结束 ${formatDate(review.expectedExitTime)}`
+              : "";
+            return `${outcome} ${pct(review.returnPct)}${portfolio}${markPrice}${markTime}${expectedExit} / 未最终：${review.reason || "持仓监控中"}`;
+          }
+          if (hasLatestPortfolioReturn) {
+            const outcome = Number(review.latestMarkedReturn) >= 0 ? "组合浮动盈利" : "组合浮动亏损";
+            const markTime = review.latestMarkTime ? ` / 更新 ${formatDate(review.latestMarkTime)}` : "";
+            const expectedExit = review.expectedExitTime
+              ? ` / 预计结束 ${formatDate(review.expectedExitTime)}`
+              : "";
+            return `${outcome} ${pct(review.latestMarkedReturn)}${markTime}${expectedExit} / 未最终：${review.reason || "持仓监控中"}`;
+          }
           return review.reason || "待复盘";
         }
         return "待复盘";
@@ -744,6 +775,10 @@
         if (!plan) return "--";
         if (plan.kind === "v3_paper_position") {
           const side = plan.side === "LONG" ? "做多" : "做空";
+          const baseWeight = plan.baseTargetWeight != null
+            && Number.isFinite(Number(plan.baseTargetWeight))
+            ? `基础 ${pct(Math.abs(Number(plan.baseTargetWeight)))} → `
+            : "";
           const risk = plan.catastropheStopPct != null
             && Number.isFinite(Number(plan.catastropheStopPct))
             ? ` / 组合灾难止损 -${pct(plan.catastropheStopPct)}`
@@ -752,7 +787,7 @@
             && Number.isFinite(Number(plan.maxHoldingHours))
             ? ` / 最长 ${plan.maxHoldingHours}h / 无固定止盈`
             : "";
-          return `${side} / 权重 ${pct(Math.abs(Number(plan.targetWeight || 0)))} / 参考价 ${formatNumber(plan.referencePrice)}${risk}${holding}`;
+          return `${side} / ${baseWeight}权重 ${pct(Math.abs(Number(plan.targetWeight || 0)))} / 参考价 ${formatNumber(plan.referencePrice)}${risk}${holding}`;
         }
         return [
           `止损 ${formatNumber(plan.stopLoss)}`,

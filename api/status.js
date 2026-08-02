@@ -5,6 +5,7 @@ import {
   isSupabaseConfigured
 } from "../lib/storage.js";
 import { isDashboardAuthorizedRequest, setPrivateResponseHeaders } from "../lib/api-auth.js";
+import { FUNDING_CARRY_V2_MODEL, FUNDING_CARRY_V2_MODEL_METADATA } from "../lib/funding-carry-v2-paper.js";
 
 const EXPECTED_GROUPS = [
   "dynamic-spot",
@@ -37,9 +38,9 @@ export default async function handler(req, res) {
       fetchRecentPaperModelRuns(paperLimit)
     ]);
     const warnings = [];
-    const runLogs = normalizeRunLogs(unwrapResult(runLogsResult, "run_logs", warnings));
-    const sentAlerts = unwrapResult(sentAlertsResult, "sent_alerts", warnings);
-    const paperModelRuns = unwrapResult(paperRunsResult, "paper_model_runs", warnings);
+    const runLogs = normalizeRunLogs(unwrapResult(runLogsResult, "cr_run_logs", warnings));
+    const sentAlerts = unwrapResult(sentAlertsResult, "cr_sent_alerts", warnings);
+    const paperModelRuns = unwrapResult(paperRunsResult, "cr_paper_model_runs", warnings);
     const emailNotifications = buildEmailNotifications(sentAlerts, paperModelRuns);
 
     if ([runLogsResult, sentAlertsResult, paperRunsResult].every((result) => result.status === "rejected")) {
@@ -54,6 +55,18 @@ export default async function handler(req, res) {
       runLogs,
       sentAlerts,
       paperModelRuns,
+      fundingCarryV2: {
+        modelId: FUNDING_CARRY_V2_MODEL.id,
+        modelVersion: FUNDING_CARRY_V2_MODEL.version,
+        modelFingerprint: FUNDING_CARRY_V2_MODEL_METADATA.fingerprint,
+        codeCommit: FUNDING_CARRY_V2_MODEL_METADATA.codeCommit,
+        state: FUNDING_CARRY_V2_MODEL.state,
+        researchGatePassed: FUNDING_CARRY_V2_MODEL.researchGatePassed,
+        deploymentGatePassed: FUNDING_CARRY_V2_MODEL.deploymentGatePassed,
+        capitalWeight: FUNDING_CARRY_V2_MODEL.capitalWeight,
+        universeSize: FUNDING_CARRY_V2_MODEL.universe.length,
+        paperRunCount: paperModelRuns.filter((run) => run.model_id === FUNDING_CARRY_V2_MODEL.id).length
+      },
       emailNotifications
     });
   } catch (error) {
@@ -142,9 +155,12 @@ function buildSummary(runLogs, sentAlerts, emailNotifications = [], paperModelRu
     paperModel: latestPaperRun ? {
       modelId: latestPaperRun.model_id,
       modelVersion: latestPaperRun.model_version || "V3.1 PAPER",
+      modelFingerprint: latestPaperRun.model_fingerprint || null,
+      codeCommit: latestPaperRun.code_commit || null,
       rebalanceTime: latestPaperRun.rebalance_time,
       state: latestPaperRun.state,
       deploymentGatePassed: latestPaperRun.deployment_gate_passed,
+      historicalGateVersion: latestPaperRun.diagnostics?.historicalGateVersion || null,
       capitalWeight: Number(latestPaperRun.capital_weight),
       predictedBeta: Number(latestPaperRun.predicted_beta),
       emailStatus: latestPaperRun.email_status,
@@ -157,49 +173,86 @@ function buildSummary(runLogs, sentAlerts, emailNotifications = [], paperModelRu
 }
 
 export function buildEmailNotifications(sentAlerts = [], paperModelRuns = []) {
-  const legacyNotifications = sentAlerts.map((alert) => ({
-    ...alert,
-    model_version: inferLegacyModelVersion(alert)
-  }));
+  const legacyNotifications = sentAlerts
+    .filter((alert) => !isSuppressedPaperSignal(alert))
+    .map((alert) => ({
+      ...alert,
+      model_version: inferLegacyModelVersion(alert)
+    }));
   const paperNotifications = paperModelRuns
     .filter((run) => run.email_status === "sent" && run.email_sent_at)
     .flatMap((run) => {
       const targets = Array.isArray(run.targets) ? run.targets : [];
       const modelVersion = run.model_version || "V3.1 PAPER";
       const isV33 = modelVersion.startsWith("V3.3");
+      const isV34 = modelVersion.startsWith("V3.4");
+      const isFundingCarry = modelVersion.startsWith("FUNDING CARRY");
+      const isFundingCarryV2 = modelVersion.startsWith("FUNDING CARRY PERP Z-SCORE V2");
+      const isRiskManaged = isV33 || isV34;
       const riskState = run.risk_state || {};
       return targets.map((target) => ({
         signal_key: `paper:${run.model_id}:${run.rebalance_time}:${target.symbol}`,
         sent_at: run.email_sent_at,
         asset: target.symbol,
         strategy_id: run.model_id,
-        interval: "168h",
+        interval: isFundingCarry ? "8h funding" : "168h",
         trigger_time: run.rebalance_time,
         recommendation_score: null,
         model_version: modelVersion,
+        model_fingerprint: run.model_fingerprint || null,
+        code_commit: run.code_commit || null,
         payload: {
-          kind: "v3_paper_portfolio",
-          market: "USDT 永续合约组合",
-          strategyName: isV33
-            ? "组合波动率目标 + 灾难止损 + 回撤熔断"
-            : "残差动量 beta 中性",
+          kind: isFundingCarry ? "funding_carry_paper_position" : "v3_paper_portfolio",
+          market: isFundingCarry ? "USDT Perpetual Funding Carry" : "USDT 永续合约组合",
+          strategyName: isFundingCarry
+            ? isFundingCarryV2
+              ? "Funding Carry V2 perpetual z-score/trend/volatility PAPER"
+              : "Funding Carry perpetual trend-filter PAPER"
+            : isV34
+            ? "残差动量 beta 中性 + 波动率目标 + 灾难止损 + 回撤熔断"
+            : isV33
+              ? "组合波动率目标 + 灾难止损 + 回撤熔断"
+              : "残差动量 beta 中性",
           modelVersion,
-          alertTierLabel: isV33 ? "SHADOW PAPER 验证" : "PAPER 验证",
+          historicalGateVersion: run.diagnostics?.historicalGateVersion || null,
+          modelFingerprint: run.model_fingerprint || null,
+          codeCommit: run.code_commit || null,
+          alertTierLabel: isFundingCarry
+            ? isFundingCarryV2 ? "PAPER / 不执行交易" : "PAPER no execution"
+            : isV34
+            ? "UNIFIED PAPER 验证"
+            : isV33 ? "SHADOW PAPER 验证" : "PAPER 验证",
           executionPlan: {
-            kind: "v3_paper_position",
+            kind: isFundingCarry ? "funding_carry_paper_position" : "v3_paper_position",
             side: target.side,
             targetWeight: Number(target.targetWeight),
+            baseTargetWeight: numberOrNull(target.baseTargetWeight),
             referencePrice: Number(target.referencePrice),
+            stopLoss: numberOrNull(target.stopLoss),
+            fundingRate: numberOrNull(target.fundingRate),
+            signedZ: numberOrNull(target.signedZ),
+            zScore: numberOrNull(target.zScore),
+            zWindow: numberOrNull(target.zWindow),
+            minAbsFunding: numberOrNull(target.minAbsFunding),
+            exitSignedZ: numberOrNull(target.exitSignedZ),
+            volatility: target.volatility || null,
+            nextFundingTime: target.nextFundingTime || null,
+            trendRules: target.trendRules || [],
             beta: Number(target.beta),
             score: Number(target.score),
             grossExposure: Number(run.gross_exposure),
             predictedBeta: Number(run.predicted_beta),
+            currentRisk: numberOrNull(riskState.currentRisk ?? riskState.aggregateRisk),
+            maxAggregateRisk: numberOrNull(riskState.maxAggregateRisk),
+            openPositionCount: numberOrNull(riskState.openPositionCount),
             catastropheStopPct: numberOrNull(riskState.catastropheStop),
-            maxHoldingHours: isV33 ? 168 : null,
+            maxHoldingHours: isFundingCarry
+              ? Number(target.maxHoldingHours || 48)
+              : isRiskManaged ? 168 : null,
             takeProfit: null
           },
           scoringBreakdown: {
-            kind: "v3_paper_position",
+            kind: isFundingCarry ? "funding_carry_paper_position" : "v3_paper_position",
             eligibleSymbols: Number(run.eligible_symbols),
             beta: Number(target.beta),
             score: Number(target.score),
@@ -220,17 +273,44 @@ export function buildEmailNotifications(sentAlerts = [], paperModelRuns = []) {
     .sort((a, b) => new Date(b.sent_at).getTime() - new Date(a.sent_at).getTime());
 }
 
+function isSuppressedPaperSignal(alert) {
+  return alert?.payload?.delivery?.mode === "PAPER"
+    && alert?.payload?.delivery?.emailSuppressed === true;
+}
+
 function buildPaperTargetReview(review, target, modelVersion) {
+  const position = Array.isArray(review?.positions)
+    ? review.positions.find((item) => item.symbol === target.symbol)
+    : null;
   if (review?.status !== "reviewed") {
-    return review || {
+    if (!review) {
+      return {
+        status: "pending",
+        reason: "持仓周期未结束"
+      };
+    }
+    if (!position) return review;
+    return {
       status: "pending",
-      reason: "持仓周期未结束"
+      reason: review.reason,
+      outcome: position.outcome || review.outcome || "持仓中",
+      modelVersion: review.modelVersion || modelVersion || "V3.1 PAPER",
+      method: review.method,
+      holdingHours: review.holdingHours,
+      entryTime: review.entryTime,
+      markTime: review.markTime || review.latestMarkTime,
+      expectedExitTime: review.expectedExitTime,
+      entryPrice: position.entryPrice,
+      markPrice: position.markPrice,
+      priceReturn: position.directionalPriceReturn,
+      fundingReturn: position.fundingReturn,
+      tradingCost: position.tradingCost,
+      returnPct: position.returnPct,
+      netOfCosts: review.netOfCosts === true,
+      portfolioReturnPct: review.returnPct ?? review.latestMarkedReturn
     };
   }
 
-  const position = Array.isArray(review.positions)
-    ? review.positions.find((item) => item.symbol === target.symbol)
-    : null;
   if (!position) return review;
 
   return {
@@ -260,7 +340,9 @@ function numberOrNull(value) {
 }
 
 function inferLegacyModelVersion(alert) {
-  const explicit = alert?.payload?.modelVersion
+  const explicit = alert?.model_version
+    || alert?.payload?.modelVersion
+    || alert?.payload?.modelMetadata?.modelVersion
     || alert?.payload?.executionPlan?.modelVersion
     || alert?.payload?.review?.modelVersion;
   if (explicit === "trade_plan_v2") return "交易计划 V2";

@@ -9,8 +9,8 @@ Cloud-ready signal scanner for crypto spot, USDT perpetual futures, and funding-
 - Scores each signal with historical performance, risk, current environment, and liquidity.
 - Sends a decision-card style email only for new medium/high confidence signals.
 - Stores sent signal keys in Supabase to avoid duplicate alerts.
-- Persists V3.1 residual-momentum portfolio targets for forward PAPER validation only.
-- Runs V3.3 as a separate zero-capital SHADOW PAPER model with a 15% annualized volatility target, an 8% portfolio catastrophe stop, and a 10% drawdown/4-week breaker.
+- Persists V3.1 residual-momentum portfolios as a silent forward PAPER benchmark.
+- Sends one V3.4 UNIFIED PAPER portfolio that combines the V3.1 residual-momentum/beta-neutral signal with the frozen V3.3 volatility target, 8% portfolio catastrophe stop, and 10% drawdown/4-week performance gate.
 - Does not trade and does not access any brokerage/exchange account.
 
 ## Scan Coverage
@@ -19,10 +19,12 @@ Scheduled groups:
 
 - `dynamic-spot`: dynamically selected high-volume, high-momentum Binance spot symbols; scans every 30 minutes on `1h`.
 - `dynamic-weak-spot`: dynamically selected high-volume, high-downside Binance spot symbols for short observation; scans every 30 minutes on `1h`.
-- `v3-paper`: checks hourly for a new 168-hour V3.1 rebalance, stores three long and three short beta-neutral PAPER targets, and sends one de-duplicated PAPER email for each new weekly portfolio. It never sends orders and its live capital weight is fixed at zero.
-- `v3-3-paper`: checks hourly at a separate offset, scales the same six-pair base portfolio from 0.25x to 1.25x using a 30-day volatility forecast, monitors the portfolio catastrophe stop at hourly closes, and records time/stop exits for review. Its failed research gate keeps it in SHADOW PAPER with zero live capital.
+- `v3-paper`: maintains the three-long/three-short V3.1 benchmark and its reviews without sending duplicate emails.
+- `v3-4-paper`: becomes active at the 2026-08-06 weekly boundary, scales the V3.1 base portfolio from 0.25x to 1.25x using a 30-day volatility forecast, monitors the portfolio catastrophe stop hourly, and sends the single unified PAPER email. Before activation it finishes the open V3.3 review.
+- `funding-carry-paper`: reserved for the perpetual-only Funding Carry trend-filter PAPER model. It is currently disabled because the corrected historical research Gate has not passed; no scheduler migration is active.
+- `funding-carry-v2-paper`: the independent 100-symbol perpetual Funding Carry V2 PAPER model. Its default Train-only single-rule selection chooses `ema100_slope12` from the permitted trend candidates, then uses a 90-event funding z-score, funding mean-reversion confirmation, 48-hour maximum holding, and zero capital weight; it is not a replacement for the existing dynamic alerts or V1 benchmark.
 
-Legacy group names remain available in scanner code for local research. The protected production cron endpoint allows only dynamic strength/weakness scans, review, and the isolated V3.1/V3.3 PAPER groups; unproven inverse-watch and legacy groups are rejected.
+The legacy `v3-3-paper` API group remains available during transition, but it is no longer scheduled after V3.4 deployment.
 
 Strategy families include trend-following, Donchian breakouts, moving-average crosses, RSI/Bollinger rebounds, defensive breakdown alerts, short-term momentum/pullback/breakdown signals, and futures-specific short-side observation signals.
 
@@ -55,18 +57,35 @@ SUPABASE_SERVICE_ROLE_KEY=...
 
 Run [sql/schema.sql](sql/schema.sql) in Supabase SQL Editor.
 
-The tables are:
+The tables are prefixed with `cr_` so they are isolated from other projects sharing the same Supabase project:
 
-- `sent_alerts`: de-duplicates sent signals.
-- `run_logs`: records each scan run, system errors, and recoverable market-data warnings.
-- `paper_model_runs`: stores versioned V3.1/V3.3 PAPER targets, risk state, email delivery state, zero capital weight, diagnostics, and cost-adjusted reviews.
+- `cr_sent_alerts`: de-duplicates sent signals.
+- `cr_run_logs`: records each scan run, system errors, and recoverable market-data warnings.
+- `cr_processed_scan_candles`: de-duplicates completed scan candles.
+- `cr_paper_model_runs`: stores versioned V3.1/V3.3/V3.4 PAPER targets, risk state, email delivery state, zero capital weight, diagnostics, and cost-adjusted reviews.
+
+The perpetual Funding Carry research command includes price PnL, funding PnL, costs, ATR stops, trend exits, 48-hour time exits, portfolio risk caps, and train/validation/test gates:
+
+```bash
+npm run backtest:funding-carry-perp
+```
+
+Funding Carry V2 uses a Train-only liquid-universe manifest, rolling funding z-scores, a funding mean-reversion filter, a 4h ATR/price P90 volatility cap, and a staged Train-only parameter search. The default PAPER-candidate mode fixes the funding/exit/risk grid to the audited values (`z-window 90`, entry z 1, minimum funding 0.02%, exit z 0.5, two confirmations, ATR×2, 1.2% minimum stop, 48 hours), evaluates all permitted single trend rules on Train, and selects `ema100_slope12` by the Train risk-adjusted ranking. Its full Train/Validation/Test Gate passed. The unrestricted research grid still covers every parameter and every two-rule combination; it remains diagnostic only (raise `FUNDING_CARRY_V2_FILTER_EXPANSION_LIMIT` for a wider, slower audit):
+
+```bash
+npm run prepare:funding-carry-v2-data
+npm run select:funding-carry-v2
+npm run backtest:funding-carry-perp-v2
+```
+
+The default backtest command reruns the Train-only trend selection above and must pass with `FUNDING_CARRY_PERP_V2_REQUIRE_PASS=1`. To run the unrestricted research grid instead, set `FUNDING_CARRY_V2_MODE=research-grid`; that grid remains diagnostic and is not a deployment candidate. The selected reversion branch is the only branch authorized for zero-capital PAPER; it must still complete the separate eight-week PAPER Gate before any LIVE capital is enabled. Apply the new scheduler migration only after deploying this PAPER code; no LIVE deployment is authorized by the historical result alone.
 
 If your project was created before the warning/error split, run this once in Supabase SQL Editor:
 
 ```sql
-alter table run_logs add column if not exists warnings jsonb;
-alter table run_logs add column if not exists email_result jsonb;
-alter table run_logs add column if not exists sent_alert_keys jsonb;
+alter table cr_run_logs add column if not exists warnings jsonb;
+alter table cr_run_logs add column if not exists email_result jsonb;
+alter table cr_run_logs add column if not exists sent_alert_keys jsonb;
 ```
 
 ## Scheduling
@@ -74,8 +93,8 @@ alter table run_logs add column if not exists sent_alert_keys jsonb;
 Production scheduling is handled by [sql/supabase-hourly-cron.example.sql](sql/supabase-hourly-cron.example.sql) using Supabase `pg_cron` and `pg_net`. The scheduler uses this CPU-light cadence:
 
 - Every 30 minutes at minutes `0` and `30`: `dynamic-spot` and `dynamic-weak-spot`
-- Hourly at minute `15`: check whether V3.1 has a new weekly PAPER rebalance to persist
-- Hourly at minute `35`: create or monitor the V3.3 SHADOW PAPER portfolio
+- Hourly at minute `15`: maintain the silent V3.1 PAPER benchmark
+- Hourly at minute `35`: create or monitor the unified V3.4 PAPER portfolio
 - Every 4 hours at minute `0`: review recent sent alerts only; this does not scan the whole market
 
 Each scheduled job calls Vercel:
@@ -122,7 +141,7 @@ Manual tests should send the secret in an `Authorization: Bearer ...` header, no
 ```text
 GET /api/test-email
 GET /api/cron?quick=1
-GET /api/cron?dryRun=1&group=v3-paper
+GET /api/cron?dryRun=1&group=v3-4-paper
 ```
 
 ## Inverse Signal Research

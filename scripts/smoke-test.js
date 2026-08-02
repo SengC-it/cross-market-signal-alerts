@@ -5,19 +5,43 @@ import { parseCronGroups } from "../api/cron.js";
 import { buildEmailNotifications } from "../api/status.js";
 import { renderSignalEmail, renderTestEmail } from "../lib/report.js";
 import { reviewAlertWithCandles, reviewArbitrageAlert } from "../lib/alert-review.js";
-import { evaluateDynamicFamilyGate, evaluateDynamicSpotOpportunity, filterSignalsByCurrentPrice, isDynamicSpotCandidate, isDynamicSpotCoolingDown, isDynamicWeakSpotCandidate, isFuturesPriceSignal, selectScanTargets, shouldReviewAlert, shouldReviewRecentAlerts } from "../lib/scanner.js";
+import { evaluateDynamicFamilyGate, evaluateDynamicFamilyGates, evaluateDynamicSpotOpportunity, filterSignalsByCurrentPrice, isDynamicPaperSignal, isDynamicSpotCandidate, isDynamicSpotCoolingDown, isDynamicWeakSpotCandidate, isFuturesPriceSignal, routeSignalsByDynamicFamilyGate, selectScanTargets, shouldReviewAlert, shouldReviewRecentAlerts } from "../lib/scanner.js";
+import { DYNAMIC_MODEL_VERSION, dynamicModelConfigSnapshot, withModelMetadata } from "../lib/model-metadata.js";
 import { hasProcessedScanCandle, recordProcessedScanCandle } from "../lib/storage.js";
 import { compareStrategyInversion, CRYPTO_STRATEGIES, FUTURES_STRATEGIES, invertStrategyDirection, scoreFuturesSentiment, SHORT_TERM_STRATEGIES, STRATEGIES } from "../lib/strategies.js";
 import { isAuthorizedRequest, isDashboardAuthorizedRequest } from "../lib/api-auth.js";
 import { buildV31Portfolio, latestV31RebalanceTime, renderV31PaperEmail, reviewV31PaperRun, V31_MODEL } from "../lib/v3-paper.js";
 import {
   applyV33VolatilityTarget,
+  buildV33EmailSnapshot,
   deriveV33BreakerState,
   forecastV33PortfolioVolatility,
+  isV33PaperEmailReady,
   renderV33PaperEmail,
   reviewV33PaperRun,
   V33_MODEL
 } from "../lib/v3-3-paper.js";
+import {
+  renderV34PaperEmail,
+  V34_MODEL
+} from "../lib/v3-4-paper.js";
+import {
+  evaluateFundingCarryPaperGate,
+  renderFundingCarryPaperEmail,
+  reviewFundingCarryPaperRun,
+  runFundingCarryPaperScan,
+  FUNDING_CARRY_MODEL
+} from "../lib/funding-carry-paper.js";
+import {
+  calculateFundingZScore,
+  evaluateFundingCarryV2PaperGate,
+  fundingDirection,
+  fundingReversionPasses,
+  renderFundingCarryV2PaperEmail,
+  reviewFundingCarryV2PaperRun,
+  volatilitySnapshot,
+  FUNDING_CARRY_V2_MODEL
+} from "../lib/funding-carry-v2-paper.js";
 
 if (!STRATEGIES.length) {
   throw new Error("No strategies registered");
@@ -27,7 +51,13 @@ const dashboardHtml = readFileSync(new URL("../index.html", import.meta.url), "u
 const cronApi = readFileSync(new URL("../api/cron.js", import.meta.url), "utf8");
 const packageJson = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
 const inverseReportScript = readFileSync(new URL("./inverse-signal-report.js", import.meta.url), "utf8");
+const fundingCarryBacktestSource = readFileSync(new URL("./backtest-funding-carry-perp.js", import.meta.url), "utf8");
+const fundingCarryV2BacktestSource = readFileSync(new URL("./backtest-funding-carry-perp-v2.js", import.meta.url), "utf8");
+const fundingCarryV2UniverseSource = readFileSync(new URL("./select-funding-carry-v2-universe.js", import.meta.url), "utf8");
 const emailSource = readFileSync(new URL("../lib/email.js", import.meta.url), "utf8");
+const storageSource = readFileSync(new URL("../lib/storage.js", import.meta.url), "utf8");
+const schemaSource = readFileSync(new URL("../sql/schema.sql", import.meta.url), "utf8");
+const tableRenameMigration = readFileSync(new URL("../supabase/migrations/20260801110000_prefix_cr_table_names.sql", import.meta.url), "utf8");
 if (dashboardHtml.includes("localStorage") || dashboardHtml.includes("secret=${") || !dashboardHtml.includes("Authorization: `Bearer ${secret}`")) {
   throw new Error("Dashboard should keep the secret out of persistent storage and request URLs");
 }
@@ -85,8 +115,42 @@ if (!dashboardHtml.includes('"模型版本"') || !dashboardHtml.includes("data.e
 if (dashboardHtml.includes("reviewText(alert.payload?.review, alert.payload?.livePerformance)")) {
   throw new Error("Dashboard review column should not fall back to historical live performance");
 }
+if (
+  !storageSource.includes('sentAlerts: "cr_sent_alerts"')
+  || !storageSource.includes('runLogs: "cr_run_logs"')
+  || !storageSource.includes('processedScanCandles: "cr_processed_scan_candles"')
+  || !storageSource.includes('paperModelRuns: "cr_paper_model_runs"')
+  || /\/rest\/v1\/(sent_alerts|run_logs|processed_scan_candles|paper_model_runs)/.test(storageSource)
+) {
+  throw new Error("Storage should use the cr_ prefixed Supabase table names");
+}
+if (
+  !schemaSource.includes("create table if not exists cr_sent_alerts")
+  || !schemaSource.includes("create table if not exists cr_run_logs")
+  || !schemaSource.includes("create table if not exists cr_processed_scan_candles")
+  || !schemaSource.includes("create table if not exists cr_paper_model_runs")
+  || /\b(sent_alerts|run_logs|processed_scan_candles|paper_model_runs)\b/.test(schemaSource)
+) {
+  throw new Error("Initial schema should define only cr_ prefixed application tables");
+}
+for (const tableRename of [
+  "sent_alerts', 'cr_sent_alerts",
+  "run_logs', 'cr_run_logs",
+  "processed_scan_candles', 'cr_processed_scan_candles",
+  "paper_model_runs', 'cr_paper_model_runs"
+]) {
+  if (!tableRenameMigration.includes(tableRename)) {
+    throw new Error(`Table rename migration is missing mapping: ${tableRename}`);
+  }
+}
 
 const schedulerSql = readFileSync(new URL("../sql/supabase-hourly-cron.example.sql", import.meta.url), "utf8");
+const fundingCarryV2Migration = readFileSync(new URL("../supabase/migrations/20260802120000_schedule_funding_carry_v2_paper.sql", import.meta.url), "utf8");
+if (!fundingCarryV2Migration.includes("cross_market_signal_funding_carry_v2_paper_hourly")
+  || !fundingCarryV2Migration.includes("funding-carry-v2-paper")
+  || fundingCarryV2Migration.match(/grant\s+[^;]*(anon|authenticated)/i)) {
+  throw new Error("Funding Carry V2 migration should schedule a dedicated Vault-authorized PAPER job without public grants");
+}
 if (!schedulerSql.includes("'cross_market_signal_review_4h'") || !schedulerSql.includes("'0 */4 * * *'") || !schedulerSql.includes("'group',") || !schedulerSql.includes("'review'")) {
   throw new Error("Scheduler should run a dedicated review job every 4 hours");
 }
@@ -102,8 +166,35 @@ if (!schedulerSql.includes("dynamic-weak-spot")) {
 if (!schedulerSql.includes("'cross_market_signal_v3_paper_hourly'") || !schedulerSql.includes("'15 * * * *'") || !schedulerSql.includes("'v3-paper'")) {
   throw new Error("Scheduler should check the V3.1 PAPER rebalance once per hour");
 }
-if (!schedulerSql.includes("'cross_market_signal_v3_3_paper_hourly'") || !schedulerSql.includes("'35 * * * *'") || !schedulerSql.includes("'v3-3-paper'")) {
-  throw new Error("Scheduler should monitor V3.3 SHADOW PAPER once per hour");
+if (!schedulerSql.includes("'cross_market_signal_v3_4_paper_hourly'") || !schedulerSql.includes("'35 * * * *'") || !schedulerSql.includes("'v3-4-paper'")) {
+  throw new Error("Scheduler should run the unified V3.4 PAPER model once per hour");
+}
+if (!cronApi.includes("funding-carry-paper") || !packageJson.scripts?.["backtest:funding-carry-perp"] || !packageJson.scripts?.["evaluate:funding-carry-paper"]) {
+  throw new Error("Funding Carry PAPER should have a dedicated cron group and historical backtest command");
+}
+if (!cronApi.includes("funding-carry-v2-paper")
+  || packageJson.scripts?.["backtest:funding-carry-perp-v2"] !== "node scripts/backtest-funding-carry-perp-v2.js"
+  || packageJson.scripts?.["evaluate:funding-carry-v2-paper"] !== "node scripts/evaluate-funding-carry-v2-paper.js"
+  || !fundingCarryV2BacktestSource.includes("[90, 180, 270]")
+  || !fundingCarryV2BacktestSource.includes("[1, 1.5, 2]")
+  || !fundingCarryV2BacktestSource.includes("[0.0002, 0.0003, 0.0004]")
+  || !fundingCarryV2BacktestSource.includes("[24, 48, 72]")
+  || !fundingCarryV2BacktestSource.includes("FUNDING_CARRY_V2_Z_WINDOW_VALUES")
+  || !fundingCarryV2BacktestSource.includes("FUNDING_CARRY_V2_FUNDING_REVERSION")
+  || !fundingCarryV2BacktestSource.includes("theoreticalConfigs")
+  || !fundingCarryV2UniverseSource.includes("minimumFundingCoverage")) {
+  throw new Error("Funding Carry V2 should expose the fixed z-score search, train-only universe selection and dedicated PAPER commands");
+}
+if (!fundingCarryBacktestSource.includes('[20, 50, 100]')
+  || !fundingCarryBacktestSource.includes('[3, 6, 12]')
+  || !fundingCarryBacktestSource.includes('[6, 12, 24]')
+  || !fundingCarryBacktestSource.includes('"1.5x"')
+  || !fundingCarryBacktestSource.includes('"2x"')
+  || !fundingCarryBacktestSource.includes("historicalGatePassed")) {
+  throw new Error("Funding Carry backtest should report both cost stresses and an explicit historical Gate");
+}
+if (schedulerSql.includes("cron.schedule(\n    'cross_market_signal_v3_3_paper_hourly'")) {
+  throw new Error("Scheduler should hand legacy V3.3 monitoring over to V3.4");
 }
 for (const removedScheduledGroup of [
   "futures-scalp-a",
@@ -134,8 +225,14 @@ const v31RebalanceTime = Date.UTC(2026, 6, 23);
 if (latestV31RebalanceTime(v31RebalanceTime + 37 * 60 * 60 * 1000) !== v31RebalanceTime) {
   throw new Error("V3.1 should align to one deterministic 168-hour rebalance boundary");
 }
-if (V31_MODEL.state !== "PAPER" || V31_MODEL.deploymentGatePassed || V31_MODEL.capitalWeight !== 0) {
-  throw new Error("V3.1 must remain PAPER with a zero live-capital weight");
+if (
+  V31_MODEL.state !== "PAPER"
+  || V31_MODEL.deploymentGatePassed
+  || V31_MODEL.capitalWeight !== 0
+  || V31_MODEL.emailEnabled !== false
+  || V31_MODEL.benchmarkOnly !== true
+) {
+  throw new Error("V3.1 must remain a silent zero-capital PAPER benchmark");
 }
 if (
   V33_MODEL.state !== "PAPER"
@@ -145,6 +242,335 @@ if (
   || V33_MODEL.breakerDrawdown !== 0.1
 ) {
   throw new Error("V3.3 must remain zero-capital SHADOW PAPER with frozen risk limits");
+}
+if (
+  V34_MODEL.version !== "V3.4 UNIFIED PAPER"
+  || V34_MODEL.state !== "PAPER"
+  || V34_MODEL.deploymentGatePassed
+  || V34_MODEL.capitalWeight !== 0
+  || V34_MODEL.signalModelId !== V31_MODEL.id
+  || V34_MODEL.catastropheStop !== V33_MODEL.catastropheStop
+  || V34_MODEL.breakerDrawdown !== V33_MODEL.breakerDrawdown
+  || V34_MODEL.activationRebalanceTime !== Date.UTC(2026, 7, 6)
+) {
+  throw new Error("V3.4 should unify the frozen V3.1 signal and V3.3 risk layers without enabling live capital");
+}
+if (
+  FUNDING_CARRY_MODEL.state !== "PAPER"
+  || FUNDING_CARRY_MODEL.deploymentGatePassed
+  || FUNDING_CARRY_MODEL.researchGatePassed
+  || FUNDING_CARRY_MODEL.capitalWeight !== 0
+  || FUNDING_CARRY_MODEL.accountRiskPerTrade !== 0.0025
+  || FUNDING_CARRY_MODEL.maxLeverage !== 3
+  || FUNDING_CARRY_MODEL.maxOpenPositions !== 3
+  || FUNDING_CARRY_MODEL.maxAggregateRisk !== 0.005
+  || FUNDING_CARRY_MODEL.maxHoldingHours !== 48
+) {
+  throw new Error("Funding Carry must remain disabled zero-capital PAPER until the historical research gate passes");
+}
+const blockedFundingCarry = await runFundingCarryPaperScan({
+  dryRun: true,
+  now: Date.UTC(2026, 7, 2, 12)
+});
+if (blockedFundingCarry.status !== "blocked_by_research_gate" || blockedFundingCarry.capitalWeight !== 0 || blockedFundingCarry.targets.length !== 0) {
+  throw new Error("Funding Carry PAPER should refuse to generate targets before the historical gate passes");
+}
+const carryRebalanceTime = Date.UTC(2026, 6, 23);
+const carryHourly = Array.from({ length: 49 }, (_, index) => {
+  const open = 100 - index * 0.05;
+  return { openTime: carryRebalanceTime + index * 60 * 60 * 1000, open, high: open + 0.1, low: open - 0.1, close: open };
+});
+const carryReview = reviewFundingCarryPaperRun({
+  run: {
+    model_id: FUNDING_CARRY_MODEL.id,
+    model_version: FUNDING_CARRY_MODEL.version,
+    rebalance_time: new Date(carryRebalanceTime).toISOString(),
+    targets: [{
+      symbol: "BTCUSDT",
+      side: "SHORT",
+      direction: -1,
+      targetWeight: -1,
+      referencePrice: 100,
+      stopLoss: 105,
+      fundingRate: 0.001,
+      trendRules: FUNDING_CARRY_MODEL.trendRules
+    }]
+  },
+  hourlyCandlesBySymbol: new Map([["BTCUSDT", carryHourly]]),
+  fourHourlyBySymbol: new Map([["BTCUSDT", []]]),
+  fundingBySymbol: new Map([["BTCUSDT", [
+    { fundingTime: carryRebalanceTime + 8 * 60 * 60 * 1000, fundingRate: 0.001 },
+    { fundingTime: carryRebalanceTime + 16 * 60 * 60 * 1000, fundingRate: 0.001 }
+  ]]]),
+  now: carryRebalanceTime + 49 * 60 * 60 * 1000,
+  reviewedAt: carryRebalanceTime + 49 * 60 * 60 * 1000
+});
+if (carryReview.status !== "reviewed" || carryReview.positions.length !== 1 || carryReview.positions[0].exitReason !== "max_holding" || carryReview.returnPct <= 0 || carryReview.positions[0].fundingReturn <= 0) {
+  throw new Error("Funding Carry PAPER review should include price PnL, funding PnL, costs and the 48-hour exit");
+}
+const negativeFundingReview = reviewFundingCarryPaperRun({
+  run: {
+    model_id: FUNDING_CARRY_MODEL.id,
+    model_version: FUNDING_CARRY_MODEL.version,
+    rebalance_time: new Date(carryRebalanceTime).toISOString(),
+    targets: [{
+      symbol: "ETHUSDT",
+      side: "LONG",
+      direction: 1,
+      targetWeight: 0.1,
+      referencePrice: 100,
+      stopLoss: 95,
+      fundingRate: -0.001,
+      trendRules: FUNDING_CARRY_MODEL.trendRules
+    }]
+  },
+  hourlyCandlesBySymbol: new Map([[
+    "ETHUSDT",
+    Array.from({ length: 49 }, (_, index) => {
+      const open = 100 + index * 0.05;
+      return { openTime: carryRebalanceTime + index * 60 * 60 * 1000, open, high: open + 0.1, low: open - 0.1, close: open };
+    })
+  ]]),
+  fourHourlyBySymbol: new Map([["ETHUSDT", []]]),
+  fundingBySymbol: new Map([["ETHUSDT", [
+    { fundingTime: carryRebalanceTime + 8 * 60 * 60 * 1000, fundingRate: -0.001 },
+    { fundingTime: carryRebalanceTime + 16 * 60 * 60 * 1000, fundingRate: -0.001 }
+  ]]]),
+  now: carryRebalanceTime + 49 * 60 * 60 * 1000,
+  reviewedAt: carryRebalanceTime + 49 * 60 * 60 * 1000
+});
+if (negativeFundingReview.positions[0].side !== "LONG" || negativeFundingReview.positions[0].fundingReturn <= 0) {
+  throw new Error("Negative funding should map to LONG and produce positive funding income when held");
+}
+const gapStopReview = reviewFundingCarryPaperRun({
+  run: {
+    model_id: FUNDING_CARRY_MODEL.id,
+    model_version: FUNDING_CARRY_MODEL.version,
+    rebalance_time: new Date(carryRebalanceTime).toISOString(),
+    targets: [{ symbol: "SOLUSDT", side: "LONG", direction: 1, targetWeight: 0.1, referencePrice: 100, stopLoss: 95, fundingRate: 0.001 }]
+  },
+  hourlyCandlesBySymbol: new Map([["SOLUSDT", [
+    { openTime: carryRebalanceTime, open: 100, high: 101, low: 99, close: 100 },
+    { openTime: carryRebalanceTime + 60 * 60 * 1000, open: 90, high: 91, low: 89, close: 90 }
+  ]]]),
+  fourHourlyBySymbol: new Map([["SOLUSDT", []]]),
+  fundingBySymbol: new Map([["SOLUSDT", []]]),
+  now: carryRebalanceTime + 2 * 60 * 60 * 1000,
+  reviewedAt: carryRebalanceTime + 2 * 60 * 60 * 1000
+});
+if (gapStopReview.positions[0].exitReason !== "atr_stop" || gapStopReview.positions[0].exitPrice !== 90) {
+  throw new Error("ATR stop should fill at the next candle open after a stop gap");
+}
+const fundingExitReview = reviewFundingCarryPaperRun({
+  run: {
+    model_id: FUNDING_CARRY_MODEL.id,
+    model_version: FUNDING_CARRY_MODEL.version,
+    rebalance_time: new Date(carryRebalanceTime).toISOString(),
+    targets: [{ symbol: "BTCUSDT", side: "SHORT", direction: -1, targetWeight: -0.1, referencePrice: 100, stopLoss: 105, fundingRate: 0.001 }]
+  },
+  hourlyCandlesBySymbol: new Map([["BTCUSDT", Array.from({ length: 10 }, (_, index) => ({
+    openTime: carryRebalanceTime + index * 60 * 60 * 1000,
+    open: 100,
+    high: 101,
+    low: 99,
+    close: 100
+  }))]]),
+  fourHourlyBySymbol: new Map([["BTCUSDT", []]]),
+  fundingBySymbol: new Map([["BTCUSDT", [{ fundingTime: carryRebalanceTime + 8 * 60 * 60 * 1000, fundingRate: 0.0001 }]]]),
+  now: carryRebalanceTime + 9 * 60 * 60 * 1000,
+  reviewedAt: carryRebalanceTime + 9 * 60 * 60 * 1000
+});
+if (fundingExitReview.positions[0].exitReason !== "funding_threshold") {
+  throw new Error("Funding Carry should exit when funding falls below the frozen threshold");
+}
+const carryEmail = renderFundingCarryPaperEmail({
+  model_version: FUNDING_CARRY_MODEL.version,
+  rebalance_time: new Date(carryRebalanceTime).toISOString(),
+  targets: [{ symbol: "BTCUSDT", side: "SHORT", referencePrice: 100, stopLoss: 105, fundingRate: 0.001, targetWeight: -0.1, trendRules: ["sma50_slope3"], nextFundingTime: carryRebalanceTime + 8 * 60 * 60 * 1000, expectedExitTime: new Date(carryRebalanceTime + 48 * 60 * 60 * 1000).toISOString() }]
+});
+if (!carryEmail.subject.includes("[PAPER]") || !carryEmail.text.includes("不执行交易") || !carryEmail.text.includes("48 小时")) {
+  throw new Error("Funding Carry PAPER email should clearly state that it is not an execution instruction");
+}
+const fundingNotifications = buildEmailNotifications([], [{
+  model_id: FUNDING_CARRY_MODEL.id,
+  model_version: FUNDING_CARRY_MODEL.version,
+  rebalance_time: new Date(carryRebalanceTime).toISOString(),
+  email_status: "sent",
+  email_sent_at: new Date(carryRebalanceTime + 1000).toISOString(),
+  targets: [{ symbol: "BTCUSDT", side: "SHORT", targetWeight: -0.1, referencePrice: 100, stopLoss: 105, fundingRate: 0.001, trendRules: ["sma50_slope3"], maxHoldingHours: 48 }],
+  risk_state: { maxLeverage: 3 },
+  review: carryReview
+}]);
+if (fundingNotifications.length !== 1 || fundingNotifications[0].payload.executionPlan.kind !== "funding_carry_paper_position" || fundingNotifications[0].payload.alertTierLabel !== "PAPER no execution" || fundingNotifications[0].payload.executionPlan.stopLoss !== 105) {
+  throw new Error("Status email history should expose Funding Carry PAPER metadata and risk controls");
+}
+const emptyFundingGate = evaluateFundingCarryPaperGate([]);
+if (emptyFundingGate.passed || emptyFundingGate.checks.sample || emptyFundingGate.checks.duration) {
+  throw new Error("Funding Carry PAPER gate should fail without eight weeks of closed observations");
+}
+const dirtyFundingGate = evaluateFundingCarryPaperGate([{
+  rebalance_time: new Date(carryRebalanceTime).toISOString(),
+  targets: [{ symbol: "BTCUSDT", side: "LONG", fundingRate: 0.001, nextFundingTime: carryRebalanceTime + 8 * 60 * 60 * 1000 }],
+  email_status: "failed",
+  diagnostics: { dataErrors: [] },
+  review: { status: "reviewed", positions: [{ symbol: "BTCUSDT", status: "pending", returnPct: 0, netContribution: 0 }] }
+}]);
+if (dirtyFundingGate.checks.executionClean || dirtyFundingGate.metrics.wrongDirectionCount !== 1 || dirtyFundingGate.metrics.emailAnomalyCount !== 1) {
+  throw new Error("Funding Carry PAPER Gate should block wrong direction, unresolved exits and email anomalies");
+}
+
+if (
+  FUNDING_CARRY_V2_MODEL.state !== "PAPER"
+  || FUNDING_CARRY_V2_MODEL.deploymentGatePassed
+  || !FUNDING_CARRY_V2_MODEL.researchGatePassed
+  || FUNDING_CARRY_V2_MODEL.capitalWeight !== 0
+  || FUNDING_CARRY_V2_MODEL.accountRiskPerTrade !== 0.0025
+  || FUNDING_CARRY_V2_MODEL.maxLeverage !== 3
+  || FUNDING_CARRY_V2_MODEL.maxOpenPositions !== 3
+  || FUNDING_CARRY_V2_MODEL.maxAggregateRisk !== 0.005
+  || FUNDING_CARRY_V2_MODEL.universe.length !== 100
+  || FUNDING_CARRY_V2_MODEL.fundingReversion !== true
+  || FUNDING_CARRY_V2_MODEL.zWindow !== 90
+  || FUNDING_CARRY_V2_MODEL.entrySignedZ !== 1
+  || FUNDING_CARRY_V2_MODEL.confirmationEvents !== 2
+  || FUNDING_CARRY_V2_MODEL.trendRules.join(",") !== "ema100_slope12"
+  || !Array.isArray(FUNDING_CARRY_V2_MODEL.allowedMaxHoldingHours)
+  || FUNDING_CARRY_V2_MODEL.allowedMaxHoldingHours.join(",") !== "24,48,72"
+) {
+  throw new Error("Funding Carry V2 must remain zero-capital PAPER with the frozen universe and risk limits");
+}
+if (fundingDirection(0.001) !== -1 || fundingDirection(-0.001) !== 1 || fundingDirection(0) !== 0) {
+  throw new Error("Funding Carry V2 direction mapping should short positive funding and long negative funding");
+}
+if (!fundingReversionPasses(-0.001, -0.0005, 1) || !fundingReversionPasses(0.001, 0.0005, -1) || fundingReversionPasses(0.001, 0.001, -1)) {
+  throw new Error("Funding Carry V2 mean-reversion filter should require funding to move toward zero in the trade direction");
+}
+const zRows = [
+  { fundingTime: 1, fundingRate: 0.0001 },
+  { fundingTime: 2, fundingRate: 0.0002 },
+  { fundingTime: 3, fundingRate: 0.0003 },
+  { fundingTime: 4, fundingRate: 0.001 }
+];
+const zAtThird = calculateFundingZScore(zRows, 2, 2);
+const zAtFourth = calculateFundingZScore(zRows, 2, 3);
+if (!zAtThird || zAtThird.fundingTime !== 3 || zAtFourth?.fundingTime !== 4 || zAtFourth.signedZ <= zAtThird.signedZ) {
+  throw new Error("Funding Carry V2 z-score should use only prior funding observations and exclude future rows");
+}
+if (volatilitySnapshot([]).valid !== false) {
+  throw new Error("Funding Carry V2 must block entries when the volatility history is missing");
+}
+const v2EntryTime = Date.UTC(2026, 6, 23);
+const v2PriorFunding = Array.from({ length: 180 }, (_, index) => ({
+  fundingTime: v2EntryTime - (180 - index) * 8 * 60 * 60 * 1000,
+  fundingRate: index % 2 ? 0.00005 : 0.00015
+}));
+const v2FundingHistory = [...v2PriorFunding, ...Array.from({ length: 6 }, (_, index) => ({
+  fundingTime: v2EntryTime + (index + 1) * 8 * 60 * 60 * 1000,
+  fundingRate: 0.001
+}))];
+const v2Hourly = Array.from({ length: 49 }, (_, index) => ({
+  openTime: v2EntryTime + index * 60 * 60 * 1000,
+  open: 100,
+  high: 101,
+  low: 99,
+  close: 100
+}));
+const v2MaxHoldReview = reviewFundingCarryV2PaperRun({
+  run: {
+    model_id: FUNDING_CARRY_V2_MODEL.id,
+    model_version: FUNDING_CARRY_V2_MODEL.version,
+    rebalance_time: new Date(v2EntryTime).toISOString(),
+    targets: [{
+      symbol: "BTCUSDT",
+      side: "SHORT",
+      direction: -1,
+      targetWeight: -0.1,
+      accountRisk: 0.0025,
+      referencePrice: 100,
+      stopLoss: 105,
+      fundingRate: 0.001,
+      minAbsFunding: 0.0003,
+      exitSignedZ: 0.5,
+      zWindow: 180,
+      maxHoldingHours: 48,
+      trendRules: ["sma50_slope6"]
+    }]
+  },
+  hourlyCandlesBySymbol: new Map([["BTCUSDT", v2Hourly]]),
+  fourHourlyBySymbol: new Map([["BTCUSDT", []]]),
+  fundingBySymbol: new Map([["BTCUSDT", v2FundingHistory]]),
+  now: v2EntryTime + 49 * 60 * 60 * 1000,
+  reviewedAt: v2EntryTime + 49 * 60 * 60 * 1000
+});
+if (v2MaxHoldReview.status !== "reviewed" || v2MaxHoldReview.positions[0].exitReason !== "max_holding" || v2MaxHoldReview.positions[0].fundingReturn <= 0) {
+  throw new Error("Funding Carry V2 review should include directional price PnL, funding PnL, costs and 48-hour exit");
+}
+const v2FundingExitRows = [...v2PriorFunding, { fundingTime: v2EntryTime + 8 * 60 * 60 * 1000, fundingRate: 0.0001 }];
+const v2FundingExitReview = reviewFundingCarryV2PaperRun({
+  run: {
+    model_id: FUNDING_CARRY_V2_MODEL.id,
+    model_version: FUNDING_CARRY_V2_MODEL.version,
+    rebalance_time: new Date(v2EntryTime).toISOString(),
+    targets: [{ symbol: "ETHUSDT", side: "SHORT", direction: -1, targetWeight: -0.1, referencePrice: 100, stopLoss: 105, fundingRate: 0.001, minAbsFunding: 0.0003, exitSignedZ: 0.5, zWindow: 180, maxHoldingHours: 48, trendRules: ["sma50_slope6"] }]
+  },
+  hourlyCandlesBySymbol: new Map([["ETHUSDT", v2Hourly.slice(0, 10)]]),
+  fourHourlyBySymbol: new Map([["ETHUSDT", []]]),
+  fundingBySymbol: new Map([["ETHUSDT", v2FundingExitRows]]),
+  now: v2EntryTime + 10 * 60 * 60 * 1000,
+  reviewedAt: v2EntryTime + 10 * 60 * 60 * 1000
+});
+if (v2FundingExitReview.positions[0].exitReason !== "funding_threshold") {
+  throw new Error("Funding Carry V2 should exit when the signed funding z-score falls below the exit threshold");
+}
+const v2GapReview = reviewFundingCarryV2PaperRun({
+  run: {
+    model_id: FUNDING_CARRY_V2_MODEL.id,
+    model_version: FUNDING_CARRY_V2_MODEL.version,
+    rebalance_time: new Date(v2EntryTime).toISOString(),
+    targets: [{ symbol: "SOLUSDT", side: "LONG", direction: 1, targetWeight: 0.1, referencePrice: 100, stopLoss: 95, fundingRate: -0.001, minAbsFunding: 0.0003, exitSignedZ: 0.5, zWindow: 180, maxHoldingHours: 24, trendRules: ["sma50_slope6"] }]
+  },
+  hourlyCandlesBySymbol: new Map([["SOLUSDT", [
+    { openTime: v2EntryTime, open: 100, high: 101, low: 99, close: 100 },
+    { openTime: v2EntryTime + 60 * 60 * 1000, open: 90, high: 91, low: 89, close: 90 }
+  ]]]),
+  fourHourlyBySymbol: new Map([["SOLUSDT", []]]),
+  fundingBySymbol: new Map([["SOLUSDT", []]]),
+  now: v2EntryTime + 2 * 60 * 60 * 1000,
+  reviewedAt: v2EntryTime + 2 * 60 * 60 * 1000
+});
+if (v2GapReview.positions[0].exitReason !== "atr_stop" || v2GapReview.positions[0].exitPrice !== 90) {
+  throw new Error("Funding Carry V2 stop gaps should fill at the next candle open");
+}
+const v2Email = renderFundingCarryV2PaperEmail({
+  model_version: FUNDING_CARRY_V2_MODEL.version,
+  rebalance_time: new Date(v2EntryTime).toISOString(),
+  targets: [{ symbol: "BTCUSDT", side: "SHORT", referencePrice: 100, stopLoss: 105, fundingRate: 0.001, signedZ: 2, zScore: 2, zWindow: 180, trendRules: ["sma50_slope6"], volatility: { atrPct: 0.01 }, nextFundingTime: v2EntryTime + 8 * 60 * 60 * 1000, expectedExitTime: new Date(v2EntryTime + 48 * 60 * 60 * 1000).toISOString() }]
+});
+if (!v2Email.subject.includes("PAPER / 不执行交易") || !v2Email.text.includes("PAPER / 不执行交易") || !v2Email.text.includes("signedZ")) {
+  throw new Error("Funding Carry V2 PAPER email should explicitly prohibit execution and show z-score evidence");
+}
+const v2Notifications = buildEmailNotifications([], [{
+  model_id: FUNDING_CARRY_V2_MODEL.id,
+  model_version: FUNDING_CARRY_V2_MODEL.version,
+  rebalance_time: new Date(v2EntryTime).toISOString(),
+  email_status: "sent",
+  email_sent_at: new Date(v2EntryTime + 1000).toISOString(),
+  targets: [{ symbol: "BTCUSDT", side: "SHORT", targetWeight: -0.1, referencePrice: 100, stopLoss: 105, fundingRate: 0.001, signedZ: 2, zWindow: 180, maxHoldingHours: 48 }],
+  risk_state: { maxLeverage: 3 },
+  review: v2MaxHoldReview
+}]);
+if (v2Notifications.length !== 1 || v2Notifications[0].payload.alertTierLabel !== "PAPER / 不执行交易" || v2Notifications[0].payload.executionPlan.signedZ !== 2 || v2Notifications[0].payload.executionPlan.maxHoldingHours !== 48) {
+  throw new Error("Status history should expose Funding Carry V2 PAPER z-score and risk metadata");
+}
+const dirtyV2Gate = evaluateFundingCarryV2PaperGate([
+  { rebalance_time: new Date(v2EntryTime).toISOString(), email_status: "sent", diagnostics: { dataErrors: [] }, targets: [{ symbol: "BTCUSDT", side: "LONG", fundingRate: 0.001, fundingWindowKey: "BTCUSDT:1" }], review: { status: "reviewed", positions: [{ symbol: "BTCUSDT", status: "pending", returnPct: 0, netContribution: 0 }] } },
+  { rebalance_time: new Date(v2EntryTime + 8 * 24 * 60 * 60 * 1000).toISOString(), email_status: "failed", diagnostics: { dataErrors: [] }, targets: [{ symbol: "BTCUSDT", side: "SHORT", fundingRate: 0.001, fundingWindowKey: "BTCUSDT:1" }], review: { status: "reviewed", positions: [{ symbol: "BTCUSDT", status: "pending", returnPct: 0, netContribution: 0 }] } }
+]);
+if (dirtyV2Gate.checks.executionClean || dirtyV2Gate.metrics.duplicateEntryCount !== 1 || dirtyV2Gate.metrics.wrongDirectionCount !== 1) {
+  throw new Error("Funding Carry V2 PAPER Gate should block duplicate windows, wrong direction and unresolved exits");
+}
+if (FUNDING_CARRY_V2_MODEL.researchGatePassed !== true || FUNDING_CARRY_V2_MODEL.deploymentGatePassed !== false || FUNDING_CARRY_V2_MODEL.capitalWeight !== 0) {
+  throw new Error("Funding Carry V2 PAPER should remain zero-capital until the separate PAPER Gate passes");
 }
 
 const v31Series = new Map();
@@ -202,16 +628,46 @@ for (const required of ["【PAPER】V3.1 新信号", "做多目标：", "做空�
 const v31ReviewExit = v31RebalanceTime + V31_MODEL.rebalanceHours * 60 * 60 * 1000;
 const reviewExitCandles = new Map();
 const reviewFunding = new Map();
+const v31MarkTime = v31RebalanceTime + 4 * 60 * 60 * 1000;
 for (const [index, target] of v31Portfolio.targets.entries()) {
   const move = target.side === "LONG" ? 1.02 + index * 0.001 : 0.98 - index * 0.001;
-  reviewExitCandles.set(target.symbol, [{
-    openTime: v31ReviewExit,
-    open: target.referencePrice * move
-  }]);
+  reviewExitCandles.set(target.symbol, [
+    {
+      openTime: v31RebalanceTime,
+      close: target.referencePrice * move
+    },
+    {
+      openTime: v31ReviewExit,
+      open: target.referencePrice * move
+    }
+  ]);
   reviewFunding.set(target.symbol, [{
     fundingTime: v31RebalanceTime + 8 * 60 * 60 * 1000,
     fundingRate: 0.0001
   }]);
+}
+const v31Mark = reviewV31PaperRun({
+  run: {
+    rebalance_time: new Date(v31RebalanceTime).toISOString(),
+    targets: v31Portfolio.targets
+  },
+  exitCandlesBySymbol: reviewExitCandles,
+  fundingBySymbol: reviewFunding,
+  exitTime: v31MarkTime,
+  reviewedAt: v31MarkTime
+});
+if (
+  v31Mark.status !== "pending"
+  || v31Mark.outcome !== "持仓中盈利"
+  || v31Mark.returnPct <= 0
+  || new Date(v31Mark.markTime).getTime() !== v31MarkTime
+  || v31Mark.positions.length !== 6
+  || v31Mark.positions.some((position) =>
+    !Number.isFinite(position.returnPct)
+    || !Number.isFinite(position.markPrice)
+  )
+) {
+  throw new Error("V3.1 pending review should expose current per-position and portfolio mark-to-market returns");
 }
 const v31Review = reviewV31PaperRun({
   run: {
@@ -236,7 +692,7 @@ const emailNotifications = buildEmailNotifications([{
   email_status: "sent",
   email_sent_at: new Date(v31RebalanceTime + 1000).toISOString(),
   targets: v31Portfolio.targets,
-  review: { status: "pending", reason: "持仓周期未结束" }
+  review: v31Mark
 }]);
 const paperEmailNotifications = emailNotifications.filter((item) => item.model_version === "V3.1 PAPER");
 if (
@@ -246,9 +702,14 @@ if (
   || paperEmailNotifications.some((item) => item.asset.startsWith("组合"))
   || paperEmailNotifications.some((item) => item.payload.executionPlan.kind !== "v3_paper_position")
   || paperEmailNotifications.some((item) => item.payload.review.status !== "pending")
+  || paperEmailNotifications.some((item) =>
+    !Number.isFinite(item.payload.review.returnPct)
+    || !Number.isFinite(item.payload.review.portfolioReturnPct)
+    || !Number.isFinite(item.payload.review.markPrice)
+  )
   || emailNotifications.at(-1).model_version !== "交易计划 V2"
 ) {
-  throw new Error("Unified email history should render one V3.1 row per trading pair");
+  throw new Error("Unified email history should render one marked-to-market V3.1 row per trading pair");
 }
 const reviewedPaperNotifications = buildEmailNotifications([], [{
   model_id: V31_MODEL.id,
@@ -319,6 +780,35 @@ if (
 }
 
 const v33ExitTime = v31RebalanceTime + 60 * 60 * 1000;
+const v33PendingReview = reviewV33PaperRun({
+  run: {
+    rebalance_time: new Date(v31RebalanceTime).toISOString(),
+    gross_exposure: 1,
+    targets: v33Targets
+  },
+  hourlyCandlesBySymbol: new Map([
+    ["BTCUSDT", [{ openTime: v31RebalanceTime, open: 100, close: 102 }]],
+    ["ETHUSDT", [{ openTime: v31RebalanceTime, open: 100, close: 98 }]]
+  ]),
+  fundingBySymbol: new Map([
+    ["BTCUSDT", []],
+    ["ETHUSDT", []]
+  ]),
+  now: v33ExitTime + 30 * 60 * 1000,
+  reviewedAt: v33ExitTime + 30 * 60 * 1000
+});
+if (
+  v33PendingReview.status !== "pending"
+  || v33PendingReview.outcome !== "持仓中盈利"
+  || v33PendingReview.returnPct <= 0
+  || v33PendingReview.positions.length !== 2
+  || v33PendingReview.positions.some((position) =>
+    !Number.isFinite(position.returnPct)
+    || !Number.isFinite(position.markPrice)
+  )
+) {
+  throw new Error("V3.3 pending review should expose current per-position and portfolio mark-to-market returns");
+}
 const v33Review = reviewV33PaperRun({
   run: {
     rebalance_time: new Date(v31RebalanceTime).toISOString(),
@@ -351,6 +841,9 @@ if (
 ) {
   throw new Error("V3.3 catastrophe stop should exit the full portfolio at the next hourly open");
 }
+if (!dashboardHtml.includes("组合浮动盈利") || !dashboardHtml.includes("未最终：")) {
+  throw new Error("Dashboard should distinguish live mark-to-market returns from final reviews");
+}
 
 const v33Breaker = deriveV33BreakerState([{
   rebalance_time: new Date(v31RebalanceTime).toISOString(),
@@ -380,15 +873,35 @@ const v33EmailRun = {
     breakerDrawdown: 0.1,
     breakerCooldownWeeks: 4
   },
-  review: { status: "pending", reason: "等待监控" },
+  review: v33PendingReview,
   email_status: "sent",
   email_sent_at: new Date(v31RebalanceTime + 2000).toISOString()
 };
+const v33EmailSnapshot = buildV33EmailSnapshot(v33EmailRun);
+if (
+  !isV33PaperEmailReady(v33EmailRun)
+  || isV33PaperEmailReady({ ...v33EmailRun, review: { status: "pending" } })
+  || v33EmailSnapshot.reportingNotionalUsdt !== 10_000
+  || v33EmailSnapshot.currentReturnPct !== v33PendingReview.returnPct
+  || Math.abs(v33EmailSnapshot.currentPnlUsdt - 194) > 1e-9
+  || v33EmailSnapshot.catastropheStopAmountUsdt !== -800
+  || Math.abs(v33EmailSnapshot.remainingToStopUsdt - 994) > 1e-9
+  || new Date(v33EmailSnapshot.expiresAt).getTime()
+    !== v31RebalanceTime + V31_MODEL.rebalanceHours * 60 * 60 * 1000
+) {
+  throw new Error("V3.3 email snapshot should expose normalized stop, expiry, and current portfolio PnL");
+}
 const v33Email = renderV33PaperEmail(v33EmailRun);
 for (const required of [
   "模拟交易提醒",
   "看涨（价格上涨时受益）",
   "看跌（价格下跌时受益）",
+  "标准化模拟本金：10,000.00 USDT",
+  "组合灾难止损：-8.00% / -800.00 USDT",
+  "最新组合浮动盈亏：+1.94% / +194.00 USDT",
+  "距离组合止损：9.94% / 994.00 USDT",
+  "最晚到期时间：",
+  "北京时间",
   "模拟亏损达到 8.00%",
   "最多观察 7 天",
   "暂停建立新仓位 4 周",
@@ -417,6 +930,37 @@ if (
   || new Set(v33Notifications.map((item) => item.asset)).size !== 2
 ) {
   throw new Error("Email history should expose one versioned V3.3 row per trading pair");
+}
+const v34EmailRun = {
+  ...v33EmailRun,
+  model_id: V34_MODEL.id,
+  model_version: V34_MODEL.version,
+  targets: v33Scaled.targets
+};
+const v34Email = renderV34PaperEmail(v34EmailRun);
+for (const required of [
+  "V3.4 统一策略",
+  "V3.1 残差动量",
+  "V3.1 基础权重",
+  "V3.4 调整后权重",
+  "组合灾难止损：-8.00% / -800.00 USDT",
+  "绩效安全闸"
+]) {
+  if (!v34Email.subject.includes(required) && !v34Email.text.includes(required)) {
+    throw new Error(`V3.4 unified email missing: ${required}`);
+  }
+}
+const v34Notifications = buildEmailNotifications([], [v34EmailRun]);
+if (
+  v34Notifications.length !== 2
+  || v34Notifications.some((item) => item.model_version !== V34_MODEL.version)
+  || v34Notifications.some((item) =>
+    !item.payload.strategyName.includes("残差动量")
+    || !item.payload.strategyName.includes("波动率目标")
+    || item.payload.executionPlan.baseTargetWeight == null
+  )
+) {
+  throw new Error("Email history should expose V3.4 as one unified signal and risk model");
 }
 if (!emailSource.includes('"Idempotency-Key": idempotencyKey') || !emailSource.includes("X-Signal-Idempotency-Key")) {
   throw new Error("Email providers should receive the deterministic V3.1 idempotency key");
@@ -683,6 +1227,112 @@ const provenDynamicFamily = evaluateDynamicFamilyGate({
 });
 if (!provenDynamicFamily.passed || provenDynamicFamily.state !== "LIVE") {
   throw new Error("Dynamic family gate should allow a statistically positive cost-adjusted family");
+}
+const versionedStrengthAlerts = Array.from({ length: 30 }, (_, index) => ({
+  strategy_id: "dynamic_relative_strength_breakout",
+  model_version: DYNAMIC_MODEL_VERSION,
+  sent_at: new Date(1780000000000 + index * 3600000).toISOString(),
+  payload: { review: { status: "reviewed", returnPct: 0.01 } }
+}));
+const versionedDynamicGates = evaluateDynamicFamilyGates({ sentAlerts: versionedStrengthAlerts });
+if (
+  !versionedDynamicGates.dynamic_strength.passed
+  || versionedDynamicGates.dynamic_weakness.passed
+  || versionedDynamicGates.dynamic_weakness.state !== "PAPER"
+) {
+  throw new Error("Dynamic family gates should isolate model version and direction samples");
+}
+const metadataSignal = withModelMetadata({
+  strategyId: "dynamic_relative_strength_breakout",
+  direction: "LONG"
+}, {
+  modelVersion: DYNAMIC_MODEL_VERSION,
+  modelFamily: "dynamic_strength",
+  configSnapshot: dynamicModelConfigSnapshot()
+});
+if (
+  metadataSignal.modelMetadata.modelVersion !== DYNAMIC_MODEL_VERSION
+  || metadataSignal.modelMetadata.modelFamily !== "dynamic_strength"
+  || metadataSignal.modelMetadata.configHash.length !== 16
+  || metadataSignal.modelMetadata.fingerprint.length !== 16
+) {
+  throw new Error("Signal metadata should expose deterministic version, family, and configuration fingerprints");
+}
+const dynamicGateCandidate = {
+  signalKey: "BTCUSDT:DYNAMIC_SPOT:1h:dynamic_relative_strength_breakout:1",
+  strategyId: "dynamic_relative_strength_breakout",
+  recommendationScore: 90,
+  gateNotes: []
+};
+const unrelatedGateCandidate = {
+  signalKey: "ETHUSDT:USDT_PERP:1h:futures_trend:1",
+  strategyId: "futures_trend",
+  recommendationScore: 80
+};
+const haltedRouting = routeSignalsByDynamicFamilyGate({
+  candidates: [unrelatedGateCandidate, dynamicGateCandidate],
+  dynamicFamilyGate: haltedDynamicFamily,
+  limit: 5
+});
+if (
+  haltedRouting.emailCandidates.length !== 1
+  || haltedRouting.emailCandidates[0].signalKey !== unrelatedGateCandidate.signalKey
+  || haltedRouting.paperCandidates.length !== 1
+  || !isDynamicPaperSignal(haltedRouting.paperCandidates[0])
+  || haltedRouting.paperCandidates[0].delivery.gateState !== "HALTED"
+  || haltedRouting.paperCandidates[0].delivery.emailSuppressed !== true
+) {
+  throw new Error("HALTED dynamic signals should be routed to PAPER persistence without entering email candidates");
+}
+const unprovenRouting = routeSignalsByDynamicFamilyGate({
+  candidates: [dynamicGateCandidate],
+  dynamicFamilyGate: unprovenDynamicFamily,
+  limit: 5
+});
+if (
+  unprovenRouting.emailCandidates.length !== 0
+  || unprovenRouting.paperCandidates.length !== 1
+  || unprovenRouting.paperCandidates[0].delivery.gateState !== "PAPER"
+) {
+  throw new Error("Unproven dynamic signals should keep collecting PAPER evidence without sending email");
+}
+const liveRouting = routeSignalsByDynamicFamilyGate({
+  candidates: [unrelatedGateCandidate, dynamicGateCandidate],
+  dynamicFamilyGate: provenDynamicFamily,
+  limit: 5
+});
+if (
+  liveRouting.emailCandidates.length !== 2
+  || liveRouting.paperCandidates.length !== 0
+  || liveRouting.emailCandidates.some(isDynamicPaperSignal)
+) {
+  throw new Error("LIVE dynamic signals should remain eligible for email delivery");
+}
+const allPaperCandidatesRouting = routeSignalsByDynamicFamilyGate({
+  candidates: Array.from({ length: 3 }, (_, index) => ({
+    ...dynamicGateCandidate,
+    signalKey: `BTCUSDT:DYNAMIC_SPOT:1h:dynamic_relative_strength_breakout:${index}`
+  })),
+  dynamicFamilyGates: {
+    dynamic_strength: haltedDynamicFamily,
+    dynamic_weakness: provenDynamicFamily
+  },
+  limit: 1
+});
+if (allPaperCandidatesRouting.paperCandidates.length !== 3) {
+  throw new Error("PAPER evidence collection should not be capped by the email recipient limit");
+}
+const shadowEmailNotifications = buildEmailNotifications([{
+  signal_key: haltedRouting.paperCandidates[0].signalKey,
+  asset: "BTCUSDT",
+  strategy_id: haltedRouting.paperCandidates[0].strategyId,
+  interval: "1h",
+  trigger_time: new Date(1780000000000).toISOString(),
+  sent_at: new Date(1780000000000).toISOString(),
+  payload: haltedRouting.paperCandidates[0]
+}], []);
+if (shadowEmailNotifications.length !== 0) {
+  throw new Error("PAPER shadow samples must not appear in sent email history");
 }
 
 if (await hasProcessedScanCandle({ scanGroup: "dynamic-spot", asset: "BTCUSDT", interval: "1h", candleOpenTime: 1780000000000 })) {

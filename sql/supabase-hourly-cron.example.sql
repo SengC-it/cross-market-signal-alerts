@@ -13,6 +13,7 @@ where jobname in (
   'cross_market_signal_dynamic_30m',
   'cross_market_signal_v3_paper_hourly',
   'cross_market_signal_v3_3_paper_hourly',
+  'cross_market_signal_v3_4_paper_hourly',
   'cross_market_signal_short_hourly',
   'cross_market_signal_mid_4h',
   'cross_market_signal_review_4h',
@@ -85,7 +86,7 @@ begin
   );
 
   perform cron.schedule(
-    'cross_market_signal_v3_3_paper_hourly',
+    'cross_market_signal_v3_4_paper_hourly',
     '35 * * * *',
     format(
       $job$
@@ -93,7 +94,7 @@ begin
         url := %L,
         params := jsonb_build_object(
           'group',
-          'v3-3-paper'
+          'v3-4-paper'
         ),
         headers := jsonb_build_object(
           'Authorization',
