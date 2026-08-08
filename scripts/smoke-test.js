@@ -56,6 +56,8 @@ const fundingCarryV2BacktestSource = readFileSync(new URL("./backtest-funding-ca
 const fundingCarryV2UniverseSource = readFileSync(new URL("./select-funding-carry-v2-universe.js", import.meta.url), "utf8");
 const emailSource = readFileSync(new URL("../lib/email.js", import.meta.url), "utf8");
 const storageSource = readFileSync(new URL("../lib/storage.js", import.meta.url), "utf8");
+const scannerSource = readFileSync(new URL("../lib/scanner.js", import.meta.url), "utf8");
+const statusSource = readFileSync(new URL("../api/status.js", import.meta.url), "utf8");
 const schemaSource = readFileSync(new URL("../sql/schema.sql", import.meta.url), "utf8");
 const tableRenameMigration = readFileSync(new URL("../supabase/migrations/20260801110000_prefix_cr_table_names.sql", import.meta.url), "utf8");
 if (dashboardHtml.includes("localStorage") || dashboardHtml.includes("secret=${") || !dashboardHtml.includes("Authorization: `Bearer ${secret}`")) {
@@ -132,6 +134,21 @@ if (
   || /\b(sent_alerts|run_logs|processed_scan_candles|paper_model_runs)\b/.test(schemaSource)
 ) {
   throw new Error("Initial schema should define only cr_ prefixed application tables");
+}
+if (
+  !scannerSource.includes("claimSignalsForEmail")
+  || !storageSource.includes("claimSentSignal")
+  || !storageSource.includes("resolution=ignore-duplicates,return=representation")
+  || !schemaSource.includes("delivery_status text not null default 'sent'")
+) {
+  throw new Error("Email delivery should claim signal keys atomically before sending");
+}
+if (
+  !statusSource.includes("fetchRecentPaperEmailRuns(alertLimit)")
+  || !storageSource.includes('email_status: "eq.sent"')
+  || !storageSource.includes('email_sent_at: "not.is.null"')
+) {
+  throw new Error("Email history should query sent paper runs independently of the latest-run limit");
 }
 for (const tableRename of [
   "sent_alerts', 'cr_sent_alerts",

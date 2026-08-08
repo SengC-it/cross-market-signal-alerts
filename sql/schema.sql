@@ -11,6 +11,7 @@ create table if not exists cr_sent_alerts (
   signal_family text,
   signal_direction text,
   delivery_mode text,
+  delivery_status text not null default 'sent' check (delivery_status in ('sending', 'sent', 'failed')),
   payload jsonb,
   sent_at timestamptz not null default now()
 );
@@ -99,6 +100,7 @@ revoke all on table cr_run_logs from anon, authenticated;
 revoke all on table cr_processed_scan_candles from anon, authenticated;
 revoke all on table cr_paper_model_runs from anon, authenticated;
 grant select, insert, update on table cr_sent_alerts to service_role;
+grant delete on table cr_sent_alerts to service_role;
 grant select, insert on table cr_run_logs to service_role;
 grant select, insert on table cr_processed_scan_candles to service_role;
 grant select, insert, update on table cr_paper_model_runs to service_role;

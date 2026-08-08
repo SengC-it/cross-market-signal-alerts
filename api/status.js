@@ -1,5 +1,6 @@
 import {
   fetchRecentPaperModelRuns,
+  fetchRecentPaperEmailRuns,
   fetchRecentRunLogs,
   fetchRecentSentAlerts,
   isSupabaseConfigured
@@ -32,18 +33,20 @@ export default async function handler(req, res) {
     const limit = clampLimit(req.query?.limit, 10, 100, 50);
     const alertLimit = clampLimit(req.query?.alertLimit, 5, 200, 100);
     const paperLimit = clampLimit(req.query?.paperLimit, 1, 52, 12);
-    const [runLogsResult, sentAlertsResult, paperRunsResult] = await Promise.allSettled([
+    const [runLogsResult, sentAlertsResult, paperRunsResult, paperEmailRunsResult] = await Promise.allSettled([
       fetchRecentRunLogs(limit),
       fetchRecentSentAlerts(alertLimit),
-      fetchRecentPaperModelRuns(paperLimit)
+      fetchRecentPaperModelRuns(paperLimit),
+      fetchRecentPaperEmailRuns(alertLimit)
     ]);
     const warnings = [];
     const runLogs = normalizeRunLogs(unwrapResult(runLogsResult, "cr_run_logs", warnings));
     const sentAlerts = unwrapResult(sentAlertsResult, "cr_sent_alerts", warnings);
     const paperModelRuns = unwrapResult(paperRunsResult, "cr_paper_model_runs", warnings);
-    const emailNotifications = buildEmailNotifications(sentAlerts, paperModelRuns);
+    const paperEmailRuns = unwrapResult(paperEmailRunsResult, "cr_paper_email_history", warnings);
+    const emailNotifications = buildEmailNotifications(sentAlerts, paperEmailRuns);
 
-    if ([runLogsResult, sentAlertsResult, paperRunsResult].every((result) => result.status === "rejected")) {
+    if ([runLogsResult, sentAlertsResult, paperRunsResult, paperEmailRunsResult].every((result) => result.status === "rejected")) {
       throw new Error(warnings.map((warning) => `${warning.source}: ${warning.message}`).join("; "));
     }
 
@@ -55,6 +58,7 @@ export default async function handler(req, res) {
       runLogs,
       sentAlerts,
       paperModelRuns,
+      paperEmailRuns,
       fundingCarryV2: {
         modelId: FUNDING_CARRY_V2_MODEL.id,
         modelVersion: FUNDING_CARRY_V2_MODEL.version,
