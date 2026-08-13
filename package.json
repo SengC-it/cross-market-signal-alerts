@@ -6,6 +6,18 @@
   "scripts": {
     "test": "node scripts/smoke-test.js",
     "inverse-report": "node scripts/inverse-signal-report.js",
+    "backtest:tiered": "node scripts/backtest-tiered-dynamic.js",
+    "search:tiered": "node scripts/search-tiered-policy.js",
+    "backtest:cross-sectional": "node scripts/backtest-cross-sectional-fast.js",
+    "backtest:funding-carry": "node scripts/backtest-funding-carry.js",
+    "backtest:funding-carry-perp": "node scripts/backtest-funding-carry-perp.js",
+    "prepare:funding-carry-v2-data": "node scripts/prepare-funding-carry-v2-data.js",
+    "select:funding-carry-v2": "node scripts/select-funding-carry-v2-universe.js",
+    "backtest:funding-carry-perp-v2": "node scripts/backtest-funding-carry-perp-v2.js",
+    "evaluate:funding-carry-paper": "node scripts/evaluate-funding-carry-paper.js",
+    "evaluate:funding-carry-v2-paper": "node scripts/evaluate-funding-carry-v2-paper.js",
+    "v3.2-backtest": "node scripts/backtest-v3-2-exits.js",
+    "v3.3-backtest": "node scripts/backtest-v3-3-risk-controls.js",
     "dev": "vercel dev",
     "deploy": "vercel deploy --prod"
   },

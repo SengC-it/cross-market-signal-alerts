@@ -5,11 +5,20 @@ import { parseCronGroups } from "../api/cron.js";
 import { renderSignalEmail, renderTestEmail } from "../lib/report.js";
 import { reviewAlertWithCandles, reviewArbitrageAlert } from "../lib/alert-review.js";
 import { evaluateDynamicSpotOpportunity, filterSignalsByCurrentPrice, isDynamicSpotCandidate, isDynamicSpotCoolingDown, isDynamicWeakSpotCandidate, isFuturesPriceSignal, selectScanTargets, shouldReviewAlert, shouldReviewRecentAlerts } from "../lib/scanner.js";
-import { hasProcessedScanCandle, recordProcessedScanCandle } from "../lib/storage.js";
+import { hasProcessedScanCandle, recordProcessedScanCandle, sentAlertsForReviewParams } from "../lib/storage.js";
 import { compareStrategyInversion, CRYPTO_STRATEGIES, FUTURES_STRATEGIES, invertStrategyDirection, SHORT_TERM_STRATEGIES, STRATEGIES } from "../lib/strategies.js";
 
 if (!STRATEGIES.length) {
   throw new Error("No strategies registered");
+}
+
+const reviewParams = sentAlertsForReviewParams(30);
+if (
+  reviewParams.get("delivery_status") !== null
+  || reviewParams.get("or") !== "(delivery_status.eq.sent,delivery_mode.eq.PAPER)"
+  || reviewParams.get("limit") !== "30"
+) {
+  throw new Error("Alert review lookup must include PAPER shadow records as well as sent emails");
 }
 
 const dashboardHtml = readFileSync(new URL("../index.html", import.meta.url), "utf8");
@@ -22,8 +31,8 @@ if (packageJson.scripts?.["inverse-report"] !== "node scripts/inverse-signal-rep
 if (!inverseReportScript.includes("compareStrategyInversion") || !inverseReportScript.includes("inverse_signal_report.json")) {
   throw new Error("Inverse report script should compare strategy inversions and write the expected report");
 }
-if (!cronApi.includes('"inverse-watch-4h"') || !cronApi.includes('"inverse-watch-daily"')) {
-  throw new Error("Cron API should allow scheduled inverse-watch groups");
+if (cronApi.includes('"inverse-watch-4h"') || cronApi.includes('"inverse-watch-daily"')) {
+  throw new Error("Cron API should keep unproven inverse-watch groups disabled");
 }
 if (dashboardHtml.includes('return "样本不足";')) {
   throw new Error("Dashboard review text should not use a generic insufficient-sample fallback");
@@ -154,46 +163,50 @@ if (CONFIG.futuresRewardRiskRatio !== 1.5) {
 }
 
 const weakExisting = new Set();
-if (isDynamicWeakSpotCandidate({ symbol: "WIFUSDT", priceChangePercent: -6.5, quoteVolume: 3500000 }, weakExisting)) {
+const liquidDynamicQuoteVolume = Math.max(
+  CONFIG.dynamicSpotPoolMinQuoteVolume,
+  CONFIG.dynamicWeakSpotPoolMinQuoteVolume
+);
+if (isDynamicWeakSpotCandidate({ symbol: "WIFUSDT", priceChangePercent: -6.5, quoteVolume: liquidDynamicQuoteVolume }, weakExisting)) {
   throw new Error("Dynamic weak spot candidate should reject mild downside moves with weak edge");
 }
-if (!isDynamicWeakSpotCandidate({ symbol: "WIFUSDT", priceChangePercent: -10, quoteVolume: 3500000 }, weakExisting)) {
+if (!isDynamicWeakSpotCandidate({ symbol: "WIFUSDT", priceChangePercent: -10, quoteVolume: liquidDynamicQuoteVolume }, weakExisting)) {
   throw new Error("Dynamic weak spot candidate should accept profitable-bucket falling USDT symbols");
 }
-if (isDynamicWeakSpotCandidate({ symbol: "WIFUSDT", priceChangePercent: -12, quoteVolume: 3500000 }, weakExisting)) {
+if (isDynamicWeakSpotCandidate({ symbol: "WIFUSDT", priceChangePercent: -12, quoteVolume: liquidDynamicQuoteVolume }, weakExisting)) {
   throw new Error("Dynamic weak spot candidate should reject downside moves beyond the profitable 8%-11% bucket");
 }
-if (isDynamicWeakSpotCandidate({ symbol: "WIFUSDT", priceChangePercent: -14, quoteVolume: 3500000 }, weakExisting)) {
+if (isDynamicWeakSpotCandidate({ symbol: "WIFUSDT", priceChangePercent: -14, quoteVolume: liquidDynamicQuoteVolume }, weakExisting)) {
   throw new Error("Dynamic weak spot candidate should reject downside moves outside the profitable 8%-13% bucket");
 }
 if (isDynamicWeakSpotCandidate({ symbol: "THINUSDT", priceChangePercent: -6.5, quoteVolume: 100000 }, weakExisting)) {
   throw new Error("Dynamic weak spot candidate should reject illiquid symbols");
 }
-if (isDynamicWeakSpotCandidate({ symbol: "SLOWUSDT", priceChangePercent: -1.2, quoteVolume: 3500000 }, weakExisting)) {
+if (isDynamicWeakSpotCandidate({ symbol: "SLOWUSDT", priceChangePercent: -1.2, quoteVolume: liquidDynamicQuoteVolume }, weakExisting)) {
   throw new Error("Dynamic weak spot candidate should reject symbols without enough downside momentum");
 }
-if (isDynamicSpotCandidate({ symbol: "NFPUSDT", priceChangePercent: 8.5, quoteVolume: 3500000 }, weakExisting, new Set(["WIFUSDT"]))) {
+if (isDynamicSpotCandidate({ symbol: "NFPUSDT", priceChangePercent: 8.5, quoteVolume: liquidDynamicQuoteVolume }, weakExisting, new Set(["WIFUSDT"]))) {
   throw new Error("Dynamic strong candidate should reject spot symbols without a USDT perpetual contract");
 }
-if (!isDynamicSpotCandidate({ symbol: "WIFUSDT", priceChangePercent: 8.5, quoteVolume: 3500000 }, weakExisting, new Set(["WIFUSDT"]))) {
+if (!isDynamicSpotCandidate({ symbol: "WIFUSDT", priceChangePercent: 8.5, quoteVolume: liquidDynamicQuoteVolume }, weakExisting, new Set(["WIFUSDT"]))) {
   throw new Error("Dynamic strong candidate should accept liquid rising symbols with a USDT perpetual contract");
 }
-if (isDynamicSpotCandidate({ symbol: "WIFUSDT", priceChangePercent: 11, quoteVolume: 3500000 }, weakExisting, new Set(["WIFUSDT"]))) {
+if (isDynamicSpotCandidate({ symbol: "WIFUSDT", priceChangePercent: 11, quoteVolume: liquidDynamicQuoteVolume }, weakExisting, new Set(["WIFUSDT"]))) {
   throw new Error("Dynamic strong candidate should reject long setups above the profitable 8%-10% bucket");
 }
-if (isDynamicSpotCandidate({ symbol: "HOTUSDT", priceChangePercent: 22, quoteVolume: 3500000 }, weakExisting, new Set(["HOTUSDT"]))) {
+if (isDynamicSpotCandidate({ symbol: "HOTUSDT", priceChangePercent: 22, quoteVolume: liquidDynamicQuoteVolume }, weakExisting, new Set(["HOTUSDT"]))) {
   throw new Error("Dynamic strong candidate should reject overheated 24h movers before scanning");
 }
-if (isDynamicWeakSpotCandidate({ symbol: "NFPUSDT", priceChangePercent: -6.5, quoteVolume: 3500000 }, weakExisting, new Set(["WIFUSDT"]))) {
+if (isDynamicWeakSpotCandidate({ symbol: "NFPUSDT", priceChangePercent: -6.5, quoteVolume: liquidDynamicQuoteVolume }, weakExisting, new Set(["WIFUSDT"]))) {
   throw new Error("Dynamic weak spot candidate should reject spot symbols without a USDT perpetual contract");
 }
-if (!isDynamicWeakSpotCandidate({ symbol: "WIFUSDT", priceChangePercent: -10, quoteVolume: 3500000 }, weakExisting, new Set(["WIFUSDT"]))) {
+if (!isDynamicWeakSpotCandidate({ symbol: "WIFUSDT", priceChangePercent: -10, quoteVolume: liquidDynamicQuoteVolume }, weakExisting, new Set(["WIFUSDT"]))) {
   throw new Error("Dynamic weak spot candidate should accept profitable-bucket falling symbols with a USDT perpetual contract");
 }
-if (isDynamicWeakSpotCandidate({ symbol: "WIFUSDT", priceChangePercent: -12, quoteVolume: 3500000 }, weakExisting, new Set(["WIFUSDT"]))) {
+if (isDynamicWeakSpotCandidate({ symbol: "WIFUSDT", priceChangePercent: -12, quoteVolume: liquidDynamicQuoteVolume }, weakExisting, new Set(["WIFUSDT"]))) {
   throw new Error("Dynamic weak spot candidate should reject downside moves beyond the profitable 8%-11% bucket with a USDT perpetual contract");
 }
-if (isDynamicWeakSpotCandidate({ symbol: "CRASHUSDT", priceChangePercent: -18, quoteVolume: 3500000 }, weakExisting, new Set(["CRASHUSDT"]))) {
+if (isDynamicWeakSpotCandidate({ symbol: "CRASHUSDT", priceChangePercent: -18, quoteVolume: liquidDynamicQuoteVolume }, weakExisting, new Set(["CRASHUSDT"]))) {
   throw new Error("Dynamic weak spot candidate should reject crash-chasing downside moves");
 }
 if (!isFuturesPriceSignal({ market: "USDT 永续合约（动态强势池）", strategyId: "dynamic_relative_strength_breakout" })) {
@@ -303,8 +316,12 @@ const missingPriceKept = filterSignalsByCurrentPrice({
   maxDriftPct: 0.02,
   warnings: missingPriceWarnings
 });
-if (missingPriceKept.length !== 1 || missingPriceWarnings.length !== 1) {
-  throw new Error("Current price guard should keep signals when live price is unavailable and warn");
+if (
+  missingPriceKept.length !== 0
+  || missingPriceWarnings.length !== 1
+  || !missingPriceWarnings[0].warning.includes("dropped signal: current price unavailable")
+) {
+  throw new Error("Current price guard should fail closed when live price is unavailable");
 }
 
 if (await hasProcessedScanCandle({ scanGroup: "dynamic-spot", asset: "BTCUSDT", interval: "1h", candleOpenTime: 1780000000000 })) {

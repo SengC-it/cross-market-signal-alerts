@@ -330,7 +330,7 @@
           <p class="subtitle">查看每小时扫描、合约套利、策略触发、邮件发送、数据源警告和系统错误。</p>
         </div>
         <form class="controls" id="statusForm">
-          <input class="secret" id="secretInput" type="password" autocomplete="current-password" placeholder="输入 CRON_SECRET" />
+          <input class="secret" id="secretInput" type="password" autocomplete="current-password" placeholder="输入查询密码" />
           <button class="button" type="submit">查询</button>
           <button class="button secondary" id="clearButton" type="button">清除密钥</button>
         </form>
@@ -388,6 +388,9 @@
         "crypto-alt-c": "山寨币 C",
         "futures-core": "合约趋势",
         "futures-arbitrage": "合约套利",
+        "v3-paper": "V3.1 静默基准",
+        "v3-3-paper": "V3.3 过渡复盘",
+        "v3-4-paper": "V3.4 统一策略",
       };
 
       Object.assign(GROUP_LABELS, {
@@ -435,7 +438,7 @@
         alertCount: document.querySelector("#alertCount")
       };
 
-      const savedSecret = localStorage.getItem("signal-dashboard-secret");
+      const savedSecret = sessionStorage.getItem("signal-dashboard-secret");
       if (savedSecret) els.secret.value = savedSecret;
 
       els.form.addEventListener("submit", (event) => {
@@ -444,7 +447,7 @@
       });
 
       els.clear.addEventListener("click", () => {
-        localStorage.removeItem("signal-dashboard-secret");
+        sessionStorage.removeItem("signal-dashboard-secret");
         els.secret.value = "";
         setState("warn", "等待查询");
       });
@@ -457,12 +460,16 @@
           setState("bad", "需要密钥");
           return;
         }
-        localStorage.setItem("signal-dashboard-secret", secret);
+        sessionStorage.setItem("signal-dashboard-secret", secret);
         setState("warn", "查询中");
 
         try {
-          const response = await fetch(`/api/status?limit=80&alertLimit=120&secret=${encodeURIComponent(secret)}`);
+          const response = await fetch("/api/status?limit=80&alertLimit=120", {
+            headers: { Authorization: `Bearer ${secret}` },
+            cache: "no-store"
+          });
           const data = await response.json();
+          if (response.status === 401) throw new Error("查询密码不正确或已更新");
           if (!response.ok || !data.ok) throw new Error(data.message || data.error || `HTTP ${response.status}`);
           render(data);
           setState("ok", "连接正常");
@@ -484,10 +491,11 @@
         els.latestEmail.textContent = emailText(summary.latestRunEmailed, summary.latestRunEmailConsistency);
         els.groupCount.textContent = `${summary.groups?.length || 0} 组`;
         els.runCount.textContent = `${data.runLogs?.length || 0} 条`;
-        els.alertCount.textContent = `${data.sentAlerts?.length || 0} 条`;
+        const emailNotifications = data.emailNotifications || data.sentAlerts || [];
+        els.alertCount.textContent = `${emailNotifications.length} 条`;
         renderGroupsV2(summary.groups || []);
         renderRuns(data.runLogs || []);
-        renderAlertsV2(data.sentAlerts || []);
+        renderAlertsV2(emailNotifications);
       }
 
       function renderAlertsV2(alerts) {
@@ -496,13 +504,14 @@
           return;
         }
         els.sentAlerts.innerHTML = table(
-          ["发送时间", "资产", "市场", "周期", "策略", "推荐指数", "执行计划", "评分拆解", "已发复盘", "历史表现", "触发时间"],
+          ["发送时间", "资产", "市场", "周期", "策略", "模型版本", "推荐指数", "执行计划", "评分拆解", "已发复盘", "历史表现", "触发时间"],
           alerts.map((alert) => [
             formatDate(alert.sent_at),
             alert.asset || "--",
             alert.payload?.market || "--",
             alert.interval || "--",
             `${tierText(alert.payload)} / ${alert.payload?.strategyName || alert.strategy_id || "--"}`,
+            alert.model_version || alert.payload?.modelVersion || "旧版信号模型",
             alert.recommendation_score == null ? "--" : Math.round(Number(alert.recommendation_score)),
             executionPlanText(alert.payload?.executionPlan),
             scoringBreakdownText(alert.payload?.scoringBreakdown),
@@ -703,10 +712,46 @@
         if (review?.status === "reviewed") {
           const outcome = review.outcome || "已复盘";
           const value = Number.isFinite(Number(review.returnPct)) ? ` ${pct(review.returnPct)}` : "";
+          const exitReason = review.exitReason === "catastrophe_stop"
+            ? " / 组合灾难止损"
+            : review.exitReason === "time_exit"
+              ? " / 168h 时间退出"
+              : "";
+          if (Number.isFinite(Number(review.priceReturn)) && Number.isFinite(Number(review.fundingReturn)) && Number.isFinite(Number(review.tradingCost))) {
+            return `${outcome}${value}${exitReason} / 价格 ${pct(review.priceReturn)} / 资金费 ${pct(review.fundingReturn)} / 成本 -${pct(review.tradingCost)}`;
+          }
           const price = Number.isFinite(Number(review.exitPrice)) ? ` / 退出 ${formatNumber(review.exitPrice)}` : "";
-          return `${outcome}${value}${price}`;
+          return `${outcome}${value}${exitReason}${price}`;
         }
         if (review?.status === "pending") {
+          const hasPositionReturn = review.returnPct != null
+            && Number.isFinite(Number(review.returnPct));
+          const hasPortfolioReturn = review.portfolioReturnPct != null
+            && Number.isFinite(Number(review.portfolioReturnPct));
+          const hasLatestPortfolioReturn = review.latestMarkedReturn != null
+            && Number.isFinite(Number(review.latestMarkedReturn));
+          if (hasPositionReturn) {
+            const outcome = review.outcome || (Number(review.returnPct) >= 0 ? "持仓中盈利" : "持仓中亏损");
+            const portfolio = hasPortfolioReturn
+              ? ` / 组合 ${pct(review.portfolioReturnPct)}`
+              : "";
+            const markPrice = review.markPrice != null && Number.isFinite(Number(review.markPrice))
+              ? ` / 标记价 ${formatNumber(review.markPrice)}`
+              : "";
+            const markTime = review.markTime ? ` / 更新 ${formatDate(review.markTime)}` : "";
+            const expectedExit = review.expectedExitTime
+              ? ` / 预计结束 ${formatDate(review.expectedExitTime)}`
+              : "";
+            return `${outcome} ${pct(review.returnPct)}${portfolio}${markPrice}${markTime}${expectedExit} / 未最终：${review.reason || "持仓监控中"}`;
+          }
+          if (hasLatestPortfolioReturn) {
+            const outcome = Number(review.latestMarkedReturn) >= 0 ? "组合浮动盈利" : "组合浮动亏损";
+            const markTime = review.latestMarkTime ? ` / 更新 ${formatDate(review.latestMarkTime)}` : "";
+            const expectedExit = review.expectedExitTime
+              ? ` / 预计结束 ${formatDate(review.expectedExitTime)}`
+              : "";
+            return `${outcome} ${pct(review.latestMarkedReturn)}${markTime}${expectedExit} / 未最终：${review.reason || "持仓监控中"}`;
+          }
           return review.reason || "待复盘";
         }
         return "待复盘";
@@ -728,6 +773,22 @@
 
       function executionPlanText(plan) {
         if (!plan) return "--";
+        if (plan.kind === "v3_paper_position") {
+          const side = plan.side === "LONG" ? "做多" : "做空";
+          const baseWeight = plan.baseTargetWeight != null
+            && Number.isFinite(Number(plan.baseTargetWeight))
+            ? `基础 ${pct(Math.abs(Number(plan.baseTargetWeight)))} → `
+            : "";
+          const risk = plan.catastropheStopPct != null
+            && Number.isFinite(Number(plan.catastropheStopPct))
+            ? ` / 组合灾难止损 -${pct(plan.catastropheStopPct)}`
+            : "";
+          const holding = plan.maxHoldingHours != null
+            && Number.isFinite(Number(plan.maxHoldingHours))
+            ? ` / 最长 ${plan.maxHoldingHours}h / 无固定止盈`
+            : "";
+          return `${side} / ${baseWeight}权重 ${pct(Math.abs(Number(plan.targetWeight || 0)))} / 参考价 ${formatNumber(plan.referencePrice)}${risk}${holding}`;
+        }
         return [
           `止损 ${formatNumber(plan.stopLoss)}`,
           `目标 ${formatNumber(plan.takeProfit)}`,
@@ -738,6 +799,19 @@
 
       function scoringBreakdownText(breakdown) {
         if (!breakdown) return "旧记录暂无";
+        if (breakdown.kind === "v3_paper_position") {
+          const volume = Number(breakdown.quoteVolume24h);
+          const volumeText = Number.isFinite(volume) ? `${(volume / 1_000_000).toFixed(1)}m USDT` : "--";
+          const forecast = Number(breakdown.forecastAnnualVolatility);
+          const target = Number(breakdown.targetAnnualVolatility);
+          const volatility = breakdown.forecastAnnualVolatility != null
+            && breakdown.targetAnnualVolatility != null
+            && Number.isFinite(forecast)
+            && Number.isFinite(target)
+            ? ` / 波动率预测 ${pct(forecast)} → 目标 ${pct(target)}`
+            : "";
+          return `分数 ${formatNumber(breakdown.score)} / beta ${formatNumber(breakdown.beta)} / 24h 量 ${volumeText}${volatility}`;
+        }
         return `样本外 ${breakdown.outOfSample ?? "--"} / 环境 ${breakdown.environment ?? "--"} / 真实 ${breakdown.livePerformance ?? "--"} / 风险 ${breakdown.risk ?? "--"} / 成本 ${breakdown.costLiquidity ?? "--"} / 效率 ${breakdown.capitalEfficiency ?? "--"}`;
       }
 
