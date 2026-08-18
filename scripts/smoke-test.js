@@ -8,8 +8,9 @@ import { reviewAlertWithCandles, reviewArbitrageAlert } from "../lib/alert-revie
 import { evaluateDynamicFamilyGate, evaluateDynamicFamilyGates, evaluateDynamicSpotOpportunity, filterSignalsByCurrentPrice, isDynamicPaperSignal, isDynamicSpotCandidate, isDynamicSpotCoolingDown, isDynamicWeakSpotCandidate, isFuturesPriceSignal, routeSignalsByDynamicFamilyGate, selectScanTargets, shouldReviewAlert, shouldReviewRecentAlerts } from "../lib/scanner.js";
 import { DYNAMIC_MODEL_VERSION, dynamicModelConfigSnapshot, withModelMetadata } from "../lib/model-metadata.js";
 import { hasProcessedScanCandle, recordProcessedScanCandle } from "../lib/storage.js";
-import { compareStrategyInversion, CRYPTO_STRATEGIES, FUTURES_STRATEGIES, invertStrategyDirection, scoreFuturesSentiment, SHORT_TERM_STRATEGIES, STRATEGIES } from "../lib/strategies.js";
+import { compareStrategyInversion, CRYPTO_STRATEGIES, FUTURES_STRATEGIES, getCurrentSignal, invertStrategyDirection, scoreFuturesSentiment, SHORT_TERM_STRATEGIES, STRATEGIES } from "../lib/strategies.js";
 import { isAuthorizedRequest, isDashboardAuthorizedRequest } from "../lib/api-auth.js";
+import { attachTradeSpec, createTradeSpec, getTradeSpecForAlert, getTradeSpecForSignal, intervalMilliseconds } from "../lib/trading/trade-spec.js";
 import { buildV31Portfolio, latestV31RebalanceTime, renderV31PaperEmail, reviewV31PaperRun, V31_MODEL } from "../lib/v3-paper.js";
 import {
   applyV33VolatilityTarget,
@@ -1357,6 +1358,130 @@ if (await hasProcessedScanCandle({ scanGroup: "dynamic-spot", asset: "BTCUSDT", 
 }
 await recordProcessedScanCandle({ scanGroup: "dynamic-spot", asset: "BTCUSDT", interval: "1h", candleOpenTime: 1780000000000 });
 
+const tradeSpecOpenTime = Date.UTC(2026, 5, 21, 8, 0);
+const tradeSpecInterval = intervalMilliseconds("1h");
+const longTradeSpec = createTradeSpec({
+  side: "LONG",
+  interval: "1h",
+  signalCandleOpenTime: tradeSpecOpenTime,
+  referencePrice: 100,
+  stopLoss: 97,
+  takeProfit: 105,
+  rewardRiskRatio: 5 / 3,
+  maxHoldingHours: 8
+});
+const shortTradeSpec = createTradeSpec({
+  side: "SHORT",
+  interval: "1h",
+  signalCandleOpenTime: tradeSpecOpenTime,
+  referencePrice: 100,
+  stopLoss: 103,
+  takeProfit: 95,
+  rewardRiskRatio: 5 / 3,
+  maxHoldingHours: 8
+});
+if (
+  longTradeSpec.side !== "LONG"
+  || longTradeSpec.signalCandleCloseTime !== tradeSpecOpenTime + tradeSpecInterval
+  || longTradeSpec.signalAvailableAt !== longTradeSpec.signalCandleCloseTime
+  || longTradeSpec.entryEligibleAt !== longTradeSpec.signalCandleCloseTime
+  || longTradeSpec.entry.referencePrice !== 100
+  || longTradeSpec.stopLoss !== 97
+  || longTradeSpec.takeProfit !== 105
+  || longTradeSpec.maxHoldingTime !== longTradeSpec.entryEligibleAt + 8 * 3600 * 1000
+) {
+  throw new Error("LONG TradeSpec should define close-time availability and next-bar entry eligibility");
+}
+if (shortTradeSpec.side !== "SHORT" || shortTradeSpec.stopLoss !== 103 || shortTradeSpec.takeProfit !== 95) {
+  throw new Error("SHORT TradeSpec should preserve side-specific stop loss and take profit");
+}
+const attachedTimedSignal = attachTradeSpec({ triggerTime: tradeSpecOpenTime }, longTradeSpec);
+if (attachedTimedSignal.triggerTime !== longTradeSpec.signalAvailableAt || attachedTimedSignal.triggerTime === longTradeSpec.signalCandleOpenTime) {
+  throw new Error("Trade signal triggerTime should use post-close availability, not candle.openTime");
+}
+
+const currentSignalCandles = Array.from({ length: 223 }, (_, index) => ({
+  openTime: tradeSpecOpenTime + index * tradeSpecInterval,
+  close: 100,
+  high: 101,
+  low: 99
+}));
+const currentSignal = getCurrentSignal(
+  currentSignalCandles,
+  {
+    holdHours: 8,
+    evaluate(_candles, index) {
+      return { passed: index === 221, details: {} };
+    }
+  },
+  "1h"
+);
+if (
+  !currentSignal
+  || currentSignal.signalAvailableAt !== currentSignal.candle.openTime + tradeSpecInterval
+  || currentSignal.entryEligibleAt !== currentSignal.signalAvailableAt
+  || currentSignal.signalAvailableAt === currentSignal.candle.openTime
+) {
+  throw new Error("Signals should become available only after the signal candle closes");
+}
+
+const sharedTradeSpec = createTradeSpec({
+  side: "LONG",
+  interval: "1h",
+  signalCandleOpenTime: tradeSpecOpenTime,
+  referencePrice: 100,
+  stopLoss: 97,
+  takeProfit: 105,
+  rewardRiskRatio: 5 / 3,
+  maxHoldingHours: 8,
+  modelVersion: "m1-test"
+});
+const sharedSignal = {
+  asset: "SHAREDUSDT",
+  direction: "做多观察",
+  strategyId: "m1_shared_trade_spec",
+  recommendationScore: 90,
+  validUntil: tradeSpecOpenTime + 8 * 3600 * 1000,
+  close: 999,
+  tradeSpec: sharedTradeSpec,
+  executionPlan: {
+    entryReference: 999,
+    stopLoss: 900,
+    takeProfit: 1100
+  }
+};
+if (getTradeSpecForSignal(sharedSignal) !== sharedTradeSpec || getTradeSpecForAlert({ payload: { tradeSpec: sharedTradeSpec } }) !== sharedTradeSpec) {
+  throw new Error("Email and Alert Review should resolve the same TradeSpec object");
+}
+const sharedEmail = renderSignalEmail([sharedSignal]);
+if (!sharedEmail.text.includes("参考价：100") || !sharedEmail.text.includes("止损：97") || !sharedEmail.text.includes("止盈：105") || sharedEmail.text.includes("参考价：999")) {
+  throw new Error("Email should read entry, stop loss, and take profit directly from TradeSpec");
+}
+const sharedReview = reviewAlertWithCandles({
+  trigger_time: new Date(tradeSpecOpenTime).toISOString(),
+  sent_at: new Date(tradeSpecOpenTime + 30 * 60 * 1000).toISOString(),
+  interval: "1h",
+  payload: {
+    ...sharedSignal,
+    executionPlan: { entryReference: 999, stopLoss: 900, takeProfit: 1100 }
+  }
+}, [
+  { openTime: tradeSpecOpenTime + tradeSpecInterval, high: 106, low: 99, close: 105.5 }
+], tradeSpecOpenTime + 2 * tradeSpecInterval + 1);
+if (sharedReview.status !== "reviewed" || sharedReview.outcome !== "止盈" || sharedReview.exitPrice !== 105 || sharedReview.referencePrice !== 100) {
+  throw new Error("Alert Review should use the same TradeSpec TP/SL and reference price as Email");
+}
+const shortFirstBarReview = reviewAlertWithCandles({
+  trigger_time: new Date(tradeSpecOpenTime).toISOString(),
+  interval: "1h",
+  payload: { tradeSpec: shortTradeSpec }
+}, [
+  { openTime: tradeSpecOpenTime + tradeSpecInterval, open: 102, high: 104, low: 99, close: 101 }
+], tradeSpecOpenTime + 2 * tradeSpecInterval + 1);
+if (shortFirstBarReview.status !== "reviewed" || shortFirstBarReview.outcome !== "止损" || shortFirstBarReview.exitPrice !== 103) {
+  throw new Error("The first post-signal candle should be able to trigger a SHORT stop loss");
+}
+
 const email = renderTestEmail();
 if (!email.includes("云端信号系统测试邮件")) {
   throw new Error("Test email renderer failed");
@@ -1579,8 +1704,8 @@ const sentTimeReview = reviewAlertWithCandles({
   { openTime: Date.UTC(2026, 5, 21, 9, 0), high: 101, low: 96.5, close: 97 },
   { openTime: Date.UTC(2026, 5, 21, 10, 0), high: 106, low: 99, close: 105.5 }
 ], reviewNow);
-if (sentTimeReview.status !== "reviewed" || sentTimeReview.exitTime !== Date.UTC(2026, 5, 21, 10, 0) || sentTimeReview.returnPct <= 0) {
-  throw new Error("Alert review should ignore candles that opened before the email was sent");
+if (sentTimeReview.status !== "reviewed" || sentTimeReview.outcome !== "止损" || sentTimeReview.exitTime !== Date.UTC(2026, 5, 21, 9, 0) || sentTimeReview.returnPct >= 0) {
+  throw new Error("Alert review should not let sent_at skip the first post-signal candle");
 }
 
 const exactBoundaryReview = reviewAlertWithCandles({
