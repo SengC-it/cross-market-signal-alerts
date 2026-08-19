@@ -64,7 +64,8 @@ for (const market of options.markets) {
           strategy,
           interval,
           tradingCost,
-          minTrades
+          minTrades,
+          marketType: market
         });
         const item = summarizeComparison({ market, asset, comparison });
         report.comparisons.push(item);

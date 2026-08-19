@@ -8,14 +8,14 @@ import { reviewAlertWithCandles, reviewArbitrageAlert } from "../lib/alert-revie
 import { createExecutionModel } from "../lib/backtest/execution-model.js";
 import { runBacktest } from "../lib/backtest/backtest-engine.js";
 import { aggregateMetrics } from "../lib/backtest/metrics.js";
-import { simulateTrade } from "../lib/backtest/trade-simulator.js";
-import { enhanceDynamicSignal, evaluateDynamicFamilyGate, evaluateDynamicFamilyGates, evaluateDynamicSpotOpportunity, filterSignalsByCurrentPrice, isDynamicPaperSignal, isDynamicSpotCandidate, isDynamicSpotCoolingDown, isDynamicWeakSpotCandidate, isFuturesPriceSignal, routeSignalsByDynamicFamilyGate, selectScanTargets, shouldReviewAlert, shouldReviewRecentAlerts, signalRecord, summarizeLiveAlertPerformance } from "../lib/scanner.js";
+import { simulateTrade, validateEntryGeometry } from "../lib/backtest/trade-simulator.js";
+import { enhanceDynamicSignal, enhanceInverseWatchSignal, evaluateDynamicFamilyGate, evaluateDynamicFamilyGates, evaluateDynamicSpotOpportunity, filterSignalsByCurrentPrice, isDynamicPaperSignal, isDynamicSpotCandidate, isDynamicSpotCoolingDown, isDynamicWeakSpotCandidate, isFuturesPriceSignal, routeSignalsByDynamicFamilyGate, selectScanTargets, shouldReviewAlert, shouldReviewRecentAlerts, signalRecord, summarizeLiveAlertPerformance } from "../lib/scanner.js";
 import { DYNAMIC_MODEL_VERSION, dynamicModelConfigSnapshot, withModelMetadata } from "../lib/model-metadata.js";
 import { hasProcessedScanCandle, recordProcessedScanCandle } from "../lib/storage.js";
 import { backtestStrategy, compareStrategyInversion, CRYPTO_STRATEGIES, FUTURES_STRATEGIES, getCurrentSignal, invertStrategyDirection, scoreFuturesSentiment, SHORT_TERM_STRATEGIES, STRATEGIES } from "../lib/strategies.js";
 import { isAuthorizedRequest, isDashboardAuthorizedRequest } from "../lib/api-auth.js";
 import { attachTradeSpec, createTradeSpec, getTradeSpecForAlert, getTradeSpecForSignal, intervalMilliseconds, isTradeSpec } from "../lib/trading/trade-spec.js";
-import { buildFuturesTradePlan } from "../lib/trading/trade-plan.js";
+import { buildFuturesTradePlan, buildSpotTradePlan } from "../lib/trading/trade-plan.js";
 import { buildV31Portfolio, latestV31RebalanceTime, renderV31PaperEmail, reviewV31PaperRun, V31_MODEL } from "../lib/v3-paper.js";
 import {
   applyV33VolatilityTarget,
@@ -101,7 +101,7 @@ else process.env.DASHBOARD_SECRET = previousDashboardSecret;
 if (packageJson.scripts?.["inverse-report"] !== "node scripts/inverse-signal-report.js") {
   throw new Error("package.json should expose npm run inverse-report");
 }
-if (!inverseReportScript.includes("compareStrategyInversion") || !inverseReportScript.includes("inverse_signal_report.json")) {
+if (!inverseReportScript.includes("compareStrategyInversion") || !inverseReportScript.includes("marketType: market") || !inverseReportScript.includes("inverse_signal_report.json")) {
   throw new Error("Inverse report script should compare strategy inversions and write the expected report");
 }
 if (cronApi.includes('"inverse-watch-4h"') || cronApi.includes('"inverse-watch-daily"')) {
@@ -1489,6 +1489,9 @@ const invalidCreatedTradeSpec = createTradeSpec({
 if (invalidCreatedTradeSpec !== null || getTradeSpecForSignal({ tradeSpec: invalidChronologyCases[0] }) !== null) {
   throw new Error("Invalid TradeSpec chronology must fail closed without legacy fallback");
 }
+if (isTradeSpec({ ...longTradeSpec, referencePrice: 110 }) || isTradeSpec({ ...shortTradeSpec, referencePrice: 90 })) {
+  throw new Error("TradeSpec geometry must fail closed when reference price is outside the frozen stop/target range");
+}
 
 const sharedTradeSpec = createTradeSpec({
   side: "LONG",
@@ -1626,7 +1629,10 @@ const livePerformance = summarizeLiveAlertPerformance({
     strategy_id: "m1_live_performance_test",
     interval: "1h",
     trigger_time: new Date(Date.UTC(2026, 5, 21, 11, 0)).toISOString(),
-    payload: { tradeSpec: livePerformanceSpec }
+    payload: {
+      tradeSpec: livePerformanceSpec,
+      review: { status: "reviewed", outcome: "时间退出", returnPct: 0.02 }
+    }
   }],
   candles: [
     { openTime: Date.UTC(2026, 5, 21, 10, 0), close: 100 },
@@ -1638,8 +1644,8 @@ const livePerformance = summarizeLiveAlertPerformance({
   interval: "1h",
   tradingCost: 0
 });
-if (livePerformance.trades !== 1 || Math.abs(livePerformance.totalReturn - 0.02) > 1e-9) {
-  throw new Error("Live performance should start its hold period at entryEligibleAt, not signalCandleOpenTime");
+if (livePerformance.trades !== 1 || Math.abs(livePerformance.totalReturn - 0.02) > 1e-9 || livePerformance.source !== "persisted_review") {
+  throw new Error("Live performance should use the persisted reviewed TradeSpec result");
 }
 const tradeSpecOnlyHold = createTradeSpec({
   side: "LONG",
@@ -1659,7 +1665,10 @@ const tradeSpecOnlyLivePerformance = summarizeLiveAlertPerformance({
     strategy_id: "m1_trade_spec_hold_test",
     interval: "1h",
     trigger_time: new Date(Date.UTC(2026, 5, 21, 11, 0)).toISOString(),
-    payload: { tradeSpec: tradeSpecOnlyHold }
+    payload: {
+      tradeSpec: tradeSpecOnlyHold,
+      review: { status: "reviewed", outcome: "止损", returnPct: -0.03 }
+    }
   }],
   candles: [
     { openTime: Date.UTC(2026, 5, 21, 11, 0), close: 110 },
@@ -1671,8 +1680,37 @@ const tradeSpecOnlyLivePerformance = summarizeLiveAlertPerformance({
   interval: "1h",
   tradingCost: 0
 });
-if (tradeSpecOnlyLivePerformance.trades !== 1 || Math.abs(tradeSpecOnlyLivePerformance.totalReturn - 0.2) > 1e-9) {
-  throw new Error("Live performance time stop should come from TradeSpec, not strategy holdHours");
+if (tradeSpecOnlyLivePerformance.trades !== 1 || Math.abs(tradeSpecOnlyLivePerformance.totalReturn + 0.03) > 1e-9) {
+  throw new Error("Live performance should record the reviewed stop loss instead of fixed-hold price movement");
+}
+const legacyEntryEligiblePerformance = summarizeLiveAlertPerformance({
+  sentAlerts: [{
+    asset: "LEGACY_ENTRY_TIME",
+    strategy_id: "m1_legacy_entry_time_test",
+    interval: "1h",
+    trigger_time: new Date(Date.UTC(2026, 5, 21, 10, 0)).toISOString(),
+    payload: {
+      close: 100,
+      executionPlan: {
+        entryReference: 100,
+        stopLoss: 97,
+        takeProfit: 105,
+        maxHoldingHours: 1
+      }
+    }
+  }],
+  candles: [
+    { openTime: Date.UTC(2026, 5, 21, 10, 0), close: 110 },
+    { openTime: Date.UTC(2026, 5, 21, 11, 0), close: 120 },
+    { openTime: Date.UTC(2026, 5, 21, 12, 0), close: 130 }
+  ],
+  asset: "LEGACY_ENTRY_TIME",
+  strategy: { id: "m1_legacy_entry_time_test", direction: "LONG", holdHours: 1 },
+  interval: "1h",
+  tradingCost: 0
+});
+if (legacyEntryEligiblePerformance.trades !== 1 || Math.abs(legacyEntryEligiblePerformance.totalReturn - 0.3) > 1e-9 || legacyEntryEligiblePerformance.dataQuality !== "LEGACY_DEGRADED") {
+  throw new Error("Legacy fallback should start its holding window at the 11:00 entryEligibleAt, not the 10:00 signal candle open");
 }
 
 const m2BaseTime = Date.UTC(2026, 6, 1, 0, 0);
@@ -1719,8 +1757,15 @@ if (
 ) {
   throw new Error("M2 LONG should use next-bar market entry and stop replay at the first TP candle without lookahead");
 }
-if (Math.abs(m2LongTp.realizedR - 1) > 1e-9 || Math.abs(m2LongTp.mfePct - 0.06) > 1e-9 || Math.abs(m2LongTp.maePct + 0.02) > 1e-9) {
-  throw new Error("M2 LONG TP should calculate realized R and MFE/MAE from replayed candles");
+if (
+  Math.abs(m2LongTp.realizedR - 1) > 1e-9
+  || Math.abs(m2LongTp.mfePct - 0.05) > 1e-9
+  || Math.abs(m2LongTp.maePct + 0.02) > 1e-9
+  || m2LongTp.executionQuality !== "MODELED_EXECUTION"
+  || m2LongTp.exitResolution !== "take_profit"
+  || m2LongTp.excursionQuality !== "BAR_BOUNDED_CONSERVATIVE"
+) {
+  throw new Error("M2 LONG TP should conservatively bound exit-candle MFE/MAE and separate execution quality from exit resolution");
 }
 
 const m2ShortTp = simulateTrade({
@@ -1737,6 +1782,122 @@ const m2ShortTp = simulateTrade({
 });
 if (!m2ShortTp || m2ShortTp.side !== "SHORT" || m2ShortTp.entryMarketPrice !== 98 || m2ShortTp.exitReason !== "take_profit" || m2ShortTp.exitFillPrice !== 95) {
   throw new Error("M2 SHORT should use adverse downward entry and side-correct TP replay");
+}
+
+const m2ShortExcursion = simulateTrade({
+  tradeSpec: m2Spec({ side: "SHORT", stopLoss: 120, takeProfit: 80, maxHoldingHours: 4 }),
+  candles: [
+    { openTime: m2BaseTime, open: 100, high: 101, low: 99, close: 100 },
+    { openTime: m2BaseTime + m2Hour, open: 100, high: 110, low: 90, close: 100 },
+    { openTime: m2BaseTime + 2 * m2Hour, open: 100, high: 101, low: 99, close: 100 }
+  ],
+  entryIndex: 1,
+  executionModel: createExecutionModel({ marketType: "spot", fundingDataComplete: true })
+});
+if (!m2ShortExcursion || Math.abs(m2ShortExcursion.mfePct - 0.1) > 1e-9 || Math.abs(m2ShortExcursion.maePct + 0.1) > 1e-9) {
+  throw new Error("M2 SHORT MFE/MAE should use 1 - low/entry and 1 - high/entry exactly");
+}
+
+const m2ShortStop = simulateTrade({
+  tradeSpec: m2Spec({ side: "SHORT", stopLoss: 105, takeProfit: 95 }),
+  candles: [
+    { openTime: m2BaseTime, open: 100, high: 101, low: 99, close: 100 },
+    { openTime: m2BaseTime + m2Hour, open: 100, high: 104, low: 99, close: 101 },
+    { openTime: m2BaseTime + 2 * m2Hour, open: 100, high: 105, low: 99, close: 104 }
+  ],
+  entryIndex: 1,
+  executionModel: createExecutionModel({ marketType: "spot", fundingDataComplete: true })
+});
+if (!m2ShortStop || m2ShortStop.exitReason !== "stop_loss" || m2ShortStop.exitMarketPrice !== 105 || m2ShortStop.exitFillPrice !== 105 || m2ShortStop.exitResolution !== "stop_loss") {
+  throw new Error("M2 normal SHORT stop should fill at the frozen stop price");
+}
+
+const m2ShortGapStop = simulateTrade({
+  tradeSpec: m2Spec({ side: "SHORT", stopLoss: 105, takeProfit: 95 }),
+  candles: [
+    { openTime: m2BaseTime, open: 100, high: 101, low: 99, close: 100 },
+    { openTime: m2BaseTime + m2Hour, open: 100, high: 104, low: 99, close: 101 },
+    { openTime: m2BaseTime + 2 * m2Hour, open: 110, high: 115, low: 109, close: 111 }
+  ],
+  entryIndex: 1,
+  executionModel: createExecutionModel({ marketType: "spot", fundingDataComplete: true })
+});
+if (!m2ShortGapStop || m2ShortGapStop.exitReason !== "stop_loss" || m2ShortGapStop.exitMarketPrice !== 110 || m2ShortGapStop.exitResolution !== "gap_stop_worse_fill" || Math.abs(m2ShortGapStop.mfePct - 0.01) > 1e-9 || Math.abs(m2ShortGapStop.maePct + 0.1) > 1e-9) {
+  throw new Error("M2 gap-through SHORT stop should use the worse open and exclude post-exit highs/lows");
+}
+
+const m2ShortAdverseModel = createExecutionModel({
+  marketType: "spot",
+  spreadPct: 0.02,
+  entrySlippagePct: 0.01,
+  exitSlippagePct: 0.02,
+  fundingDataComplete: true
+});
+const m2ShortAdverse = simulateTrade({
+  tradeSpec: m2Spec({ side: "SHORT", stopLoss: 110, takeProfit: 90 }),
+  candles: [
+    { openTime: m2BaseTime, open: 100, high: 101, low: 99, close: 100 },
+    { openTime: m2BaseTime + m2Hour, open: 100, high: 110, low: 99, close: 108 }
+  ],
+  entryIndex: 1,
+  executionModel: m2ShortAdverseModel
+});
+if (!m2ShortAdverse || !(m2ShortAdverse.entryFillPrice < m2ShortAdverse.entryMarketPrice) || !(m2ShortAdverse.exitFillPrice > m2ShortAdverse.exitMarketPrice) || m2ShortAdverse.spreadCostPct <= 0 || m2ShortAdverse.slippageCostPct <= 0) {
+  throw new Error("M2 SHORT entry and exit spread/slippage should worsen executable prices");
+}
+
+const invalidLongEntryBeyondTp = simulateTrade({
+  tradeSpec: m2Spec(),
+  candles: [
+    { openTime: m2BaseTime, open: 100, high: 101, low: 99, close: 100 },
+    { openTime: m2BaseTime + m2Hour, open: 110, high: 112, low: 109, close: 111 }
+  ],
+  entryIndex: 1,
+  executionModel: createExecutionModel({ marketType: "spot", fundingDataComplete: true })
+});
+const invalidLongEntryBeyondSl = simulateTrade({
+  tradeSpec: m2Spec(),
+  candles: [
+    { openTime: m2BaseTime, open: 100, high: 101, low: 99, close: 100 },
+    { openTime: m2BaseTime + m2Hour, open: 90, high: 92, low: 88, close: 89 }
+  ],
+  entryIndex: 1,
+  executionModel: createExecutionModel({ marketType: "spot", fundingDataComplete: true })
+});
+const invalidShortEntryBeyondTp = simulateTrade({
+  tradeSpec: m2Spec({ side: "SHORT", stopLoss: 105, takeProfit: 95 }),
+  candles: [
+    { openTime: m2BaseTime, open: 100, high: 101, low: 99, close: 100 },
+    { openTime: m2BaseTime + m2Hour, open: 90, high: 92, low: 88, close: 89 }
+  ],
+  entryIndex: 1,
+  executionModel: createExecutionModel({ marketType: "spot", fundingDataComplete: true })
+});
+const invalidShortEntryBeyondSl = simulateTrade({
+  tradeSpec: m2Spec({ side: "SHORT", stopLoss: 105, takeProfit: 95 }),
+  candles: [
+    { openTime: m2BaseTime, open: 100, high: 101, low: 99, close: 100 },
+    { openTime: m2BaseTime + m2Hour, open: 110, high: 112, low: 109, close: 111 }
+  ],
+  entryIndex: 1,
+  executionModel: createExecutionModel({ marketType: "spot", fundingDataComplete: true })
+});
+if (invalidLongEntryBeyondTp || invalidLongEntryBeyondSl || invalidShortEntryBeyondTp || invalidShortEntryBeyondSl) {
+  throw new Error("M2 must reject LONG/SHORT fills that gap beyond the frozen TP or SL without recomputing the plan");
+}
+
+const expiredBeforeEntry = simulateTrade({
+  tradeSpec: m2Spec({ maxHoldingHours: 1 }),
+  candles: [
+    { openTime: m2BaseTime, open: 100, high: 101, low: 99, close: 100 },
+    { openTime: m2BaseTime + m2Hour, open: 100, high: 101, low: 99, close: 100 },
+    { openTime: m2BaseTime + 2 * m2Hour, open: 100, high: 101, low: 99, close: 100 }
+  ],
+  entryIndex: 2,
+  executionModel: createExecutionModel({ marketType: "spot", fundingDataComplete: true })
+});
+if (expiredBeforeEntry) {
+  throw new Error("M2 must not extend a frozen TradeSpec holding window to create a late entry");
 }
 
 const m2LongSl = simulateTrade({
@@ -1762,21 +1923,39 @@ const m2GapSl = simulateTrade({
   entryIndex: 1,
   executionModel: createExecutionModel({ marketType: "spot", fundingDataComplete: true })
 });
-if (!m2GapSl || m2GapSl.exitReason !== "stop_loss" || m2GapSl.exitMarketPrice !== 90 || m2GapSl.executionQuality !== "gap_stop_worse_fill") {
-  throw new Error("M2 gap-through LONG stop should use the worse executable candle open");
+if (
+  !m2GapSl
+  || m2GapSl.exitReason !== "stop_loss"
+  || m2GapSl.exitMarketPrice !== 90
+  || m2GapSl.executionQuality !== "MODELED_EXECUTION"
+  || m2GapSl.exitResolution !== "gap_stop_worse_fill"
+  || Math.abs(m2GapSl.maePct + 0.1) > 1e-9
+  || Math.abs(m2GapSl.mfePct - 0.02) > 1e-9
+) {
+  throw new Error("M2 gap-through LONG stop should use the worse executable open and exclude post-exit lows from MAE");
 }
 
 const m2GapTp = simulateTrade({
   tradeSpec: m2Spec({ takeProfit: 105 }),
   candles: [
     { openTime: m2BaseTime, open: 100, high: 101, low: 99, close: 100 },
-    { openTime: m2BaseTime + m2Hour, open: 110, high: 112, low: 109, close: 111 }
+    { openTime: m2BaseTime + m2Hour, open: 100, high: 104, low: 99, close: 102 },
+    { openTime: m2BaseTime + 2 * m2Hour, open: 110, high: 112, low: 109, close: 111 }
   ],
   entryIndex: 1,
   executionModel: createExecutionModel({ marketType: "spot", fundingDataComplete: true })
 });
-if (!m2GapTp || m2GapTp.exitReason !== "take_profit" || m2GapTp.exitMarketPrice !== 105 || m2GapTp.exitFillPrice === 110 || m2GapTp.executionQuality !== "take_profit_conservative") {
-  throw new Error("M2 gap-through TP should remain conservatively filled at the TP price");
+if (
+  !m2GapTp
+  || m2GapTp.entryFillPrice !== 100
+  || m2GapTp.exitReason !== "take_profit"
+  || m2GapTp.exitMarketPrice !== 105
+  || m2GapTp.exitFillPrice !== 105
+  || m2GapTp.executionQuality !== "MODELED_EXECUTION"
+  || m2GapTp.exitResolution !== "take_profit_conservative"
+  || Math.abs(m2GapTp.mfePct - 0.05) > 1e-9
+) {
+  throw new Error("M2 gap-through TP should require a legal entry and conservatively fill the later TP gap at the original TP");
 }
 
 const m2Ambiguous = simulateTrade({
@@ -1788,8 +1967,16 @@ const m2Ambiguous = simulateTrade({
   entryIndex: 1,
   executionModel: createExecutionModel({ marketType: "spot", fundingDataComplete: true })
 });
-if (!m2Ambiguous || m2Ambiguous.exitReason !== "stop_loss" || !m2Ambiguous.ambiguousIntrabar || m2Ambiguous.executionQuality !== "pessimistic_stop_first") {
-  throw new Error("M2 same-candle TP and SL should use pessimistic stop-first handling");
+if (
+  !m2Ambiguous
+  || m2Ambiguous.exitReason !== "stop_loss"
+  || !m2Ambiguous.ambiguousIntrabar
+  || m2Ambiguous.executionQuality !== "MODELED_EXECUTION"
+  || m2Ambiguous.exitResolution !== "pessimistic_stop_first"
+  || Math.abs(m2Ambiguous.mfePct) > 1e-9
+  || Math.abs(m2Ambiguous.maePct + 0.05) > 1e-9
+) {
+  throw new Error("M2 same-candle TP and SL should use pessimistic stop-first handling with bounded excursion");
 }
 
 const m2TimeStop = simulateTrade({
@@ -1826,18 +2013,37 @@ const m2CostTrade = simulateTrade({
   entryIndex: 1,
   executionModel: m2CostModel
 });
+const expectedM2ExitFeePct = 0.002 * m2CostTrade.exitFillPrice / m2CostTrade.entryFillPrice;
+const expectedM2TotalFeePct = 0.001 + expectedM2ExitFeePct;
 if (
   !m2CostTrade
   || m2CostTrade.entryFillPrice <= m2CostTrade.entryMarketPrice
   || m2CostTrade.exitFillPrice >= m2CostTrade.exitMarketPrice
   || m2CostTrade.entryFeePct !== 0.001
-  || m2CostTrade.exitFeePct !== 0.002
-  || m2CostTrade.totalFeePct !== 0.003
+  || Math.abs(m2CostTrade.exitFeePct - expectedM2ExitFeePct) > 1e-12
+  || Math.abs(m2CostTrade.totalFeePct - expectedM2TotalFeePct) > 1e-12
   || m2CostTrade.spreadCostPct <= 0
   || m2CostTrade.slippageCostPct <= 0
   || m2CostTrade.netReturnPct >= m2CostTrade.grossReturnPct
 ) {
-  throw new Error("M2 should apply configurable maker/taker fees, spread, and directional slippage separately");
+  throw new Error("M2 should apply configurable maker/taker fees, spread, and directional slippage with entry-notional fee math");
+}
+const m2FeeOnlyTrade = simulateTrade({
+  tradeSpec: m2Spec({ stopLoss: 90, takeProfit: 200, maxHoldingHours: 1 }),
+  candles: [
+    { openTime: m2BaseTime, open: 100, high: 101, low: 99, close: 100 },
+    { openTime: m2BaseTime + m2Hour, open: 100, high: 102, low: 99, close: 105 }
+  ],
+  entryIndex: 1,
+  executionModel: createExecutionModel({
+    marketType: "spot",
+    entryFeePct: 0.001,
+    exitFeePct: 0.001,
+    fundingDataComplete: true
+  })
+});
+if (!m2FeeOnlyTrade || Math.abs(m2FeeOnlyTrade.entryFeePct - 0.001) > 1e-12 || Math.abs(m2FeeOnlyTrade.exitFeePct - 0.00105) > 1e-12 || Math.abs(m2FeeOnlyTrade.totalFeePct - 0.00205) > 1e-12 || Math.abs(m2FeeOnlyTrade.netReturnPct - 0.04795) > 1e-12) {
+  throw new Error("M2 fee drag should be measured against entry notional, including the exit price ratio");
 }
 
 const m2FundingCandles = [
@@ -1916,7 +2122,7 @@ const m2EngineCandles = Array.from({ length: 224 }, (_, index) => ({
   close: 101
 }));
 m2EngineCandles[220] = { ...m2EngineCandles[220], close: 100 };
-m2EngineCandles[221] = { ...m2EngineCandles[221], open: 100, high: 102, low: 98, close: 101 };
+m2EngineCandles[221] = { ...m2EngineCandles[221], open: 101, high: 102, low: 98, close: 101 };
 m2EngineCandles[222] = { ...m2EngineCandles[222], high: 999, low: 1, close: 101 };
 const m2EngineResult = runBacktest({
   candles: m2EngineCandles,
@@ -1935,6 +2141,47 @@ const m2EngineResult = runBacktest({
 });
 if (!m2EngineResult.tradeResults.length || m2EngineResult.tradeResults[0].entryTime !== m2EngineCandles[221].openTime || m2EngineResult.tradeResults[0].exitIndex !== 221) {
   throw new Error("BacktestEngine should prevent lookahead and use TradeSpec next-bar execution");
+}
+if (m2EngineResult.tradeResults[0].referencePrice === m2EngineResult.tradeResults[0].entryFillPrice || m2EngineResult.tradeResults[0].entryTime === m2EngineCandles[220].openTime) {
+  throw new Error("BacktestEngine must keep signal close as reference only and never use it as executable entry");
+}
+
+const m2InvalidEntryCandles = m2EngineCandles.map((candle) => ({ ...candle }));
+m2InvalidEntryCandles[221] = { ...m2InvalidEntryCandles[221], open: 110, high: 112, low: 109, close: 111 };
+const m2InvalidEntryResult = runBacktest({
+  candles: m2InvalidEntryCandles,
+  strategy: {
+    id: "m2_invalid_entry_geometry_test",
+    direction: "LONG",
+    holdHours: 1,
+    evaluate(_candles, index) {
+      return { passed: index === 220 };
+    }
+  },
+  interval: "1h",
+  marketType: "spot",
+  asset: "INVALIDENTRYUSDT",
+  executionModel: { fundingDataComplete: true }
+});
+if (m2InvalidEntryResult.tradeResults.length !== 0 || m2InvalidEntryResult.entryStats.noEntry !== 1 || m2InvalidEntryResult.missedEntries[0]?.status !== "NO_ENTRY") {
+  throw new Error("BacktestEngine should mark a next-bar fill beyond frozen TP as NO_ENTRY and exclude it from TradeResult metrics");
+}
+const m2InvalidWrapper = backtestStrategy(
+  m2InvalidEntryCandles,
+  {
+    id: "m2_invalid_entry_wrapper_test",
+    direction: "LONG",
+    holdHours: 1,
+    evaluate(_candles, index) {
+      return { passed: index === 220 };
+    }
+  },
+  "1h",
+  0,
+  { marketType: "spot" }
+);
+if (!m2InvalidWrapper || m2InvalidWrapper.trades !== 0 || m2InvalidWrapper.entryStats.noEntry !== 1 || m2InvalidWrapper.missedEntries[0]?.status !== "NO_ENTRY") {
+  throw new Error("Legacy backtestStrategy should expose NO_ENTRY through the new engine compatibility wrapper");
 }
 
 const m2HoldingPlan = buildFuturesTradePlan({
@@ -2284,13 +2531,104 @@ const inverseComparison = compareStrategyInversion({
   strategy: inverseSourceStrategy,
   interval: "1h",
   tradingCost: 0.001,
-  minTrades: 8
+  minTrades: 8,
+  marketType: "futures"
 });
 if (!inverseComparison.inverse || inverseComparison.recommendation !== "inverse_candidate") {
   throw new Error("Inverse comparison should flag a stable profitable inverse candidate");
 }
 if (inverseComparison.original.totalReturn >= 0 || inverseComparison.inverse.totalReturn <= 0) {
   throw new Error("Inverse comparison should preserve original and inverse performance");
+}
+
+const inversePlanSignal = {
+  signalKey: "INVERSE_PLAN_TEST",
+  asset: "INVERSEUSDT",
+  market: "USDT inverse watch",
+  interval: "1h",
+  strategyId: "inverse_plan_test",
+  strategyName: "Inverse plan test",
+  direction: "做多观察",
+  signalCandleOpenTime: m2BaseTime + 220 * m2Hour,
+  signalCandleCloseTime: m2BaseTime + 221 * m2Hour,
+  signalAvailableAt: m2BaseTime + 221 * m2Hour,
+  entryEligibleAt: m2BaseTime + 221 * m2Hour,
+  triggerTime: m2BaseTime + 221 * m2Hour,
+  close: 100,
+  triggerReason: "test",
+  strategyName: "Inverse plan test"
+};
+const inversePlanStrategy = { id: "inverse_plan_test", direction: "LONG", holdHours: 3 };
+const inverseWatchSignal = enhanceInverseWatchSignal(inversePlanSignal, {
+  strategy: inversePlanStrategy,
+  interval: "1h"
+});
+const inverseSpotPlan = buildSpotTradePlan({
+  signal: inversePlanSignal,
+  strategy: inversePlanStrategy,
+  interval: "1h",
+  referencePrice: 100,
+  modelVersion: "inverse_watch_trade_spec_v1"
+});
+const inverseBacktestCandles = m2EngineCandles.map((candle) => ({ ...candle }));
+const inverseBacktest = runBacktest({
+  candles: inverseBacktestCandles,
+  strategy: {
+    ...inversePlanStrategy,
+    evaluate(_candles, index) {
+      return { passed: index === 220 };
+    }
+  },
+  interval: "1h",
+  marketType: "futures",
+  tradePlanType: "spot",
+  asset: "INVERSEUSDT",
+  executionModel: { fundingDataComplete: true }
+});
+const inverseBacktestSpec = inverseBacktest.tradeResults[0];
+if (
+  inverseWatchSignal.marketType !== "futures"
+  || inverseWatchSignal.tradePlanType !== "spot"
+  || inverseWatchSignal.executionPlan?.marketType !== "futures"
+  || inverseWatchSignal.executionPlan?.tradePlanType !== "spot"
+  || !inverseWatchSignal.tradeSpec
+  || inverseWatchSignal.tradeSpec.stopLoss !== inverseSpotPlan.tradeSpec.stopLoss
+  || inverseWatchSignal.tradeSpec.takeProfit !== inverseSpotPlan.tradeSpec.takeProfit
+  || inverseWatchSignal.tradeSpec.maxHoldingHours !== inverseSpotPlan.tradeSpec.maxHoldingHours
+  || !inverseBacktestSpec
+  || inverseBacktest.tradePlanType !== "spot"
+  || inverseBacktestSpec.stopLoss !== inverseWatchSignal.tradeSpec.stopLoss
+  || inverseBacktestSpec.takeProfit !== inverseWatchSignal.tradeSpec.takeProfit
+  || inverseBacktestSpec.maxHoldingTime !== inverseWatchSignal.tradeSpec.maxHoldingTime
+) {
+  throw new Error("Inverse-watch must keep futures market semantics while sharing the fixed-pct spot TradePlan across backtest and live signals");
+}
+const inverseReview = reviewAlertWithCandles({ payload: inverseWatchSignal }, [
+  { openTime: inversePlanSignal.entryEligibleAt, open: 100, high: 105, low: 99, close: 104 }
+], inversePlanSignal.entryEligibleAt + m2Hour + 1);
+const inverseEmail = renderSignalEmail([inverseWatchSignal]);
+if (inverseReview.outcome !== "止盈" || !inverseEmail.text.includes(`止损：${inverseWatchSignal.tradeSpec.stopLoss}`) || !inverseEmail.text.includes(`止盈：${inverseWatchSignal.tradeSpec.takeProfit}`)) {
+  throw new Error("Inverse-watch Email and Review should read the same fixed-pct TradeSpec");
+}
+
+const spotComparison = compareStrategyInversion({
+  candles: inverseCandles,
+  strategy: inverseSourceStrategy,
+  interval: "1h",
+  tradingCost: 0.001,
+  minTrades: 0,
+  marketType: "spot"
+});
+const futuresComparison = compareStrategyInversion({
+  candles: inverseCandles,
+  strategy: inverseSourceStrategy,
+  interval: "1h",
+  tradingCost: 0.001,
+  minTrades: 0,
+  marketType: "futures"
+});
+if (spotComparison.original?.marketType !== "spot" || spotComparison.original?.tradePlanType !== "spot" || futuresComparison.original?.marketType !== "futures" || futuresComparison.original?.tradePlanType !== "futures") {
+  throw new Error("Inverse report comparisons should select spot or futures TradePlan explicitly from --market");
 }
 
 console.log("Smoke test passed");
