@@ -5,12 +5,17 @@ import { parseCronGroups } from "../api/cron.js";
 import { buildEmailNotifications } from "../api/status.js";
 import { renderSignalEmail, renderTestEmail } from "../lib/report.js";
 import { reviewAlertWithCandles, reviewArbitrageAlert } from "../lib/alert-review.js";
+import { createExecutionModel } from "../lib/backtest/execution-model.js";
+import { runBacktest } from "../lib/backtest/backtest-engine.js";
+import { aggregateMetrics } from "../lib/backtest/metrics.js";
+import { simulateTrade } from "../lib/backtest/trade-simulator.js";
 import { enhanceDynamicSignal, evaluateDynamicFamilyGate, evaluateDynamicFamilyGates, evaluateDynamicSpotOpportunity, filterSignalsByCurrentPrice, isDynamicPaperSignal, isDynamicSpotCandidate, isDynamicSpotCoolingDown, isDynamicWeakSpotCandidate, isFuturesPriceSignal, routeSignalsByDynamicFamilyGate, selectScanTargets, shouldReviewAlert, shouldReviewRecentAlerts, signalRecord, summarizeLiveAlertPerformance } from "../lib/scanner.js";
 import { DYNAMIC_MODEL_VERSION, dynamicModelConfigSnapshot, withModelMetadata } from "../lib/model-metadata.js";
 import { hasProcessedScanCandle, recordProcessedScanCandle } from "../lib/storage.js";
 import { backtestStrategy, compareStrategyInversion, CRYPTO_STRATEGIES, FUTURES_STRATEGIES, getCurrentSignal, invertStrategyDirection, scoreFuturesSentiment, SHORT_TERM_STRATEGIES, STRATEGIES } from "../lib/strategies.js";
 import { isAuthorizedRequest, isDashboardAuthorizedRequest } from "../lib/api-auth.js";
 import { attachTradeSpec, createTradeSpec, getTradeSpecForAlert, getTradeSpecForSignal, intervalMilliseconds, isTradeSpec } from "../lib/trading/trade-spec.js";
+import { buildFuturesTradePlan } from "../lib/trading/trade-plan.js";
 import { buildV31Portfolio, latestV31RebalanceTime, renderV31PaperEmail, reviewV31PaperRun, V31_MODEL } from "../lib/v3-paper.js";
 import {
   applyV33VolatilityTarget,
@@ -1438,8 +1443,10 @@ nextBarEntryCandles[220] = {
 };
 nextBarEntryCandles[221] = {
   ...nextBarEntryCandles[221],
-  open: 100,
-  close: 110
+  open: 51,
+  high: 55,
+  low: 51,
+  close: 55
 };
 const nextBarBacktest = backtestStrategy(
   nextBarEntryCandles,
@@ -1454,7 +1461,7 @@ const nextBarBacktest = backtestStrategy(
   "1h",
   0
 );
-if (!nextBarBacktest || Math.abs(nextBarBacktest.totalReturn - 0.1) > 1e-9) {
+if (!nextBarBacktest || Math.abs(nextBarBacktest.totalReturn - (55 / 51 - 1)) > 1e-9 || Math.abs(nextBarBacktest.totalReturn - 0.1) < 1e-9) {
   throw new Error("Backtest must enter at the next candle open, not at the signal candle close");
 }
 
@@ -1633,6 +1640,319 @@ const livePerformance = summarizeLiveAlertPerformance({
 });
 if (livePerformance.trades !== 1 || Math.abs(livePerformance.totalReturn - 0.02) > 1e-9) {
   throw new Error("Live performance should start its hold period at entryEligibleAt, not signalCandleOpenTime");
+}
+const tradeSpecOnlyHold = createTradeSpec({
+  side: "LONG",
+  interval: "1h",
+  signalCandleOpenTime: Date.UTC(2026, 5, 21, 10, 0),
+  signalCandleCloseTime: Date.UTC(2026, 5, 21, 11, 0),
+  signalAvailableAt: Date.UTC(2026, 5, 21, 11, 0),
+  entryEligibleAt: Date.UTC(2026, 5, 21, 11, 0),
+  referencePrice: 100,
+  stopLoss: 97,
+  takeProfit: 105,
+  maxHoldingHours: 2
+});
+const tradeSpecOnlyLivePerformance = summarizeLiveAlertPerformance({
+  sentAlerts: [{
+    asset: "LIVE_SPEC_HOLD",
+    strategy_id: "m1_trade_spec_hold_test",
+    interval: "1h",
+    trigger_time: new Date(Date.UTC(2026, 5, 21, 11, 0)).toISOString(),
+    payload: { tradeSpec: tradeSpecOnlyHold }
+  }],
+  candles: [
+    { openTime: Date.UTC(2026, 5, 21, 11, 0), close: 110 },
+    { openTime: Date.UTC(2026, 5, 21, 12, 0), close: 111 },
+    { openTime: Date.UTC(2026, 5, 21, 13, 0), close: 120 }
+  ],
+  asset: "LIVE_SPEC_HOLD",
+  strategy: { id: "m1_trade_spec_hold_test", direction: "LONG", holdHours: 1 },
+  interval: "1h",
+  tradingCost: 0
+});
+if (tradeSpecOnlyLivePerformance.trades !== 1 || Math.abs(tradeSpecOnlyLivePerformance.totalReturn - 0.2) > 1e-9) {
+  throw new Error("Live performance time stop should come from TradeSpec, not strategy holdHours");
+}
+
+const m2BaseTime = Date.UTC(2026, 6, 1, 0, 0);
+const m2Hour = intervalMilliseconds("1h");
+function m2Spec({ side = "LONG", referencePrice = 100, stopLoss = 95, takeProfit = 105, maxHoldingHours = 4 } = {}) {
+  return createTradeSpec({
+    side,
+    interval: "1h",
+    signalCandleOpenTime: m2BaseTime,
+    signalCandleCloseTime: m2BaseTime + m2Hour,
+    signalAvailableAt: m2BaseTime + m2Hour,
+    entryEligibleAt: m2BaseTime + m2Hour,
+    referencePrice,
+    stopLoss,
+    takeProfit,
+    maxHoldingHours
+  });
+}
+const m2EntryCandle = { openTime: m2BaseTime + m2Hour, open: 100, high: 104, low: 98, close: 101 };
+const m2NextCandle = { openTime: m2BaseTime + 2 * m2Hour, open: 101, high: 106, low: 99, close: 104 };
+const m2LongTp = simulateTrade({
+  tradeSpec: m2Spec(),
+  candles: [
+    { openTime: m2BaseTime, open: 100, high: 101, low: 99, close: 100 },
+    m2EntryCandle,
+    m2NextCandle,
+    { openTime: m2BaseTime + 3 * m2Hour, open: 104, high: 500, low: 1, close: 104 }
+  ],
+  entryIndex: 1,
+  strategyId: "m2_long_tp_test",
+  asset: "M2USDT",
+  executionModel: createExecutionModel({ marketType: "spot", fundingDataComplete: true })
+});
+if (
+  !m2LongTp
+  || m2LongTp.entryTime !== m2EntryCandle.openTime
+  || m2LongTp.referencePrice !== 100
+  || m2LongTp.entryMarketPrice !== 100
+  || m2LongTp.entryFillPrice !== 100
+  || m2LongTp.exitReason !== "take_profit"
+  || m2LongTp.exitFillPrice !== 105
+  || m2LongTp.exitIndex !== 2
+  || m2LongTp.exitIndex === 3
+) {
+  throw new Error("M2 LONG should use next-bar market entry and stop replay at the first TP candle without lookahead");
+}
+if (Math.abs(m2LongTp.realizedR - 1) > 1e-9 || Math.abs(m2LongTp.mfePct - 0.06) > 1e-9 || Math.abs(m2LongTp.maePct + 0.02) > 1e-9) {
+  throw new Error("M2 LONG TP should calculate realized R and MFE/MAE from replayed candles");
+}
+
+const m2ShortTp = simulateTrade({
+  tradeSpec: m2Spec({ side: "SHORT", stopLoss: 105, takeProfit: 95 }),
+  candles: [
+    { openTime: m2BaseTime, open: 100, high: 101, low: 99, close: 100 },
+    { openTime: m2BaseTime + m2Hour, open: 98, high: 99, low: 96, close: 97 },
+    { openTime: m2BaseTime + 2 * m2Hour, open: 97, high: 98, low: 94, close: 95 }
+  ],
+  entryIndex: 1,
+  strategyId: "m2_short_tp_test",
+  asset: "M2USDT",
+  executionModel: createExecutionModel({ marketType: "spot", fundingDataComplete: true })
+});
+if (!m2ShortTp || m2ShortTp.side !== "SHORT" || m2ShortTp.entryMarketPrice !== 98 || m2ShortTp.exitReason !== "take_profit" || m2ShortTp.exitFillPrice !== 95) {
+  throw new Error("M2 SHORT should use adverse downward entry and side-correct TP replay");
+}
+
+const m2LongSl = simulateTrade({
+  tradeSpec: m2Spec({ takeProfit: 110 }),
+  candles: [
+    { openTime: m2BaseTime, open: 100, high: 101, low: 99, close: 100 },
+    { openTime: m2BaseTime + m2Hour, open: 100, high: 102, low: 94, close: 96 }
+  ],
+  entryIndex: 1,
+  executionModel: createExecutionModel({ marketType: "spot", fundingDataComplete: true })
+});
+if (!m2LongSl || m2LongSl.exitReason !== "stop_loss" || m2LongSl.exitFillPrice !== 95 || m2LongSl.ambiguousIntrabar) {
+  throw new Error("M2 normal LONG stop loss should fill at the stop price");
+}
+
+const m2GapSl = simulateTrade({
+  tradeSpec: m2Spec({ takeProfit: 110 }),
+  candles: [
+    { openTime: m2BaseTime, open: 100, high: 101, low: 99, close: 100 },
+    { openTime: m2BaseTime + m2Hour, open: 100, high: 102, low: 99, close: 101 },
+    { openTime: m2BaseTime + 2 * m2Hour, open: 90, high: 92, low: 88, close: 89 }
+  ],
+  entryIndex: 1,
+  executionModel: createExecutionModel({ marketType: "spot", fundingDataComplete: true })
+});
+if (!m2GapSl || m2GapSl.exitReason !== "stop_loss" || m2GapSl.exitMarketPrice !== 90 || m2GapSl.executionQuality !== "gap_stop_worse_fill") {
+  throw new Error("M2 gap-through LONG stop should use the worse executable candle open");
+}
+
+const m2GapTp = simulateTrade({
+  tradeSpec: m2Spec({ takeProfit: 105 }),
+  candles: [
+    { openTime: m2BaseTime, open: 100, high: 101, low: 99, close: 100 },
+    { openTime: m2BaseTime + m2Hour, open: 110, high: 112, low: 109, close: 111 }
+  ],
+  entryIndex: 1,
+  executionModel: createExecutionModel({ marketType: "spot", fundingDataComplete: true })
+});
+if (!m2GapTp || m2GapTp.exitReason !== "take_profit" || m2GapTp.exitMarketPrice !== 105 || m2GapTp.exitFillPrice === 110 || m2GapTp.executionQuality !== "take_profit_conservative") {
+  throw new Error("M2 gap-through TP should remain conservatively filled at the TP price");
+}
+
+const m2Ambiguous = simulateTrade({
+  tradeSpec: m2Spec(),
+  candles: [
+    { openTime: m2BaseTime, open: 100, high: 101, low: 99, close: 100 },
+    { openTime: m2BaseTime + m2Hour, open: 100, high: 106, low: 94, close: 100 }
+  ],
+  entryIndex: 1,
+  executionModel: createExecutionModel({ marketType: "spot", fundingDataComplete: true })
+});
+if (!m2Ambiguous || m2Ambiguous.exitReason !== "stop_loss" || !m2Ambiguous.ambiguousIntrabar || m2Ambiguous.executionQuality !== "pessimistic_stop_first") {
+  throw new Error("M2 same-candle TP and SL should use pessimistic stop-first handling");
+}
+
+const m2TimeStop = simulateTrade({
+  tradeSpec: m2Spec({ stopLoss: 1, takeProfit: 200, maxHoldingHours: 2 }),
+  candles: [
+    { openTime: m2BaseTime, open: 100, high: 101, low: 99, close: 100 },
+    { openTime: m2BaseTime + m2Hour, open: 100, high: 102, low: 98, close: 101 },
+    { openTime: m2BaseTime + 2 * m2Hour, open: 101, high: 103, low: 99, close: 102 },
+    { openTime: m2BaseTime + 3 * m2Hour, open: 102, high: 104, low: 100, close: 103 }
+  ],
+  entryIndex: 1,
+  executionModel: createExecutionModel({ marketType: "spot", fundingDataComplete: true })
+});
+if (!m2TimeStop || m2TimeStop.exitReason !== "time_stop" || m2TimeStop.exitTime !== m2BaseTime + 3 * m2Hour) {
+  throw new Error("M2 time stop should come only from TradeSpec max holding time");
+}
+
+const m2CostModel = createExecutionModel({
+  marketType: "spot",
+  fee: { makerPct: 0.001, takerPct: 0.002 },
+  entryFeeMode: "maker",
+  exitFeeMode: "taker",
+  spreadPct: 0.01,
+  entrySlippagePct: 0.005,
+  exitSlippagePct: 0.004,
+  fundingDataComplete: true
+});
+const m2CostTrade = simulateTrade({
+  tradeSpec: m2Spec({ stopLoss: 90, takeProfit: 200, maxHoldingHours: 1 }),
+  candles: [
+    { openTime: m2BaseTime, open: 100, high: 101, low: 99, close: 100 },
+    { openTime: m2BaseTime + m2Hour, open: 100, high: 102, low: 99, close: 101 }
+  ],
+  entryIndex: 1,
+  executionModel: m2CostModel
+});
+if (
+  !m2CostTrade
+  || m2CostTrade.entryFillPrice <= m2CostTrade.entryMarketPrice
+  || m2CostTrade.exitFillPrice >= m2CostTrade.exitMarketPrice
+  || m2CostTrade.entryFeePct !== 0.001
+  || m2CostTrade.exitFeePct !== 0.002
+  || m2CostTrade.totalFeePct !== 0.003
+  || m2CostTrade.spreadCostPct <= 0
+  || m2CostTrade.slippageCostPct <= 0
+  || m2CostTrade.netReturnPct >= m2CostTrade.grossReturnPct
+) {
+  throw new Error("M2 should apply configurable maker/taker fees, spread, and directional slippage separately");
+}
+
+const m2FundingCandles = [
+  { openTime: m2BaseTime, open: 100, high: 101, low: 99, close: 100 },
+  { openTime: m2BaseTime + m2Hour, open: 100, high: 102, low: 98, close: 100 },
+  { openTime: m2BaseTime + 2 * m2Hour, open: 100, high: 102, low: 98, close: 100 },
+  { openTime: m2BaseTime + 3 * m2Hour, open: 100, high: 102, low: 98, close: 100 },
+  { openTime: m2BaseTime + 4 * m2Hour, open: 100, high: 102, low: 98, close: 100 },
+  { openTime: m2BaseTime + 5 * m2Hour, open: 100, high: 102, low: 98, close: 100 },
+  { openTime: m2BaseTime + 6 * m2Hour, open: 100, high: 102, low: 98, close: 100 }
+];
+const m2FundingModel = createExecutionModel({
+  marketType: "futures",
+  fundingEvents: [
+    { time: m2BaseTime + 2 * m2Hour, rate: 0.01 },
+    { time: m2BaseTime + 3 * m2Hour, rate: -0.004 },
+    { time: m2BaseTime + 6 * m2Hour, rate: 0.2 }
+  ],
+  fundingDataComplete: true
+});
+const m2LongFunding = simulateTrade({
+  tradeSpec: m2Spec({ stopLoss: 1, takeProfit: 200, maxHoldingHours: 3 }),
+  candles: m2FundingCandles,
+  entryIndex: 1,
+  executionModel: m2FundingModel
+});
+const m2ShortFunding = simulateTrade({
+  tradeSpec: m2Spec({ side: "SHORT", stopLoss: 200, takeProfit: 1, maxHoldingHours: 3 }),
+  candles: m2FundingCandles,
+  entryIndex: 1,
+  executionModel: m2FundingModel
+});
+if (!m2LongFunding || !m2ShortFunding || Math.abs(m2LongFunding.fundingPct + 0.006) > 1e-9 || Math.abs(m2ShortFunding.fundingPct - 0.006) > 1e-9) {
+  throw new Error("M2 positive/negative funding should map correctly for LONG and SHORT positions");
+}
+const m2NegativeFundingModel = createExecutionModel({
+  marketType: "futures",
+  fundingEvents: [{ time: m2BaseTime + 2 * m2Hour, rate: -0.01 }],
+  fundingDataComplete: true
+});
+const m2NegativeLong = simulateTrade({
+  tradeSpec: m2Spec({ stopLoss: 1, takeProfit: 200, maxHoldingHours: 3 }),
+  candles: m2FundingCandles,
+  entryIndex: 1,
+  executionModel: m2NegativeFundingModel
+});
+const m2NegativeShort = simulateTrade({
+  tradeSpec: m2Spec({ side: "SHORT", stopLoss: 200, takeProfit: 1, maxHoldingHours: 3 }),
+  candles: m2FundingCandles,
+  entryIndex: 1,
+  executionModel: m2NegativeFundingModel
+});
+if (!m2NegativeLong || !m2NegativeShort || m2NegativeLong.fundingPct !== 0.01 || m2NegativeShort.fundingPct !== -0.01) {
+  throw new Error("M2 negative funding should credit LONG and debit SHORT");
+}
+const m2IncompleteFunding = simulateTrade({
+  tradeSpec: m2Spec({ stopLoss: 1, takeProfit: 200, maxHoldingHours: 1 }),
+  candles: m2FundingCandles,
+  entryIndex: 1,
+  executionModel: createExecutionModel({ marketType: "futures" })
+});
+if (!m2IncompleteFunding || m2IncompleteFunding.dataQuality !== "INCOMPLETE_FUNDING" || m2IncompleteFunding.fundingPct !== 0) {
+  throw new Error("M2 futures replay should flag missing funding history instead of assuming fixed funding");
+}
+
+const m2Aggregated = aggregateMetrics([m2LongTp, m2LongSl, m2LongFunding]);
+if (m2Aggregated.trades !== 3 || Math.abs(m2Aggregated.expectancyR - (m2LongTp.realizedR + m2LongSl.realizedR + m2LongFunding.realizedR) / 3) > 1e-9 || m2Aggregated.feeDrag !== 0) {
+  throw new Error("M2 metrics should aggregate realized R and cost drags from TradeResult rows");
+}
+
+const m2EngineCandles = Array.from({ length: 224 }, (_, index) => ({
+  openTime: m2BaseTime + index * m2Hour,
+  open: 100,
+  high: 102,
+  low: 98,
+  close: 101
+}));
+m2EngineCandles[220] = { ...m2EngineCandles[220], close: 100 };
+m2EngineCandles[221] = { ...m2EngineCandles[221], open: 100, high: 102, low: 98, close: 101 };
+m2EngineCandles[222] = { ...m2EngineCandles[222], high: 999, low: 1, close: 101 };
+const m2EngineResult = runBacktest({
+  candles: m2EngineCandles,
+  strategy: {
+    id: "m2_engine_wrapper_test",
+    direction: "LONG",
+    holdHours: 1,
+    evaluate(_candles, index) {
+      return { passed: index === 220 };
+    }
+  },
+  interval: "1h",
+  marketType: "spot",
+  asset: "ENGINEUSDT",
+  executionModel: { fundingDataComplete: true }
+});
+if (!m2EngineResult.tradeResults.length || m2EngineResult.tradeResults[0].entryTime !== m2EngineCandles[221].openTime || m2EngineResult.tradeResults[0].exitIndex !== 221) {
+  throw new Error("BacktestEngine should prevent lookahead and use TradeSpec next-bar execution");
+}
+
+const m2HoldingPlan = buildFuturesTradePlan({
+  signal: {
+    interval: "1h",
+    close: 100,
+    signalCandleOpenTime: m2BaseTime,
+    signalCandleCloseTime: m2BaseTime + m2Hour,
+    signalAvailableAt: m2BaseTime + m2Hour,
+    entryEligibleAt: m2BaseTime + m2Hour
+  },
+  candles: m2EngineCandles,
+  signalIndex: 220,
+  strategy: { direction: "LONG", holdHours: 72 },
+  interval: "1h"
+});
+if (!m2HoldingPlan.tradeSpec || m2HoldingPlan.tradeSpec.maxHoldingHours !== CONFIG.futuresMaxHoldingHours) {
+  throw new Error("Futures TradeSpec max holding time should be the min of strategy and configured futures limit");
 }
 
 const email = renderTestEmail();
