@@ -5,12 +5,12 @@ import { parseCronGroups } from "../api/cron.js";
 import { buildEmailNotifications } from "../api/status.js";
 import { renderSignalEmail, renderTestEmail } from "../lib/report.js";
 import { reviewAlertWithCandles, reviewArbitrageAlert } from "../lib/alert-review.js";
-import { evaluateDynamicFamilyGate, evaluateDynamicFamilyGates, evaluateDynamicSpotOpportunity, filterSignalsByCurrentPrice, isDynamicPaperSignal, isDynamicSpotCandidate, isDynamicSpotCoolingDown, isDynamicWeakSpotCandidate, isFuturesPriceSignal, routeSignalsByDynamicFamilyGate, selectScanTargets, shouldReviewAlert, shouldReviewRecentAlerts } from "../lib/scanner.js";
+import { enhanceDynamicSignal, evaluateDynamicFamilyGate, evaluateDynamicFamilyGates, evaluateDynamicSpotOpportunity, filterSignalsByCurrentPrice, isDynamicPaperSignal, isDynamicSpotCandidate, isDynamicSpotCoolingDown, isDynamicWeakSpotCandidate, isFuturesPriceSignal, routeSignalsByDynamicFamilyGate, selectScanTargets, shouldReviewAlert, shouldReviewRecentAlerts, signalRecord, summarizeLiveAlertPerformance } from "../lib/scanner.js";
 import { DYNAMIC_MODEL_VERSION, dynamicModelConfigSnapshot, withModelMetadata } from "../lib/model-metadata.js";
 import { hasProcessedScanCandle, recordProcessedScanCandle } from "../lib/storage.js";
-import { compareStrategyInversion, CRYPTO_STRATEGIES, FUTURES_STRATEGIES, getCurrentSignal, invertStrategyDirection, scoreFuturesSentiment, SHORT_TERM_STRATEGIES, STRATEGIES } from "../lib/strategies.js";
+import { backtestStrategy, compareStrategyInversion, CRYPTO_STRATEGIES, FUTURES_STRATEGIES, getCurrentSignal, invertStrategyDirection, scoreFuturesSentiment, SHORT_TERM_STRATEGIES, STRATEGIES } from "../lib/strategies.js";
 import { isAuthorizedRequest, isDashboardAuthorizedRequest } from "../lib/api-auth.js";
-import { attachTradeSpec, createTradeSpec, getTradeSpecForAlert, getTradeSpecForSignal, intervalMilliseconds } from "../lib/trading/trade-spec.js";
+import { attachTradeSpec, createTradeSpec, getTradeSpecForAlert, getTradeSpecForSignal, intervalMilliseconds, isTradeSpec } from "../lib/trading/trade-spec.js";
 import { buildV31Portfolio, latestV31RebalanceTime, renderV31PaperEmail, reviewV31PaperRun, V31_MODEL } from "../lib/v3-paper.js";
 import {
   applyV33VolatilityTarget,
@@ -1425,6 +1425,64 @@ if (
   throw new Error("Signals should become available only after the signal candle closes");
 }
 
+const nextBarEntryCandles = Array.from({ length: 223 }, (_, index) => ({
+  openTime: tradeSpecOpenTime + index * tradeSpecInterval,
+  open: 100,
+  close: 100,
+  high: 101,
+  low: 99
+}));
+nextBarEntryCandles[220] = {
+  ...nextBarEntryCandles[220],
+  close: 50
+};
+nextBarEntryCandles[221] = {
+  ...nextBarEntryCandles[221],
+  open: 100,
+  close: 110
+};
+const nextBarBacktest = backtestStrategy(
+  nextBarEntryCandles,
+  {
+    id: "m1_next_bar_entry_test",
+    direction: "LONG",
+    holdHours: 1,
+    evaluate(_candles, index) {
+      return { passed: index === 220 };
+    }
+  },
+  "1h",
+  0
+);
+if (!nextBarBacktest || Math.abs(nextBarBacktest.totalReturn - 0.1) > 1e-9) {
+  throw new Error("Backtest must enter at the next candle open, not at the signal candle close");
+}
+
+const invalidChronologyCases = [
+  { ...longTradeSpec, signalCandleOpenTime: longTradeSpec.signalCandleCloseTime + 1 },
+  { ...longTradeSpec, signalCandleCloseTime: longTradeSpec.signalCandleOpenTime - 1 },
+  { ...longTradeSpec, signalAvailableAt: longTradeSpec.signalCandleCloseTime - 1 },
+  { ...longTradeSpec, entryEligibleAt: longTradeSpec.signalAvailableAt - 1 }
+];
+if (invalidChronologyCases.some((spec) => isTradeSpec(spec))) {
+  throw new Error("TradeSpec should reject invalid signal-time chronology");
+}
+const invalidCreatedTradeSpec = createTradeSpec({
+  side: "LONG",
+  interval: "1h",
+  signalCandleOpenTime: tradeSpecOpenTime + tradeSpecInterval,
+  signalCandleCloseTime: tradeSpecOpenTime,
+  signalAvailableAt: tradeSpecOpenTime,
+  entryEligibleAt: tradeSpecOpenTime,
+  referencePrice: 100,
+  stopLoss: 97,
+  takeProfit: 105,
+  maxHoldingHours: 8
+});
+if (invalidCreatedTradeSpec !== null || getTradeSpecForSignal({ tradeSpec: invalidChronologyCases[0] }) !== null) {
+  throw new Error("Invalid TradeSpec chronology must fail closed without legacy fallback");
+}
+
 const sharedTradeSpec = createTradeSpec({
   side: "LONG",
   interval: "1h",
@@ -1482,6 +1540,101 @@ if (shortFirstBarReview.status !== "reviewed" || shortFirstBarReview.outcome !==
   throw new Error("The first post-signal candle should be able to trigger a SHORT stop loss");
 }
 
+const dynamicSignalCandles = Array.from({ length: 260 }, (_, index) => ({
+  openTime: Date.UTC(2026, 5, 1) + index * tradeSpecInterval,
+  open: 100,
+  high: 101,
+  low: 99,
+  close: 100,
+  volume: 100
+}));
+function dynamicSignalFixture(strategyId, direction) {
+  const signalCandleOpenTime = Date.UTC(2026, 5, 21, 10, 0);
+  const signalCandleCloseTime = signalCandleOpenTime + tradeSpecInterval;
+  return {
+    signalKey: `DYNAMIC_TEST:${strategyId}`,
+    asset: "DYNAMICUSDT",
+    market: "USDT 永续合约（动态测试）",
+    interval: "1h",
+    strategyId,
+    strategyName: strategyId,
+    direction: direction === "LONG" ? "做多观察" : "做空观察",
+    signalCandleOpenTime,
+    signalCandleCloseTime,
+    signalAvailableAt: signalCandleCloseTime,
+    entryEligibleAt: signalCandleCloseTime,
+    triggerTime: signalCandleCloseTime,
+    validUntil: signalCandleOpenTime + 4 * 3600 * 1000,
+    close: 100,
+    details: {}
+  };
+}
+function buildDynamicTestSignal(strategyId, direction) {
+  return enhanceDynamicSignal(
+    dynamicSignalFixture(strategyId, direction),
+    {
+      candles: dynamicSignalCandles,
+      strategy: { id: strategyId, direction, holdHours: 8 },
+      interval: "1h",
+      funding: null,
+      openInterest: null,
+      sentiment: null
+    }
+  );
+}
+const dynamicStrongSignal = buildDynamicTestSignal("dynamic_relative_strength_breakout", "LONG");
+const dynamicWeakSignal = buildDynamicTestSignal("dynamic_relative_weakness_breakdown", "SHORT");
+const dynamicStrongRecord = signalRecord(dynamicStrongSignal);
+const dynamicWeakRecord = signalRecord(dynamicWeakSignal);
+for (const [name, signal, record] of [
+  ["strong", dynamicStrongSignal, dynamicStrongRecord],
+  ["weak", dynamicWeakSignal, dynamicWeakRecord]
+]) {
+  if (!isTradeSpec(signal.tradeSpec) || !isTradeSpec(record.payload.tradeSpec)) {
+    throw new Error(`Dynamic ${name} signal payload should persist a valid TradeSpec`);
+  }
+  if (getTradeSpecForAlert({ payload: record.payload }) !== record.payload.tradeSpec || record.payload.tradeSpec.source === "legacy_adapter") {
+    throw new Error(`Dynamic ${name} signal should use its persisted TradeSpec without the legacy adapter`);
+  }
+  if (signal.validUntil !== signal.signalCandleCloseTime + 4 * 3600 * 1000) {
+    throw new Error(`Dynamic ${name} validUntil should start from signal candle close`);
+  }
+}
+
+const livePerformanceSpec = createTradeSpec({
+  side: "LONG",
+  interval: "1h",
+  signalCandleOpenTime: Date.UTC(2026, 5, 21, 10, 0),
+  signalCandleCloseTime: Date.UTC(2026, 5, 21, 11, 0),
+  signalAvailableAt: Date.UTC(2026, 5, 21, 11, 0),
+  entryEligibleAt: Date.UTC(2026, 5, 21, 11, 0),
+  referencePrice: 100,
+  stopLoss: 97,
+  takeProfit: 105,
+  maxHoldingHours: 1
+});
+const livePerformance = summarizeLiveAlertPerformance({
+  sentAlerts: [{
+    asset: "LIVEUSDT",
+    strategy_id: "m1_live_performance_test",
+    interval: "1h",
+    trigger_time: new Date(Date.UTC(2026, 5, 21, 11, 0)).toISOString(),
+    payload: { tradeSpec: livePerformanceSpec }
+  }],
+  candles: [
+    { openTime: Date.UTC(2026, 5, 21, 10, 0), close: 100 },
+    { openTime: Date.UTC(2026, 5, 21, 11, 0), close: 110 },
+    { openTime: Date.UTC(2026, 5, 21, 12, 0), close: 102 }
+  ],
+  asset: "LIVEUSDT",
+  strategy: { id: "m1_live_performance_test", direction: "LONG", holdHours: 1 },
+  interval: "1h",
+  tradingCost: 0
+});
+if (livePerformance.trades !== 1 || Math.abs(livePerformance.totalReturn - 0.02) > 1e-9) {
+  throw new Error("Live performance should start its hold period at entryEligibleAt, not signalCandleOpenTime");
+}
+
 const email = renderTestEmail();
 if (!email.includes("云端信号系统测试邮件")) {
   throw new Error("Test email renderer failed");
@@ -1498,6 +1651,7 @@ const spotEmail = renderSignalEmail([{
   recommendationScore: 82,
   rawScore: 94,
   close: 100,
+  signalCandleOpenTime: Date.UTC(2026, 5, 21, 8, 0),
   validUntil: Date.UTC(2026, 5, 21, 10, 0),
   details: {
     volumeMultiple: 2.5,
@@ -1525,6 +1679,7 @@ const futuresEmail = renderSignalEmail([{
   strategyId: "futures_scalp_short",
   recommendationScore: 76,
   close: 2000,
+  signalCandleOpenTime: Date.UTC(2026, 5, 21, 8, 0),
   validUntil: Date.UTC(2026, 5, 21, 11, 0),
   executionPlan: {
     entryReference: 2000,
@@ -1546,6 +1701,7 @@ const weakSpotEmail = renderSignalEmail([{
   strategyName: "动态弱势币放量跌破",
   recommendationScore: 88,
   close: 1.2,
+  signalCandleOpenTime: Date.UTC(2026, 5, 21, 8, 0),
   validUntil: Date.UTC(2026, 5, 21, 11, 0),
   details: {
     volumeMultiple: 2.2,
@@ -1585,6 +1741,7 @@ const summaryEmail = renderSignalEmail([
     strategyId: "dynamic_relative_strength_breakout",
     recommendationScore: 82,
     close: 100,
+    signalCandleOpenTime: Date.UTC(2026, 5, 21, 8, 0),
     validUntil: Date.UTC(2026, 5, 21, 10, 0)
   },
   {
@@ -1593,6 +1750,7 @@ const summaryEmail = renderSignalEmail([
     strategyId: "dynamic_relative_strength_breakout",
     recommendationScore: 76,
     close: 150,
+    signalCandleOpenTime: Date.UTC(2026, 5, 21, 8, 0),
     validUntil: Date.UTC(2026, 5, 21, 10, 0)
   }
 ]);
@@ -1704,8 +1862,24 @@ const sentTimeReview = reviewAlertWithCandles({
   { openTime: Date.UTC(2026, 5, 21, 9, 0), high: 101, low: 96.5, close: 97 },
   { openTime: Date.UTC(2026, 5, 21, 10, 0), high: 106, low: 99, close: 105.5 }
 ], reviewNow);
-if (sentTimeReview.status !== "reviewed" || sentTimeReview.outcome !== "止损" || sentTimeReview.exitTime !== Date.UTC(2026, 5, 21, 9, 0) || sentTimeReview.returnPct >= 0) {
-  throw new Error("Alert review should not let sent_at skip the first post-signal candle");
+if (sentTimeReview.status !== "pending" || sentTimeReview.state !== "ambiguous" || sentTimeReview.reason !== "pending_partial_candle" || Number.isFinite(Number(sentTimeReview.exitPrice))) {
+  throw new Error("Alert review must fail safe when sent_at falls inside the first post-signal candle");
+}
+
+const earlySentReview = reviewAlertWithCandles({
+  trigger_time: new Date(Date.UTC(2026, 5, 21, 8, 0)).toISOString(),
+  sent_at: new Date(Date.UTC(2026, 5, 21, 8, 30)).toISOString(),
+  interval: "1h",
+  payload: {
+    close: 100,
+    direction: "做多观察",
+    executionPlan: { entryReference: 100, stopLoss: 97, takeProfit: 105 }
+  }
+}, [
+  { openTime: Date.UTC(2026, 5, 21, 9, 0), open: 100, high: 101, low: 96.5, close: 97 }
+], Date.UTC(2026, 5, 21, 10, 1));
+if (earlySentReview.status !== "reviewed" || earlySentReview.outcome !== "止损") {
+  throw new Error("Alert review should use the first complete candle when sent_at is before entryEligibleAt");
 }
 
 const exactBoundaryReview = reviewAlertWithCandles({
@@ -1781,8 +1955,8 @@ const inverseCandles = Array.from({ length: 260 }, (_, index) => ({
   openTime: Date.UTC(2026, 0, 1, index),
   open: 300 - index,
   high: 300 - index,
-  low: 300 - index,
-  close: 300 - index,
+  low: 299 - index,
+  close: 299 - index,
   volume: 1000
 }));
 const inverseComparison = compareStrategyInversion({
