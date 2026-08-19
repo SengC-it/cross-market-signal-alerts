@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node scripts/smoke-test.js",
+    "test": "node scripts/smoke-test.js && node scripts/m2b-test.js",
     "inverse-report": "node scripts/inverse-signal-report.js",
     "backtest:tiered": "node scripts/backtest-tiered-dynamic.js",
     "search:tiered": "node scripts/search-tiered-policy.js",
