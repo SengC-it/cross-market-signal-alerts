@@ -2,6 +2,7 @@ node_modules
 .vercel
 .npm-cache/
 .worktrees/
+.local/m3-data/
 .env
 .env.local
 .env.vercel.local
