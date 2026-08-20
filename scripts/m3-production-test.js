@@ -440,6 +440,42 @@ function testStrictTickerContinuityAndBenchmarkCompleteness() {
   assert.equal(completeBenchmark.complete, true);
   assert.ok(Math.abs(completeBenchmark.value + 0.04) < 1e-12);
 
+  const benchmarkAt51h = benchmarkMomentum24hAsOf({
+    candles: makeBenchmarkCandles(-0.04),
+    asOf: BASE + 51 * HOUR,
+    interval: "4h"
+  });
+  assert.equal(benchmarkAt51h.latestCloseTime, BASE + 48 * HOUR);
+  assert.equal(benchmarkAt51h.complete, true, "the next 4h close is not due at 51h");
+
+  const missing52h = makeBenchmarkCandles(-0.04)
+    .filter((candle) => candle.openTime !== BASE + 48 * HOUR);
+  const benchmarkAtMissing52h = benchmarkMomentum24hAsOf({
+    candles: missing52h,
+    asOf: BASE + 52 * HOUR,
+    interval: "4h"
+  });
+  assert.equal(benchmarkAtMissing52h.latestCloseTime, BASE + 48 * HOUR);
+  assert.equal(benchmarkAtMissing52h.complete, false);
+  assert.equal(benchmarkAtMissing52h.reason, "stale_data");
+
+  const benchmarkAt52h = benchmarkMomentum24hAsOf({
+    candles: makeBenchmarkCandles(-0.04),
+    asOf: BASE + 52 * HOUR,
+    interval: "4h"
+  });
+  assert.equal(benchmarkAt52h.latestCloseTime, BASE + 52 * HOUR);
+  assert.equal(benchmarkAt52h.complete, true, "an existing continuous next candle is complete");
+
+  const futureCannotFill52h = benchmarkMomentum24hAsOf({
+    candles: missing52h,
+    asOf: BASE + 52 * HOUR,
+    interval: "4h"
+  });
+  assert.equal(futureCannotFill52h.latestCloseTime, BASE + 48 * HOUR);
+  assert.equal(futureCannotFill52h.complete, false);
+  assert.equal(futureCannotFill52h.reason, "stale_data");
+
   const benchmarkGapCandles = makeBenchmarkCandles(-0.04)
     .filter((candle) => candle.openTime !== BASE + 8 * 4 * HOUR);
   const benchmarkGap = benchmarkMomentum24hAsOf({
@@ -540,8 +576,20 @@ function testM3ProductionAdapterMetadataAndNoOptimization() {
   assert.equal(result.validationVerdict, "PROVISIONAL");
   assert.equal(result.productionPolicy, FULL_PRODUCTION_POLICY);
   assert.equal(result.productionPolicyComplete, false);
-  assert.equal(result.productionPolicyReason, "LIVE_PERFORMANCE_HISTORY_UNAVAILABLE");
+  assert.equal(result.productionPolicyReason, "LIVE_PERFORMANCE_REPLAY_NOT_IMPLEMENTED");
   assert.equal(result.replaySignalsPrimaryEligible <= result.replaySignalsTotal, true);
+
+  const recordsOnly = replayDynamicProductionSignals({
+    ...options,
+    productionPolicy: FULL_PRODUCTION_POLICY,
+    historicalAlertReviewState: {
+      auditable: true,
+      records: [{ signalAvailableAt: BASE + 49 * HOUR, reviewedAt: BASE + 50 * HOUR }]
+    }
+  });
+  assert.equal(recordsOnly.productionPolicyComplete, false);
+  assert.equal(recordsOnly.productionPolicyReason, "LIVE_PERFORMANCE_REPLAY_NOT_IMPLEMENTED");
+  assert.equal(recordsOnly.validationVerdict, "PROVISIONAL");
 }
 
 testSharedStrongWeakParity();
