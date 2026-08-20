@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import {
   FUNDING_DATA_MISSING,
+  INCOMPLETE_FUNDING,
   NO_FUNDING_EVENTS_CONFIRMED,
   buildFundingCoverage,
   fetchHistoricalFunding
@@ -14,11 +15,16 @@ import {
   roundTradeLevels,
   validateExecutionQuantity
 } from "../lib/trading/exchange-filters.js";
-import { createExecutionModel } from "../lib/backtest/execution-model.js";
+import {
+  INCOMPLETE_EXCHANGE_FILTERS,
+  createExecutionModel,
+  validateFundingCoverageForTrade
+} from "../lib/backtest/execution-model.js";
 import { MISSED_ENTRY, NO_ENTRY, simulateTrade } from "../lib/backtest/trade-simulator.js";
 import { runBacktest } from "../lib/backtest/backtest-engine.js";
 import { aggregateMetrics } from "../lib/backtest/metrics.js";
 import { reviewAlertWithCandles } from "../lib/alert-review.js";
+import { resolveTimeStop } from "../lib/trading/replay-engine.js";
 import {
   createTradeSpec,
   intervalMilliseconds,
@@ -30,6 +36,7 @@ import { backtestStrategy } from "../lib/strategies.js";
 
 const HOUR = intervalMilliseconds("1h");
 const MINUTE = 60 * 1000;
+const FIVE_MINUTE = 5 * MINUTE;
 const BASE = Date.UTC(2026, 0, 1, 0, 0);
 
 function candle(openTime, open = 100, high = 101, low = 99, close = open) {
@@ -63,6 +70,7 @@ function model(options = {}) {
   return createExecutionModel({
     marketType: "spot",
     fundingDataComplete: true,
+    exchangeRulesRequired: false,
     ...options
   });
 }
@@ -102,6 +110,8 @@ assert.equal(longReferenceOnly.entryTime, BASE + HOUR);
 assert.equal(longReferenceOnly.entryMarketPrice, 101);
 assert.notEqual(longReferenceOnly.referencePrice, longReferenceOnly.entryFillPrice);
 assert.equal(longReferenceOnly.exitReason, "take_profit");
+assert.notEqual(longReferenceOnly.entryFillPrice, 999999);
+assert.notEqual(longReferenceOnly.exitFillPrice, 999999);
 
 const adverseLong = trade(
   spec(),
@@ -227,6 +237,41 @@ assert.equal(lowerCollision.exitReason, "stop_loss");
 assert.equal(lowerCollision.exitResolution, "pessimistic_stop_first");
 assert.equal(lowerCollision.ambiguousIntrabar, true);
 
+function lowerBars5m(start, { triggerIndex = null, high = 101, low = 99 } = {}) {
+  return Array.from({ length: 12 }, (_, index) => {
+    const isTrigger = index === triggerIndex;
+    return {
+      openTime: start + index * FIVE_MINUTE,
+      open: 100,
+      high: isTrigger ? high : 101,
+      low: isTrigger ? low : 99,
+      close: 100
+    };
+  });
+}
+
+const lowerTp5m = trade(spec(), [
+  candle(BASE, 100),
+  candle(BASE + HOUR, 100, 106, 94, 100)
+], {
+  lowerTimeframe: "5m",
+  lowerTimeframeCandles: lowerBars5m(BASE + HOUR, { triggerIndex: 2, high: 106, low: 99 })
+});
+assert.equal(lowerTp5m.exitReason, "take_profit");
+assert.equal(lowerTp5m.exitTime, BASE + HOUR + 2 * FIVE_MINUTE);
+assert.equal(lowerTp5m.excursionQuality, "LOWER_TF_REPLAY_5M");
+
+const lowerSl5m = trade(spec(), [
+  candle(BASE, 100),
+  candle(BASE + HOUR, 100, 106, 94, 100)
+], {
+  lowerTimeframe: "5m",
+  lowerTimeframeCandles: lowerBars5m(BASE + HOUR, { triggerIndex: 2, high: 101, low: 94 })
+});
+assert.equal(lowerSl5m.exitReason, "stop_loss");
+assert.equal(lowerSl5m.exitTime, BASE + HOUR + 2 * FIVE_MINUTE);
+assert.equal(lowerSl5m.excursionQuality, "LOWER_TF_REPLAY_5M");
+
 const noBaseLookahead = trade(spec(), [
   candle(BASE, 100),
   candle(BASE + HOUR, 100, 106, 94, 100)
@@ -286,13 +331,23 @@ const fundingCandles = [
 ];
 const fundingModel = createExecutionModel({
   marketType: "futures",
-  fundingDataComplete: true,
   fundingEvents: [
     { time: BASE + HOUR, rate: 0.2 },
     { time: BASE + 2 * HOUR, rate: 0.01 },
     { time: BASE + 3 * HOUR, rate: -0.004 },
     { time: BASE + 4 * HOUR, rate: 0.2 }
-  ]
+  ],
+  fundingCoverage: buildFundingCoverage({
+    requestedStart: BASE,
+    requestedEnd: BASE + 4 * HOUR,
+    events: [
+      { time: BASE + HOUR, rate: 0.2 },
+      { time: BASE + 2 * HOUR, rate: 0.01 },
+      { time: BASE + 3 * HOUR, rate: -0.004 },
+      { time: BASE + 4 * HOUR, rate: 0.2 }
+    ],
+    complete: true
+  })
 });
 const fundingLong = simulateTrade({
   tradeSpec: spec({ maxHoldingHours: 2 }),
@@ -309,6 +364,7 @@ const fundingShort = simulateTrade({
 });
 assert.ok(Math.abs(fundingShort.fundingPct - 0.006) < 1e-12);
 assert.equal(createExecutionModel({ marketType: "futures", fundingEvents: [] }).fundingDataComplete, false);
+assert.equal(createExecutionModel({ marketType: "futures", fundingDataComplete: true }).fundingStatus, INCOMPLETE_FUNDING);
 assert.equal(createExecutionModel({
   marketType: "futures",
   fundingEvents: [],
@@ -319,6 +375,37 @@ assert.equal(createExecutionModel({
     events: []
   })
 }).fundingStatus, NO_FUNDING_EVENTS_CONFIRMED);
+assert.equal(validateFundingCoverageForTrade({
+  fundingCoverage: buildFundingCoverage({ requestedStart: BASE, requestedEnd: BASE + 4 * HOUR, events: [], complete: true }),
+  entryTime: BASE + HOUR,
+  exitTime: BASE + 3 * HOUR
+}).status, NO_FUNDING_EVENTS_CONFIRMED);
+assert.equal(validateFundingCoverageForTrade({
+  fundingCoverage: buildFundingCoverage({ requestedStart: BASE, requestedEnd: BASE + 4 * HOUR, events: [{ time: BASE + 2 * HOUR, rate: 0.01 }], complete: true }),
+  entryTime: BASE + HOUR,
+  exitTime: BASE + 3 * HOUR
+}).status, "COMPLETE");
+assert.equal(validateFundingCoverageForTrade({
+  fundingCoverage: buildFundingCoverage({ requestedStart: BASE + 2 * HOUR, requestedEnd: BASE + 4 * HOUR, events: [], complete: true }),
+  entryTime: BASE + HOUR,
+  exitTime: BASE + 3 * HOUR
+}).status, INCOMPLETE_FUNDING);
+assert.equal(validateFundingCoverageForTrade({
+  fundingCoverage: buildFundingCoverage({ requestedStart: BASE, requestedEnd: BASE + 2 * HOUR, events: [], complete: true }),
+  entryTime: BASE + HOUR,
+  exitTime: BASE + 3 * HOUR
+}).status, INCOMPLETE_FUNDING);
+assert.equal(validateFundingCoverageForTrade({
+  fundingCoverage: buildFundingCoverage({
+    requestedStart: BASE,
+    requestedEnd: BASE + 4 * HOUR,
+    events: [],
+    complete: true,
+    gaps: [{ start: BASE + 2 * HOUR, end: BASE + 2 * HOUR + 1 }]
+  }),
+  entryTime: BASE + HOUR,
+  exitTime: BASE + 3 * HOUR
+}).status, INCOMPLETE_FUNDING);
 
 const providerStart = BASE;
 const providerEnd = BASE + 3 * HOUR;
@@ -478,6 +565,140 @@ const reviewLowerTarget = reviewAlertWithCandles(
 );
 assert.equal(reviewLowerTarget.status, "reviewed");
 assert.equal(reviewLowerTarget.outcome, "止盈");
+
+const reviewGapEntry = reviewAlertWithCandles(
+  { interval: "1h", payload: { tradeSpec: spec() } },
+  [candle(BASE + HOUR, 110, 112, 109, 111)],
+  BASE + 2 * HOUR
+);
+assert.equal(reviewGapEntry.status, "NO_ENTRY");
+assert.equal(reviewGapEntry.reason, "entry_fill_outside_trade_spec_geometry");
+
+const modeledReview = reviewAlertWithCandles(
+  { interval: "1h", payload: { tradeSpec: spec() } },
+  [
+    candle(BASE + HOUR, 103, 104, 102, 103),
+    candle(BASE + 2 * HOUR, 103, 106, 102, 105)
+  ],
+  BASE + 3 * HOUR,
+  { executionModel: model() }
+);
+assert.equal(modeledReview.status, "reviewed");
+assert.equal(modeledReview.entryMarketPrice, 103);
+assert.equal(modeledReview.entryFillPrice, 103);
+assert.equal(modeledReview.referencePrice, 100);
+assert.equal(modeledReview.exitReason, "take_profit");
+assert.equal(modeledReview.exitResolution, "take_profit");
+assert.equal(modeledReview.executionQuality, "MODELED_EXECUTION");
+assert.ok(Math.abs(modeledReview.netReturnPct - (105 / 103 - 1)) < 1e-12);
+
+const parityModel = createExecutionModel({
+  marketType: "spot",
+  exchangeRulesRequired: false,
+  entryFeePct: 0.001,
+  exitFeePct: 0.001,
+  spreadPct: 0.01,
+  entrySlippagePct: 0.005,
+  exitSlippagePct: 0.004
+});
+const parityCandles = [
+  candle(BASE, 100),
+  candle(BASE + HOUR, 103, 104, 102, 103),
+  candle(BASE + 2 * HOUR, 103, 106, 102, 105)
+];
+const parityBacktest = simulateTrade({
+  tradeSpec: spec(),
+  candles: parityCandles,
+  entryIndex: 1,
+  executionModel: parityModel
+});
+const parityReview = reviewAlertWithCandles(
+  { interval: "1h", payload: { tradeSpec: spec() } },
+  parityCandles,
+  BASE + 3 * HOUR,
+  { executionModel: parityModel }
+);
+assert.equal(parityReview.entryFillPrice, parityBacktest.entryFillPrice);
+assert.equal(parityReview.exitResolution, parityBacktest.exitResolution);
+assert.equal(parityReview.exitFillPrice, parityBacktest.exitFillPrice);
+assert.ok(Math.abs(parityReview.netReturnPct - parityBacktest.netReturnPct) < 1e-12);
+
+const internalTimeStop = trade(spec({ maxHoldingHours: 1 / 3 }), [
+  candle(BASE, 100),
+  candle(BASE + HOUR, 100, 200, 50, 100)
+]);
+assert.equal(internalTimeStop.exitReason, "time_stop");
+assert.equal(internalTimeStop.dataQuality, "INCOMPLETE_INTRABAR_DATA");
+assert.equal(internalTimeStop.exitTime, BASE + HOUR + 20 * MINUTE);
+assert.equal(internalTimeStop.mfePct, 0);
+assert.equal(internalTimeStop.maePct, 0);
+
+const skippedCandleTimeStop = trade(spec({ maxHoldingHours: 1.5 }), [
+  candle(BASE, 100),
+  candle(BASE + HOUR, 100, 101, 99, 100),
+  candle(BASE + 3 * HOUR, 100, 200, 50, 100)
+]);
+assert.equal(skippedCandleTimeStop.exitReason, "time_stop");
+assert.equal(skippedCandleTimeStop.exitTime, BASE + 3 * HOUR);
+assert.equal(skippedCandleTimeStop.dataQuality, "INCOMPLETE_INTRABAR_DATA");
+assert.ok(Math.abs(skippedCandleTimeStop.mfePct - 0.01) < 1e-12);
+assert.ok(Math.abs(skippedCandleTimeStop.maePct + 0.01) < 1e-12);
+
+const partialBoundaryCandles = Array.from({ length: 22 }, (_, index) => ({
+  openTime: BASE + HOUR + index * MINUTE,
+  open: index === 21 ? 101 : 100,
+  high: index === 20 ? 200 : 101,
+  low: index === 20 ? 50 : 99,
+  close: 100
+}));
+const exactTimeStop = resolveTimeStop({
+  tradeSpec: spec({ maxHoldingHours: 1 / 3 }),
+  baseCandle: candle(BASE + HOUR, 100, 200, 50, 100),
+  lowerTimeframe: "1m",
+  lowerTimeframeCandles: partialBoundaryCandles
+});
+assert.equal(exactTimeStop.exitTime, BASE + HOUR + 20 * MINUTE);
+assert.equal(exactTimeStop.approximate, false);
+const approximateSpec = spec({ maxHoldingHours: (20 * MINUTE + 30 * 1000) / (HOUR) });
+const approximateTimeStop = resolveTimeStop({
+  tradeSpec: approximateSpec,
+  baseCandle: candle(BASE + HOUR, 100, 200, 50, 100),
+  lowerTimeframe: "1m",
+  lowerTimeframeCandles: partialBoundaryCandles
+});
+assert.equal(approximateTimeStop.exitTime, BASE + HOUR + 21 * MINUTE);
+assert.equal(approximateTimeStop.approximate, true);
+assert.equal(approximateTimeStop.dataQuality, "INCOMPLETE_INTRABAR_DATA");
+
+const futuresNoFilter = simulateTrade({
+  tradeSpec: spec(),
+  candles: [candle(BASE, 100), candle(BASE + HOUR, 100, 102, 99, 101)],
+  entryIndex: 1,
+  executionModel: createExecutionModel({
+    marketType: "futures",
+    fundingCoverage: buildFundingCoverage({
+      requestedStart: BASE,
+      requestedEnd: BASE + 4 * HOUR,
+      events: [],
+      complete: true
+    })
+  })
+});
+assert.equal(futuresNoFilter.dataQualityComponents.exchangeFilters, INCOMPLETE_EXCHANGE_FILTERS);
+assert.equal(futuresNoFilter.dataQuality, INCOMPLETE_EXCHANGE_FILTERS);
+assert.equal(filteredTrade.dataQualityComponents.exchangeFilters, "COMPLETE");
+const filterMetrics = aggregateMetrics([filteredTrade, futuresNoFilter]);
+assert.equal(filterMetrics.completeTrades, 1);
+assert.equal(filterMetrics.degradedTrades, 1);
+
+const invalidFilterReview = reviewAlertWithCandles(
+  { interval: "1h", payload: { tradeSpec: spec() } },
+  [candle(BASE + HOUR, 100, 102, 99, 100)],
+  BASE + 2 * HOUR,
+  { exchangeFilters: { tickSize: 0, stepSize: 0 } }
+);
+assert.equal(invalidFilterReview.status, "pending");
+assert.equal(invalidFilterReview.dataQuality, "INCOMPLETE_EXCHANGE_FILTERS");
 
 const metricResult = aggregateMetrics([longReferenceOnly, baseAmbiguous], {
   missedEntries: [{ status: NO_ENTRY }],

@@ -6,6 +6,7 @@ import { buildEmailNotifications } from "../api/status.js";
 import { renderSignalEmail, renderTestEmail } from "../lib/report.js";
 import { reviewAlertWithCandles, reviewArbitrageAlert } from "../lib/alert-review.js";
 import { createExecutionModel } from "../lib/backtest/execution-model.js";
+import { buildFundingCoverage } from "../lib/market-data/funding-history.js";
 import { runBacktest } from "../lib/backtest/backtest-engine.js";
 import { aggregateMetrics } from "../lib/backtest/metrics.js";
 import { simulateTrade, validateEntryGeometry } from "../lib/backtest/trade-simulator.js";
@@ -1534,7 +1535,7 @@ const sharedReview = reviewAlertWithCandles({
     executionPlan: { entryReference: 999, stopLoss: 900, takeProfit: 1100 }
   }
 }, [
-  { openTime: tradeSpecOpenTime + tradeSpecInterval, high: 106, low: 99, close: 105.5 }
+  { openTime: tradeSpecOpenTime + tradeSpecInterval, open: 100, high: 106, low: 99, close: 105.5 }
 ], tradeSpecOpenTime + 2 * tradeSpecInterval + 1);
 if (sharedReview.status !== "reviewed" || sharedReview.outcome !== "止盈" || sharedReview.exitPrice !== 105 || sharedReview.referencePrice !== 100) {
   throw new Error("Alert Review should use the same TradeSpec TP/SL and reference price as Email");
@@ -2062,7 +2063,16 @@ const m2FundingModel = createExecutionModel({
     { time: m2BaseTime + 3 * m2Hour, rate: -0.004 },
     { time: m2BaseTime + 6 * m2Hour, rate: 0.2 }
   ],
-  fundingDataComplete: true
+  fundingCoverage: buildFundingCoverage({
+    requestedStart: m2BaseTime,
+    requestedEnd: m2BaseTime + 6 * m2Hour,
+    events: [
+      { time: m2BaseTime + 2 * m2Hour, rate: 0.01 },
+      { time: m2BaseTime + 3 * m2Hour, rate: -0.004 },
+      { time: m2BaseTime + 6 * m2Hour, rate: 0.2 }
+    ],
+    complete: true
+  })
 });
 const m2LongFunding = simulateTrade({
   tradeSpec: m2Spec({ stopLoss: 1, takeProfit: 200, maxHoldingHours: 3 }),
@@ -2082,7 +2092,12 @@ if (!m2LongFunding || !m2ShortFunding || Math.abs(m2LongFunding.fundingPct + 0.0
 const m2NegativeFundingModel = createExecutionModel({
   marketType: "futures",
   fundingEvents: [{ time: m2BaseTime + 2 * m2Hour, rate: -0.01 }],
-  fundingDataComplete: true
+  fundingCoverage: buildFundingCoverage({
+    requestedStart: m2BaseTime,
+    requestedEnd: m2BaseTime + 6 * m2Hour,
+    events: [{ time: m2BaseTime + 2 * m2Hour, rate: -0.01 }],
+    complete: true
+  })
 });
 const m2NegativeLong = simulateTrade({
   tradeSpec: m2Spec({ stopLoss: 1, takeProfit: 200, maxHoldingHours: 3 }),
@@ -2344,7 +2359,7 @@ const reviewedWin = reviewAlertWithCandles({
     executionPlan: { entryReference: 100, stopLoss: 97, takeProfit: 105 }
   }
 }, [
-  { openTime: Date.UTC(2026, 5, 21, 9, 0), high: 106, low: 99, close: 105.5 }
+  { openTime: Date.UTC(2026, 5, 21, 9, 0), open: 100, high: 106, low: 99, close: 105.5 }
 ], reviewNow);
 if (reviewedWin.status !== "reviewed" || reviewedWin.outcome !== "止盈" || reviewedWin.returnPct <= 0) {
   throw new Error("Alert review should detect take profit");
@@ -2360,7 +2375,7 @@ const reviewedLoss = reviewAlertWithCandles({
     executionPlan: { entryReference: 100, stopLoss: 97, takeProfit: 105 }
   }
 }, [
-  { openTime: Date.UTC(2026, 5, 21, 9, 0), high: 101, low: 96.5, close: 97 }
+  { openTime: Date.UTC(2026, 5, 21, 9, 0), open: 100, high: 101, low: 96.5, close: 97 }
 ], reviewNow);
 if (reviewedLoss.status !== "reviewed" || reviewedLoss.outcome !== "止损" || reviewedLoss.returnPct >= 0) {
   throw new Error("Alert review should detect stop loss");
@@ -2391,8 +2406,8 @@ const tpAfterValidUntilReview = reviewAlertWithCandles({
     executionPlan: { entryReference: 100, stopLoss: 97, takeProfit: 105 }
   }
 }, [
-  { openTime: Date.UTC(2026, 5, 21, 9, 0), high: 101, low: 99, close: 100.5 },
-  { openTime: Date.UTC(2026, 5, 21, 11, 0), high: 106, low: 100, close: 105.5 }
+  { openTime: Date.UTC(2026, 5, 21, 9, 0), open: 100, high: 101, low: 99, close: 100.5 },
+  { openTime: Date.UTC(2026, 5, 21, 11, 0), open: 100.5, high: 106, low: 100, close: 105.5 }
 ], reviewNow);
 if (tpAfterValidUntilReview.status !== "reviewed" || tpAfterValidUntilReview.exitTime !== Date.UTC(2026, 5, 21, 11, 0) || tpAfterValidUntilReview.returnPct <= 0) {
   throw new Error("Alert review should keep watching after validUntil until email take-profit or stop-loss is touched");
@@ -2408,8 +2423,8 @@ const unresolvedTpSlReview = reviewAlertWithCandles({
     executionPlan: { entryReference: 100, stopLoss: 97, takeProfit: 105 }
   }
 }, [
-  { openTime: Date.UTC(2026, 5, 21, 9, 0), high: 101, low: 99, close: 100.5 },
-  { openTime: Date.UTC(2026, 5, 21, 11, 0), high: 104, low: 98, close: 103 }
+  { openTime: Date.UTC(2026, 5, 21, 9, 0), open: 100, high: 101, low: 99, close: 100.5 },
+  { openTime: Date.UTC(2026, 5, 21, 11, 0), open: 100.5, high: 104, low: 98, close: 103 }
 ], reviewNow);
 if (unresolvedTpSlReview.status !== "pending" || Number.isFinite(Number(unresolvedTpSlReview.exitPrice))) {
   throw new Error("Alert review should not create a manual close review when neither email take-profit nor stop-loss is touched");
@@ -2459,10 +2474,10 @@ const exactBoundaryReview = reviewAlertWithCandles({
     executionPlan: { entryReference: 100, stopLoss: 97, takeProfit: 105 }
   }
 }, [
-  { openTime: Date.UTC(2026, 5, 21, 9, 0), open: 95, high: 99, low: 94, close: 96 }
+  { openTime: Date.UTC(2026, 5, 21, 9, 0), open: 100, high: 101, low: 94, close: 96 }
 ], Date.UTC(2026, 5, 21, 10, 1));
-if (exactBoundaryReview.outcome !== "止损" || exactBoundaryReview.exitPrice !== 95 || exactBoundaryReview.returnPct > -0.049) {
-  throw new Error("Alert review should include an exact-boundary candle and use a gap-aware stop fill");
+if (exactBoundaryReview.outcome !== "止损" || exactBoundaryReview.exitPrice !== 97 || exactBoundaryReview.returnPct > -0.029) {
+  throw new Error("Alert review should include an exact-boundary candle and use the modeled entry price");
 }
 
 const timeStopReview = reviewAlertWithCandles({
@@ -2485,7 +2500,7 @@ const timeStopReview = reviewAlertWithCandles({
   { openTime: Date.UTC(2026, 5, 21, 9, 0), open: 100, high: 101, low: 99, close: 100.5 },
   { openTime: Date.UTC(2026, 5, 21, 10, 0), open: 100.5, high: 102, low: 99.5, close: 101 }
 ], Date.UTC(2026, 5, 21, 11, 1));
-if (timeStopReview.outcome !== "时间退出" || Math.abs(timeStopReview.returnPct - 0.0088) > 1e-9 || timeStopReview.netOfCosts !== true) {
+if (timeStopReview.outcome !== "时间退出" || Math.abs(timeStopReview.returnPct - 0.008794) > 1e-9 || timeStopReview.netOfCosts !== true) {
   throw new Error("Trade plan v2 review should time-exit and report net-of-cost return");
 }
 
@@ -2583,7 +2598,14 @@ const inverseBacktest = runBacktest({
   marketType: "futures",
   tradePlanType: "spot",
   asset: "INVERSEUSDT",
-  executionModel: { fundingDataComplete: true }
+  executionModel: {
+    fundingCoverage: buildFundingCoverage({
+      requestedStart: m2BaseTime,
+      requestedEnd: m2BaseTime + 224 * m2Hour,
+      events: [],
+      complete: true
+    })
+  }
 });
 const inverseBacktestSpec = inverseBacktest.tradeResults[0];
 if (
