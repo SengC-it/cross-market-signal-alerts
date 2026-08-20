@@ -12,9 +12,11 @@ import {
   runWalkForwardValidation,
   splitChronologicalData
 } from "../lib/validation/walk-forward.js";
+import { runM3UniverseValidation } from "../lib/validation/validation-engine.js";
 import { runFinalHoldoutValidation } from "../lib/validation/holdout.js";
 import {
   ELIGIBLE_OOS,
+  NOT_APPLICABLE,
   OUTSIDE_TEST_WINDOW,
   PURGED_BOUNDARY,
   classifyOosBoundary,
@@ -88,7 +90,10 @@ function specTimes({
   return {
     signalAvailableAt,
     entryEligibleAt,
-    maxHoldingTime
+    maxHoldingTime,
+    referencePrice: 100,
+    stopLoss: 95,
+    takeProfit: 105
   };
 }
 
@@ -158,6 +163,50 @@ function testPurgeRules() {
   ], bounds);
   assert.equal(partition.eligible.length, 1);
   assert.equal(partition.purged.length, 1);
+}
+
+function testInvalidPlanAndPurgedDenominator() {
+  const bounds = { testStart: BASE + 10 * HOUR, testEnd: BASE + 20 * HOUR };
+  const invalidPlan = {
+    status: "NO_ENTRY",
+    reason: "invalid_trade_plan",
+    signalCandleOpenTime: BASE + 12 * HOUR,
+    signalAvailableAt: null,
+    entryEligibleAt: null,
+    maxHoldingTime: null
+  };
+  const invalidClassification = classifyOosBoundary(invalidPlan, bounds);
+  assert.equal(invalidClassification.status, NOT_APPLICABLE);
+  assert.equal(invalidClassification.inTestWindow, true);
+  const invalidPartition = partitionByOosBoundary([invalidPlan], bounds);
+  assert.equal(invalidPartition.purged.length, 0);
+  assert.equal(invalidPartition.notApplicable.length, 1);
+
+  const denominatorMetrics = aggregateValidationMetrics([], {
+    rawSignals: 100,
+    rawPlannedEntries: 90,
+    eligibleOosSignals: 90,
+    eligibleOosPlannedEntries: 80,
+    purgedBoundarySignals: 10,
+    noEntries: 9,
+    missedEntryCount: 0
+  });
+  assert.equal(denominatorMetrics.rawSignals, 100);
+  assert.equal(denominatorMetrics.eligibleOosSignals, 90);
+  assert.equal(denominatorMetrics.purgedBoundarySignals, 10);
+  assert.equal(denominatorMetrics.noEntryRate, 0.1);
+
+  const eligibleTrade = completeTrade({ netReturnPct: 0.1, realizedR: 1 });
+  const unaffected = aggregateValidationMetrics([eligibleTrade], {
+    rawSignals: 2,
+    eligibleOosSignals: 1,
+    purgedBoundarySignals: 1
+  });
+  assert.equal(unaffected.completeTrades, 1);
+  assert.equal(unaffected.expectancyR, 1);
+  assert.equal(unaffected.profitFactor, Infinity);
+  assert.equal(unaffected.winRate, 1);
+  assert.equal(unaffected.noEntryRate, 0);
 }
 
 function testBoundedContextAndNoFutureInputs() {
@@ -231,8 +280,10 @@ function testQualityAndMetricRecomputation() {
   const metrics = aggregateValidationMetrics(
     [longWin, shortLoss, fundingDegraded, ambiguous],
     {
-      signals: 6,
-      plannedEntries: 6,
+      rawSignals: 8,
+      rawPlannedEntries: 6,
+      eligibleOosSignals: 6,
+      eligibleOosPlannedEntries: 4,
       missedEntries: [{ status: "NO_ENTRY" }, { status: "MISSED_ENTRY" }],
       purgedBoundarySignals: 2
     }
@@ -245,6 +296,8 @@ function testQualityAndMetricRecomputation() {
   assert.equal(metrics.noEntries, 1);
   assert.equal(metrics.missedEntries, 1);
   assert.equal(metrics.purgedBoundarySignals, 2);
+  assert.equal(metrics.rawSignals, 8);
+  assert.equal(metrics.eligibleOosSignals, 6);
   assert.equal(metrics.profitFactor, 2);
   assert.equal(metrics.expectancyR, 0.25);
   assert.equal(metrics.noEntryRate, 2 / 6);
@@ -278,6 +331,94 @@ function testStabilityAndVerdicts() {
     expectancyR: 0.2,
     profitFactor: 2
   }));
+  const oneAssetTrades = Array.from({ length: 60 }, (_, index) =>
+    completeTrade({
+      asset: "ONLY",
+      foldId: "fold-" + (index % 5 + 1),
+      netReturnPct: 0.01,
+      realizedR: 0.2
+    })
+  );
+  const oneAssetStability = buildValidationStability({
+    tradeResults: oneAssetTrades,
+    assetUniverseSize: 1,
+    evaluatedAssets: ["ONLY"],
+    folds: Array.from({ length: 5 }, (_, index) => ({
+      foldId: "fold-" + (index + 1),
+      expectancyR: 0.2
+    }))
+  });
+  assert.equal(oneAssetStability.assetConcentrationApplicable, false);
+  assert.equal(oneAssetStability.assetConcentration, "NOT_APPLICABLE_SINGLE_ASSET");
+  assert.equal(oneAssetStability.flags.singleAssetDominance, false);
+  assert.equal(
+    determineValidationVerdict({
+      aggregate: { completeTrades: 60, expectancyR: 0.2, profitFactor: 1.5 },
+      holdout: { completeTrades: 20, expectancyR: 0.1, profitFactor: 1.2 },
+      folds: goodFolds,
+      stability: oneAssetStability
+    }),
+    VALIDATION_VERDICTS.PROMISING_EDGE
+  );
+
+  const threeAssetTrades = ["A", "B", "C"].flatMap((asset) =>
+    Array.from({ length: 20 }, (_, index) =>
+      completeTrade({
+        asset,
+        foldId: "fold-" + (index % 5 + 1),
+        netReturnPct: 0.01,
+        realizedR: 0.2
+      })
+    )
+  );
+  const threeAssetStability = buildValidationStability({
+    tradeResults: threeAssetTrades,
+    assetUniverseSize: 3,
+    evaluatedAssets: ["A", "B", "C"],
+    folds: goodFolds
+  });
+  assert.equal(threeAssetStability.assetConcentrationApplicable, true);
+  assert.equal(threeAssetStability.flags.singleAssetDominance, false);
+  assert.equal(threeAssetStability.flags.concentrationRisk, false);
+
+  const dominatedTrades = [
+    ...Array.from({ length: 40 }, (_, index) => completeTrade({
+      asset: "A",
+      foldId: "fold-" + (index % 5 + 1),
+      netReturnPct: 0.02,
+      realizedR: 0.2
+    })),
+    ...Array.from({ length: 10 }, (_, index) => completeTrade({
+      asset: "B",
+      foldId: "fold-" + (index % 5 + 1),
+      netReturnPct: 0.01,
+      realizedR: 0.2
+    })),
+    ...Array.from({ length: 10 }, (_, index) => completeTrade({
+      asset: "C",
+      foldId: "fold-" + (index % 5 + 1),
+      netReturnPct: 0.01,
+      realizedR: 0.2
+    }))
+  ];
+  const dominatedStability = buildValidationStability({
+    tradeResults: dominatedTrades,
+    assetUniverseSize: 3,
+    evaluatedAssets: ["A", "B", "C"],
+    folds: goodFolds
+  });
+  assert.equal(dominatedStability.flags.singleAssetDominance, true);
+  assert.equal(dominatedStability.flags.concentrationRisk, true);
+  assert.equal(
+    determineValidationVerdict({
+      aggregate: { completeTrades: 60, expectancyR: 0.2, profitFactor: 1.5 },
+      holdout: { completeTrades: 20, expectancyR: 0.1, profitFactor: 1.2 },
+      folds: goodFolds,
+      stability: dominatedStability
+    }),
+    VALIDATION_VERDICTS.UNSTABLE
+  );
+
   const baseAggregate = {
     completeTrades: 60,
     expectancyR: 0.2,
@@ -366,11 +507,38 @@ function testHoldoutRunsAfterDevelopmentOnly() {
   assert.equal(holdout.flags.holdoutUsedForOptimization, false);
 }
 
+function testMultiAssetOrchestration() {
+  const result = runM3UniverseValidation({
+    datasets: ["A", "B", "C"].map((asset) => ({
+      asset,
+      candles: history(60),
+      backtestOptions: {
+        marketType: "spot",
+        tradePlanType: "spot",
+        executionModel: { exchangeRulesRequired: false }
+      }
+    })),
+    strategy: observedStrategy([]),
+    interval: "1h",
+    folds: 5,
+    holdoutPct: 0.2
+  });
+  assert.deepEqual(result.assets, ["A", "B", "C"]);
+  assert.equal(result.assetUniverseSize, 3);
+  assert.equal(result.stability.assetUniverseSize, 3);
+  assert.equal(result.stability.assetConcentrationApplicable, true);
+  assert.equal(result.stability.flags.singleAssetDominance, false);
+  assert.equal(result.stability.flags.concentrationRisk, false);
+  assert.equal(result.flags.holdoutUsedForOptimization, false);
+}
+
 testChronologicalSplitAndFolds();
 testPurgeRules();
+testInvalidPlanAndPurgedDenominator();
 testBoundedContextAndNoFutureInputs();
 testQualityAndMetricRecomputation();
 testStabilityAndVerdicts();
 testHoldoutRunsAfterDevelopmentOnly();
+testMultiAssetOrchestration();
 
 console.log("M3 validation tests passed");

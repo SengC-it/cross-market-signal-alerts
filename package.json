@@ -6,6 +6,7 @@
   "scripts": {
     "test": "node scripts/smoke-test.js && node scripts/m2b-test.js && node scripts/m3-test.js",
     "validate:m3": "node scripts/m3-validation.js",
+    "validate:m3:sample": "node scripts/m3-validation-sample.js",
     "inverse-report": "node scripts/inverse-signal-report.js",
     "backtest:tiered": "node scripts/backtest-tiered-dynamic.js",
     "search:tiered": "node scripts/search-tiered-policy.js",
