@@ -1,7 +1,12 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { FUTURES_STRATEGIES } from "../lib/strategies.js";
-import { runM3UniverseValidation } from "../lib/validation/validation-engine.js";
+import { DYNAMIC_STRATEGY_IDS } from "../lib/strategies/dynamic-production.js";
+import {
+  runM3DynamicProductionValidation,
+  runM3UniverseValidation
+} from "../lib/validation/validation-engine.js";
+import { ORDER_BOOK_AVAILABILITY } from "../lib/validation/dynamic-production-replay.js";
 
 function main() {
   const inputPath = argumentValue("--input") || process.env.M3_VALIDATION_INPUT;
@@ -26,25 +31,53 @@ function main() {
 
   const strategyId = argumentValue("--strategy") || input.strategyId;
   if (!strategyId) return failClosed("M3_VALIDATION_STRATEGY_REQUIRED");
-  const strategy = FUTURES_STRATEGIES.find((candidate) => candidate.id === strategyId);
-  if (!strategy) return failClosed("M3_VALIDATION_STRATEGY_NOT_FOUND: " + strategyId);
+  const dynamicProduction = DYNAMIC_STRATEGY_IDS.includes(strategyId);
+  const strategy = dynamicProduction
+    ? null
+    : FUTURES_STRATEGIES.find((candidate) => candidate.id === strategyId);
+  if (!dynamicProduction && !strategy) return failClosed("M3_VALIDATION_STRATEGY_NOT_FOUND: " + strategyId);
 
   let result;
   try {
-    result = runM3UniverseValidation({
-      datasets: datasets.map(normalizeDataset),
-      strategy,
-      interval: input.interval || datasets[0]?.interval || "1h",
-      holdoutPct: input.holdoutPct ?? 0.2,
-      folds: input.folds ?? 5
-    });
+    const interval = input.interval || datasets[0]?.interval || "1h";
+    const normalizedDatasets = datasets.map(normalizeDataset);
+    result = dynamicProduction
+      ? runM3DynamicProductionValidation({
+        datasets: normalizedDatasets,
+        strategyId,
+        interval,
+        holdoutPct: input.holdoutPct ?? 0.2,
+        folds: input.folds ?? 5,
+        benchmarkCandles: input.benchmarkCandles || null,
+        benchmarkInterval: input.benchmarkInterval || "4h",
+        orderBookAvailability: parseOrderBookAvailability(input, argumentValue("--orderbook")),
+        existingAssets: input.existingAssets || [],
+        futuresSymbols: input.futuresSymbols || null,
+        historicalUniverse: input.historicalUniverse || null,
+        universeSource: input.universeSource || "current_configured_futures",
+        dataSource: input.dataSource || resolve(inputPath)
+      })
+      : runM3UniverseValidation({
+        datasets: normalizedDatasets,
+        strategy,
+        interval,
+        holdoutPct: input.holdoutPct ?? 0.2,
+        folds: input.folds ?? 5
+      });
   } catch (error) {
     return failClosed(error.message || "M3_VALIDATION_FAILED");
   }
 
   console.log(JSON.stringify({
     dataSource: input.dataSource || resolve(inputPath),
-    strategyId: strategy.id,
+    strategyId,
+    strategyFamily: result.strategyFamily || null,
+    dynamicPoolReplay: result.dynamicPoolReplay || false,
+    poolReconstructionQuality: result.poolReconstructionQuality || null,
+    orderBookAvailabilityAssumption: result.orderBookAvailabilityAssumption || null,
+    orderBookAvailabilitySensitive: result.orderBookAvailabilitySensitive || false,
+    universeSource: result.universeSource || null,
+    survivorshipBiasRisk: result.survivorshipBiasRisk || false,
     assets: result.assets,
     developmentStart: result.development.start,
     developmentEnd: result.development.end,
@@ -69,10 +102,17 @@ function main() {
     })),
     aggregateMetrics: result.aggregate,
     holdoutMetrics: result.holdoutMetrics,
-    validationVerdict: result.verdict,
+    validationVerdict: result.validationVerdict || result.verdict,
     flags: result.flags
   }, null, 2));
   return 0;
+}
+
+function parseOrderBookAvailability(input, argument) {
+  const value = String(argument || input.orderBookAvailability || ORDER_BOOK_AVAILABILITY.UNAVAILABLE).toUpperCase();
+  if (value === ORDER_BOOK_AVAILABILITY.AVAILABLE) return ORDER_BOOK_AVAILABILITY.AVAILABLE;
+  if (value === ORDER_BOOK_AVAILABILITY.UNAVAILABLE) return ORDER_BOOK_AVAILABILITY.UNAVAILABLE;
+  throw new Error("M3_ORDERBOOK_AVAILABILITY_INVALID");
 }
 
 function validateDatasets(datasets) {
