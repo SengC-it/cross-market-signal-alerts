@@ -182,6 +182,24 @@ function testInvalidPlanAndPurgedDenominator() {
   assert.equal(invalidPartition.purged.length, 0);
   assert.equal(invalidPartition.notApplicable.length, 1);
 
+  const invalidFrozenPlan = {
+    status: "NO_ENTRY",
+    reason: "invalid_trade_plan",
+    tradeSpec: {
+      signalAvailableAt: BASE + 12 * HOUR,
+      entryEligibleAt: BASE + 12 * HOUR,
+      maxHoldingTime: null,
+      referencePrice: 100,
+      stopLoss: 95,
+      takeProfit: 105
+    }
+  };
+  assert.equal(classifyOosBoundary(invalidFrozenPlan, bounds).status, NOT_APPLICABLE);
+  assert.equal(partitionByOosBoundary([invalidFrozenPlan], bounds).purged.length, 0);
+
+  const frozenSpecCrossingEnd = specTimes({ maxHoldingTime: BASE + 21 * HOUR });
+  assert.equal(classifyOosBoundary({ tradeSpec: frozenSpecCrossingEnd }, bounds).status, PURGED_BOUNDARY);
+
   const denominatorMetrics = aggregateValidationMetrics([], {
     rawSignals: 100,
     rawPlannedEntries: 90,

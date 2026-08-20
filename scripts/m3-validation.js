@@ -55,7 +55,12 @@ function main() {
         futuresSymbols: input.futuresSymbols || null,
         historicalUniverse: input.historicalUniverse || null,
         universeSource: input.universeSource || "current_configured_futures",
-        dataSource: input.dataSource || resolve(inputPath)
+        dataSource: input.dataSource || resolve(inputPath),
+        productionGroup: input.productionGroup || "all",
+        productionPolicy: input.productionPolicy || undefined,
+        historicalAlertReviewState: input.historicalAlertReviewState || null,
+        dynamicSpotAssets: input.dynamicSpotAssets || [],
+        selected: input.selected || null
       })
       : runM3UniverseValidation({
         datasets: normalizedDatasets,
@@ -76,6 +81,14 @@ function main() {
     poolReconstructionQuality: result.poolReconstructionQuality || null,
     orderBookAvailabilityAssumption: result.orderBookAvailabilityAssumption || null,
     orderBookAvailabilitySensitive: result.orderBookAvailabilitySensitive || false,
+    productionGroup: result.productionGroup || input.productionGroup || "all",
+    productionPolicy: result.productionPolicy || null,
+    productionPolicyComplete: result.productionPolicyComplete ?? null,
+    productionPolicyReason: result.productionPolicyReason || null,
+    replaySignalsTotal: result.replaySignalsTotal ?? null,
+    replaySignalsPrimaryEligible: result.replaySignalsPrimaryEligible ?? null,
+    replaySignalsExcluded: result.replaySignalsExcluded ?? null,
+    excludedByReason: result.excludedByReason || null,
     universeSource: result.universeSource || null,
     survivorshipBiasRisk: result.survivorshipBiasRisk || false,
     assets: result.assets,

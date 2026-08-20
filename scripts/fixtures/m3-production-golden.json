@@ -1,0 +1,37 @@
+{
+  "baseline": "f79ee80dfdf5ec226a9da9b10ed5e7846d4abe1d",
+  "strongOpportunityPass": {
+    "passed": true,
+    "score": 88,
+    "reason": null
+  },
+  "strongOpportunityRejected": {
+    "passed": false,
+    "score": 0,
+    "reason": "no_breakout"
+  },
+  "weakOpportunityPass": {
+    "passed": true,
+    "score": 85,
+    "reason": null
+  },
+  "weakOpportunityRejected": {
+    "passed": false,
+    "score": 0,
+    "reason": "weakness_gate"
+  },
+  "poolEligibility": {
+    "strong": true,
+    "weak": true
+  },
+  "poolRanking": [
+    "AUSDT",
+    "BUSDT"
+  ],
+  "groupExclusions": {
+    "all": true,
+    "dynamic-spot": false,
+    "dynamic-weak-spot": false
+  },
+  "maxAssets": 2
+}

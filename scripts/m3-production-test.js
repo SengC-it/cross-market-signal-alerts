@@ -1,11 +1,14 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { CONFIG } from "../lib/config.js";
 import {
+  benchmarkMomentum24hAsOf,
   evaluateDynamicProductionOpportunity,
   evaluateDynamicProductionSignal,
   isDynamicStrongPoolCandidate,
   isDynamicWeakPoolCandidate,
-  rankDynamicPoolTickers
+  rankDynamicPoolTickers,
+  resolveDynamicPoolExistingAssets
 } from "../lib/strategies/dynamic-production.js";
 import {
   evaluateDynamicProductionSignalForStrategy,
@@ -14,9 +17,11 @@ import {
   isDynamicWeakSpotCandidate
 } from "../lib/scanner.js";
 import { runBacktest } from "../lib/backtest/backtest-engine.js";
+import { buildFundingCoverage } from "../lib/market-data/funding-history.js";
 import {
   compareDynamicOrderBookAvailability,
   createDynamicProductionReplayStrategy,
+  FULL_PRODUCTION_POLICY,
   ORDER_BOOK_AVAILABILITY,
   replayDynamicProductionSignals
 } from "../lib/validation/dynamic-production-replay.js";
@@ -24,6 +29,10 @@ import { runM3DynamicProductionValidation } from "../lib/validation/validation-e
 
 const HOUR = 3600 * 1000;
 const BASE = Date.UTC(2026, 0, 1);
+const GOLDEN = JSON.parse(readFileSync(
+  new URL("./fixtures/m3-production-golden.json", import.meta.url),
+  "utf8"
+));
 
 function makeCandles(kind = "strong", length = 80) {
   return Array.from({ length }, (_, index) => {
@@ -156,6 +165,74 @@ function testSharedStrongWeakParity() {
   );
 }
 
+function testFrozenGoldenProductionBehavior() {
+  const strongPass = evaluateDynamicProductionOpportunity({
+    strategyId: "dynamic_relative_strength_breakout",
+    momentum24h: 0.08,
+    relativeStrength: 0.12,
+    volumeMultiple: 1.75,
+    breakout: true,
+    hasOrderBook: true
+  });
+  const strongRejected = evaluateDynamicProductionOpportunity({
+    strategyId: "dynamic_relative_strength_breakout",
+    momentum24h: 0.08,
+    relativeStrength: 0.12,
+    volumeMultiple: 1.75,
+    breakout: false,
+    hasOrderBook: true
+  });
+  const weakPass = evaluateDynamicProductionOpportunity({
+    strategyId: "dynamic_relative_weakness_breakdown",
+    momentum24h: -0.08,
+    relativeWeakness: -0.08,
+    volumeMultiple: 2.75,
+    breakdown: true,
+    hasOrderBook: false
+  });
+  const weakRejected = evaluateDynamicProductionOpportunity({
+    strategyId: "dynamic_relative_weakness_breakdown",
+    momentum24h: -0.08,
+    relativeWeakness: -0.08,
+    volumeMultiple: 2.75,
+    breakdown: false,
+    hasOrderBook: false
+  });
+  for (const [actual, expected] of [
+    [strongPass, GOLDEN.strongOpportunityPass],
+    [strongRejected, GOLDEN.strongOpportunityRejected],
+    [weakPass, GOLDEN.weakOpportunityPass],
+    [weakRejected, GOLDEN.weakOpportunityRejected]
+  ]) {
+    assert.deepEqual({ passed: actual.passed, score: actual.score, reason: actual.reason }, expected);
+  }
+
+  const strongTicker = { symbol: "DYNUSDT", priceChangePercent: 9, quoteVolume: 60_000_000 };
+  const weakTicker = { symbol: "DYNUSDT", priceChangePercent: -9, quoteVolume: 60_000_000 };
+  assert.deepEqual({
+    strong: isDynamicStrongPoolCandidate(strongTicker, new Set(), new Set(["DYNUSDT"])),
+    weak: isDynamicWeakPoolCandidate(weakTicker, new Set(), new Set(["DYNUSDT"]))
+  }, GOLDEN.poolEligibility);
+  assert.deepEqual(
+    rankDynamicPoolTickers({
+      tickers: [
+        { symbol: "AUSDT", priceChangePercent: 9, quoteVolume: 100_000_000 },
+        { symbol: "BUSDT", priceChangePercent: 8.5, quoteVolume: 200_000_000 }
+      ],
+      direction: "strong",
+      futuresSymbols: new Set(["AUSDT", "BUSDT"]),
+      maxAssets: GOLDEN.maxAssets
+    }),
+    GOLDEN.poolRanking
+  );
+  const groupExclusions = {
+    all: resolveDynamicPoolExistingAssets({ group: "all" }).has("BTCUSDT"),
+    "dynamic-spot": resolveDynamicPoolExistingAssets({ group: "dynamic-spot" }).has("BTCUSDT"),
+    "dynamic-weak-spot": resolveDynamicPoolExistingAssets({ group: "dynamic-weak-spot" }).has("BTCUSDT")
+  };
+  assert.deepEqual(groupExclusions, GOLDEN.groupExclusions);
+}
+
 function testPoolEligibilityRankingAndMaxAssets() {
   const tickers = [
     { symbol: "AUSDT", priceChangePercent: 9, quoteVolume: 100_000_000 },
@@ -259,6 +336,7 @@ function testIncompleteHistoryBenchmarkAndUniverse() {
   assert.ok(incompleteBenchmark.signals.length > 0);
   assert.equal(incompleteBenchmark.signals[0].quality.benchmark, "INCOMPLETE");
   assert.equal(incompleteBenchmark.signals[0].primaryEligible, false);
+  assert.equal(incompleteBenchmark.excludedByReason.incomplete_benchmark > 0, true);
 
   const incompleteUniverse = replayDynamicProductionSignals({
     ...makeReplayOptions(),
@@ -269,7 +347,154 @@ function testIncompleteHistoryBenchmarkAndUniverse() {
   assert.equal(incompleteUniverse.universeSource, "current_configured_futures");
   assert.equal(incompleteUniverse.signals[0].quality.universe, "INCOMPLETE");
   assert.equal(incompleteUniverse.signals[0].primaryEligible, false);
+  assert.equal(incompleteUniverse.excludedByReason.incomplete_universe > 0, true);
+  assert.equal(incompleteUniverse.excludedByReason.survivorship_bias > 0, true);
   assert.equal(incompleteUniverse.validationVerdict, "PROVISIONAL");
+}
+
+function testPrimaryEligibilityFiltersProvisionalSignals() {
+  const provisional = replayDynamicProductionSignals({
+    ...makeReplayOptions({ kind: "weak", benchmark: [] }),
+    benchmarkCandles: []
+  });
+  const provisionalSignal = provisional.signals.find((signal) => signal.primaryEligible === false);
+  assert.ok(provisionalSignal, "the provisional signal must remain available for diagnostics");
+  assert.equal(provisional.replaySignalsTotal > 0, true);
+  assert.equal(provisional.replaySignalsPrimaryEligible, 0);
+  assert.equal(provisional.replaySignalsExcluded, provisional.replaySignalsTotal);
+  assert.equal(provisional.excludedByReason.incomplete_benchmark > 0, true);
+
+  const diagnosticStrategy = createDynamicProductionReplayStrategy({
+    strategyId: provisional.strategyId,
+    signalTimeline: provisional.signals,
+    primaryOnly: false
+  });
+  const primaryStrategy = createDynamicProductionReplayStrategy({
+    strategyId: provisional.strategyId,
+    signalTimeline: provisional.signals,
+    primaryOnly: true
+  });
+  const common = {
+    candles: makeCandles("weak"),
+    interval: "1h",
+    marketType: "futures",
+    tradePlanType: "futures",
+    executionModel: { exchangeRulesRequired: false },
+    fundingEvents: [],
+    fundingCoverage: buildFundingCoverage({
+      requestedStart: BASE,
+      requestedEnd: BASE + 80 * HOUR,
+      events: [],
+      complete: true
+    }),
+    startIndex: 48,
+    maxTrades: 1
+  };
+  const diagnosticExecution = runBacktest({ ...common, strategy: diagnosticStrategy });
+  assert.equal(diagnosticExecution.tradeResults.length, 1);
+  assert.equal(diagnosticExecution.tradeResults[0].dataQuality, "COMPLETE");
+  const primaryExecution = runBacktest({ ...common, strategy: primaryStrategy });
+  assert.equal(primaryExecution.tradeResults.length, 0);
+
+  const validation = runM3DynamicProductionValidation({
+    ...makeReplayOptions({ kind: "weak", benchmark: [] }),
+    benchmarkCandles: [],
+    folds: 2
+  });
+  assert.equal(validation.aggregate.completeTrades, 0);
+  assert.equal(validation.replaySignalsExcluded > 0, true);
+}
+
+function testStrictTickerContinuityAndBenchmarkCompleteness() {
+  const gappedCandles = makeCandles("strong").filter((candle) => candle.openTime !== BASE + 25 * HOUR);
+  const gappedReplay = replayDynamicProductionSignals({
+    ...makeReplayOptions(),
+    datasets: [{ asset: "DYNSTRONGUSDT", candles: gappedCandles }]
+  });
+  const gappedSignal = gappedReplay.signals.find((signal) => signal.signalAvailableAt === BASE + 49 * HOUR);
+  assert.ok(gappedSignal, "gap data may remain as a provisional diagnostic signal");
+  assert.equal(gappedSignal.primaryEligible, false);
+  assert.equal(gappedSignal.quality.tickerReconstruction, "INCOMPLETE_GAP");
+  assert.equal(gappedSignal.quality.exclusionReasons.includes("gap_detected"), true);
+  assert.equal(gappedReplay.replaySignalsPrimaryEligible, 0);
+
+  const staleCandles = makeCandles("strong").filter((candle) => candle.openTime < BASE + 48 * HOUR);
+  const staleReplay = replayDynamicProductionSignals({
+    ...makeReplayOptions(),
+    datasets: [
+      { asset: "DYNSTRONGUSDT", candles: makeCandles("strong") },
+      { asset: "STALEUSDT", candles: staleCandles }
+    ],
+    futuresSymbols: ["DYNSTRONGUSDT", "STALEUSDT"],
+    historicalUniverse: [{ time: BASE, assets: ["DYNSTRONGUSDT", "STALEUSDT"] }]
+  });
+  assert.equal(staleReplay.signals.some((signal) => signal.asset === "STALEUSDT"), false);
+  assert.equal(staleReplay.replayDiagnostics.inputExcludedByReason.stale_data > 0, true);
+  assert.equal(staleReplay.quality.tickerReconstruction, "STALE_AT_DECISION_TIME");
+
+  const completeBenchmark = benchmarkMomentum24hAsOf({
+    candles: makeBenchmarkCandles(-0.04),
+    asOf: BASE + 49 * HOUR,
+    interval: "4h"
+  });
+  assert.equal(completeBenchmark.complete, true);
+  assert.ok(Math.abs(completeBenchmark.value + 0.04) < 1e-12);
+
+  const benchmarkGapCandles = makeBenchmarkCandles(-0.04)
+    .filter((candle) => candle.openTime !== BASE + 8 * 4 * HOUR);
+  const benchmarkGap = benchmarkMomentum24hAsOf({
+    candles: benchmarkGapCandles,
+    asOf: BASE + 49 * HOUR,
+    interval: "4h"
+  });
+  assert.equal(benchmarkGap.complete, false);
+  assert.equal(benchmarkGap.reason, "gap_detected");
+
+  const benchmarkStale = benchmarkMomentum24hAsOf({
+    candles: makeBenchmarkCandles(-0.04),
+    asOf: BASE + 200 * HOUR,
+    interval: "4h"
+  });
+  assert.equal(benchmarkStale.complete, false);
+  assert.equal(benchmarkStale.reason, "stale_data");
+
+  const futureOnlyBenchmark = benchmarkMomentum24hAsOf({
+    candles: makeBenchmarkCandles(-0.04).filter((candle) => candle.openTime >= BASE + 4 * HOUR),
+    asOf: BASE + 1 * HOUR,
+    interval: "4h"
+  });
+  assert.equal(futureOnlyBenchmark.value, null);
+  assert.equal(futureOnlyBenchmark.complete, false);
+  assert.equal(futureOnlyBenchmark.reason, "future_candle_not_allowed");
+}
+
+function testProductionGroupParityAndFrozenTiming() {
+  const all = replayDynamicProductionSignals({
+    ...makeReplayOptions({ asset: "BTCUSDT" }),
+    productionGroup: "all"
+  });
+  const dynamicSpot = replayDynamicProductionSignals({
+    ...makeReplayOptions({ asset: "BTCUSDT" }),
+    productionGroup: "dynamic-spot"
+  });
+  const allWeak = replayDynamicProductionSignals({
+    ...makeReplayOptions({ kind: "weak", asset: "BTCUSDT" }),
+    productionGroup: "all"
+  });
+  const dynamicWeak = replayDynamicProductionSignals({
+    ...makeReplayOptions({ kind: "weak", asset: "BTCUSDT" }),
+    productionGroup: "dynamic-weak-spot"
+  });
+  assert.equal(all.signals.length, 0, "all-group must exclude configured production assets");
+  assert.equal(dynamicSpot.signals.length > 0, true, "dynamic-spot must use the scanner's empty existing set");
+  assert.equal(allWeak.signals.length, 0, "all-group must exclude configured assets from weak pool too");
+  assert.equal(dynamicWeak.signals.length > 0, true, "dynamic-weak-spot must use the weak scanner pool");
+  const signal = dynamicSpot.signals.find((row) => row.signalCandleOpenTime === BASE + 48 * HOUR);
+  assert.ok(signal);
+  assert.equal(signal.signalCandleCloseTime, BASE + 49 * HOUR);
+  assert.equal(signal.signalAvailableAt, BASE + 49 * HOUR);
+  assert.equal(signal.entryEligibleAt, BASE + 49 * HOUR);
+  assert.equal(signal.validUntil, BASE + 53 * HOUR);
 }
 
 function testSignalEntersExistingM2BExecution() {
@@ -313,15 +538,23 @@ function testM3ProductionAdapterMetadataAndNoOptimization() {
   assert.equal(result.flags.parameterSearchPerformed, false);
   assert.equal(result.orderBookAvailabilitySensitive, true);
   assert.equal(result.validationVerdict, "PROVISIONAL");
+  assert.equal(result.productionPolicy, FULL_PRODUCTION_POLICY);
+  assert.equal(result.productionPolicyComplete, false);
+  assert.equal(result.productionPolicyReason, "LIVE_PERFORMANCE_HISTORY_UNAVAILABLE");
+  assert.equal(result.replaySignalsPrimaryEligible <= result.replaySignalsTotal, true);
 }
 
 testSharedStrongWeakParity();
+testFrozenGoldenProductionBehavior();
 testPoolEligibilityRankingAndMaxAssets();
 testCausalHourlyReconstruction();
 testNoFutureHighVolumeCoinEntersHistoricalPool();
 testStrongAndWeakHistoricalSignals();
 testOrderBookModesAndSensitivity();
 testIncompleteHistoryBenchmarkAndUniverse();
+testPrimaryEligibilityFiltersProvisionalSignals();
+testStrictTickerContinuityAndBenchmarkCompleteness();
+testProductionGroupParityAndFrozenTiming();
 testSignalEntersExistingM2BExecution();
 testM3ProductionAdapterMetadataAndNoOptimization();
 
