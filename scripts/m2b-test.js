@@ -18,13 +18,14 @@ import {
 import {
   INCOMPLETE_EXCHANGE_FILTERS,
   createExecutionModel,
+  resolveExitExecution,
   validateFundingCoverageForTrade
 } from "../lib/backtest/execution-model.js";
 import { MISSED_ENTRY, NO_ENTRY, simulateTrade } from "../lib/backtest/trade-simulator.js";
 import { runBacktest } from "../lib/backtest/backtest-engine.js";
 import { aggregateMetrics } from "../lib/backtest/metrics.js";
 import { reviewAlertWithCandles } from "../lib/alert-review.js";
-import { resolveTimeStop } from "../lib/trading/replay-engine.js";
+import { resolveIntrabarExit, resolveTimeStop } from "../lib/trading/replay-engine.js";
 import {
   createTradeSpec,
   intervalMilliseconds,
@@ -311,6 +312,77 @@ assert.equal(lowerTimeStop.exitTime, BASE + HOUR + 30 * MINUTE);
 assert.equal(lowerTimeStop.exitResolution, "time_stop");
 assert.equal(lowerTimeStop.excursionQuality, "LOWER_TF_REPLAY_1M");
 assert.ok(Math.abs(lowerTimeStop.mfePct - 0.01) < 1e-12);
+
+const lowerGapStart = BASE + 2 * HOUR;
+const lowerGapCandles = [
+  candle(lowerGapStart, 100, 101, 99, 100),
+  candle(lowerGapStart + 2 * MINUTE, 100, 106, 99, 105)
+];
+const lowerGapDecision = resolveIntrabarExit({
+  tradeSpec: spec(),
+  baseCandle: candle(lowerGapStart, 100, 106, 94, 100),
+  lowerTimeframe: "1m",
+  lowerTimeframeCandles: lowerGapCandles
+});
+assert.equal(lowerGapDecision.resolved, false);
+assert.equal(lowerGapDecision.coverage.firstGap, lowerGapStart + MINUTE);
+assert.equal(lowerGapDecision.coverage.contiguousCoverageEnd, lowerGapStart + MINUTE);
+
+const lowerGapTp = trade(spec(), [
+  candle(BASE, 100),
+  candle(BASE + HOUR, 100, 102, 99, 100),
+  candle(lowerGapStart, 100, 106, 94, 100)
+], {
+  lowerTimeframe: "1m",
+  lowerTimeframeCandles: lowerGapCandles
+});
+assert.notEqual(lowerGapTp.exitReason, "take_profit");
+assert.equal(lowerGapTp.dataQuality, "INCOMPLETE_INTRABAR_DATA");
+assert.ok(Math.abs(lowerGapTp.mfePct - 0.01) < 1e-12);
+
+const lowerGapSl = trade(spec(), [
+  candle(BASE, 100),
+  candle(BASE + HOUR, 100, 102, 99, 100),
+  candle(lowerGapStart, 100, 106, 94, 100)
+], {
+  lowerTimeframe: "1m",
+  lowerTimeframeCandles: [
+    candle(lowerGapStart, 100, 101, 99, 100),
+    candle(lowerGapStart + 2 * MINUTE, 100, 101, 94, 95)
+  ]
+});
+assert.notEqual(lowerGapSl.exitReason, "stop_loss");
+assert.equal(lowerGapSl.dataQuality, "INCOMPLETE_INTRABAR_DATA");
+
+const lowerGapBeforeTp = trade(spec(), [
+  candle(BASE, 100),
+  candle(BASE + HOUR, 100, 102, 99, 100),
+  candle(lowerGapStart, 100, 106, 99, 105)
+], {
+  lowerTimeframe: "1m",
+  lowerTimeframeCandles: [
+    candle(lowerGapStart, 100, 106, 99, 105),
+    candle(lowerGapStart + 2 * MINUTE, 100, 101, 99, 100)
+  ]
+});
+assert.equal(lowerGapBeforeTp.exitReason, "take_profit");
+assert.equal(lowerGapBeforeTp.exitTime, lowerGapStart);
+assert.equal(lowerGapBeforeTp.dataQuality, "INCOMPLETE_INTRABAR_DATA");
+
+const lowerGapTimeStop = trade(spec({ maxHoldingHours: 0.5 }), [
+  candle(BASE, 100),
+  candle(BASE + HOUR, 100, 101, 99, 100)
+], {
+  lowerTimeframe: "1m",
+  lowerTimeframeCandles: [
+    candle(BASE + HOUR, 100, 101, 99, 100),
+    candle(BASE + HOUR + 2 * MINUTE, 100, 200, 50, 100)
+  ]
+});
+assert.equal(lowerGapTimeStop.exitReason, "time_stop");
+assert.equal(lowerGapTimeStop.dataQuality, "INCOMPLETE_INTRABAR_DATA");
+assert.ok(Math.abs(lowerGapTimeStop.mfePct - 0.01) < 1e-12);
+assert.ok(Math.abs(lowerGapTimeStop.maePct + 0.01) < 1e-12);
 
 const feeTrade = trade(spec(), [
   candle(BASE, 100),
@@ -622,6 +694,85 @@ assert.equal(parityReview.entryFillPrice, parityBacktest.entryFillPrice);
 assert.equal(parityReview.exitResolution, parityBacktest.exitResolution);
 assert.equal(parityReview.exitFillPrice, parityBacktest.exitFillPrice);
 assert.ok(Math.abs(parityReview.netReturnPct - parityBacktest.netReturnPct) < 1e-12);
+
+const exchangeParityModel = createExecutionModel({
+  marketType: "spot",
+  entryFeePct: 0.001,
+  exitFeePct: 0.001,
+  spreadPct: 0.02,
+  entrySlippagePct: 0.003,
+  exitSlippagePct: 0.004
+});
+
+function assertExchangeParity(tradeSpec, candles) {
+  const backtest = simulateTrade({
+    tradeSpec,
+    candles,
+    entryIndex: 1,
+    executionModel: exchangeParityModel,
+    exchangeFilters
+  });
+  const review = reviewAlertWithCandles(
+    { interval: tradeSpec.interval, payload: { tradeSpec } },
+    candles,
+    BASE + 4 * HOUR,
+    { executionModel: exchangeParityModel, exchangeFilters }
+  );
+  assert.ok(backtest);
+  assert.equal(review.status, "reviewed");
+  for (const field of [
+    "entryMarketPrice",
+    "entryFillPrice",
+    "exitMarketPrice",
+    "exitFillPrice",
+    "exitReason",
+    "totalFeePct",
+    "spreadCostPct",
+    "slippageCostPct",
+    "netReturnPct",
+    "realizedR",
+    "dataQuality"
+  ]) {
+    assert.deepEqual(review[field], backtest[field], `parity field: ${field}`);
+  }
+  return { backtest, review };
+}
+
+const longExchangeParity = assertExchangeParity(
+  spec({ stopLoss: 95.03, takeProfit: 105.07 }),
+  [
+    candle(BASE, 100),
+    candle(BASE + HOUR, 103, 104, 102, 103),
+    candle(BASE + 2 * HOUR, 94.83, 95, 94, 94.9)
+  ]
+);
+assert.equal(longExchangeParity.backtest.exitResolution, "gap_stop_worse_fill");
+
+const shortExchangeParity = assertExchangeParity(
+  spec({ side: "SHORT", stopLoss: 105.03, takeProfit: 94.97 }),
+  [
+    candle(BASE, 100),
+    candle(BASE + HOUR, 97, 98, 96, 97),
+    candle(BASE + 2 * HOUR, 105.27, 106, 104, 105.5)
+  ]
+);
+assert.equal(shortExchangeParity.backtest.exitResolution, "gap_stop_worse_fill");
+
+const sharedExit = resolveExitExecution({
+  decision: { exitMarketPrice: 94.83, exitReason: "stop_loss" },
+  side: "LONG",
+  executionModel: exchangeParityModel,
+  exchangeFilters
+});
+assert.deepEqual(Object.keys(sharedExit).sort(), [
+  "execution",
+  "fillPrice",
+  "marketPrice",
+  "rawFillPrice",
+  "rawMarketPrice",
+  "slippageComponentPct",
+  "spreadComponentPct"
+].sort());
 
 const internalTimeStop = trade(spec({ maxHoldingHours: 1 / 3 }), [
   candle(BASE, 100),
