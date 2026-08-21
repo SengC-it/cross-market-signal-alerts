@@ -8,8 +8,10 @@ import {
   M3_REAL_DATA_INTERVALS,
   M3_REAL_DATA_WINDOW,
   M3_REAL_MANIFEST_SHA256,
+  HISTORICAL_BINANCE_VISION_UNIVERSE,
   buildExchangeFilterProvenance,
   buildManifest,
+  buildHistoricalUniverseFromVisionListings,
   buildUniverseProvenance,
   fixedM3Window,
   loadM3RealInput,
@@ -104,6 +106,45 @@ const historicalUniverse = buildUniverseProvenance({
 });
 assert.equal(historicalUniverse.survivorshipBiasRisk, false);
 
+const historicalListings = Array.from({ length: 12 }, (_, index) => {
+  const date = new Date(Date.UTC(2025, 7 + index, 1));
+  const month = `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`;
+  return `data/futures/um/monthly/klines/OLDUSDT/1h/OLDUSDT-1h-${month}.zip`;
+});
+const archiveUniverse = buildHistoricalUniverseFromVisionListings({
+  listings: [
+    { asset: "OLDUSDT", objects: historicalListings },
+    { asset: "FUTUREUSDT", objects: historicalListings.slice(5) },
+    { asset: "DELISTEDUSDT", objects: historicalListings.slice(0, 6) }
+  ],
+  source: HISTORICAL_BINANCE_VISION_UNIVERSE
+});
+assert.equal(archiveUniverse.historicalUniverseComplete, true);
+const archiveProvenance = buildUniverseProvenance({
+  assets: archiveUniverse.assets,
+  source: HISTORICAL_BINANCE_VISION_UNIVERSE,
+  discoveryMethod: archiveUniverse.discoveryMethod,
+  symbolFirstSeen: archiveUniverse.symbolFirstSeen,
+  symbolLastSeen: archiveUniverse.symbolLastSeen,
+  symbolMetadata: archiveUniverse.symbolMetadata,
+  historicalUniverseComplete: archiveUniverse.historicalUniverseComplete
+});
+assert.equal(archiveProvenance.survivorshipBiasRisk, false);
+assert.equal(archiveProvenance.historicalUniverseComplete, true);
+assert.ok(archiveUniverse.symbolMetadata.find((row) => row.asset === "OLDUSDT")?.sourceEvidence);
+assert.ok(archiveUniverse.historicalUniverse[0].assets.includes("OLDUSDT"));
+assert.equal(archiveUniverse.historicalUniverse[0].assets.includes("FUTUREUSDT"), false);
+assert.ok(archiveUniverse.historicalUniverse[5].assets.includes("FUTUREUSDT"));
+assert.ok(archiveUniverse.historicalUniverse[0].assets.includes("DELISTEDUSDT"));
+assert.equal(archiveUniverse.historicalUniverse[6].assets.includes("DELISTEDUSDT"), false);
+assert.equal(archiveUniverse.symbolMetadata.find((row) => row.asset === "DELISTEDUSDT")?.lastSeen, "2026-02-01T00:00:00.000Z");
+const gapUniverse = buildHistoricalUniverseFromVisionListings({
+  listings: [{ asset: "OLDUSDT", objects: historicalListings.slice(0, 11) }],
+  source: HISTORICAL_BINANCE_VISION_UNIVERSE
+});
+assert.equal(gapUniverse.historicalUniverseComplete, false);
+assert.ok(gapUniverse.missingMonths.includes("2026-07"));
+
 const filters = buildExchangeFilterProvenance({
   filters: { tickSize: 0.1, stepSize: 0.001 },
   source: "CURRENT_SNAPSHOT_PROXY"
@@ -146,10 +187,13 @@ assert.equal(
 );
 const committedReport = JSON.parse(await readFile("artifacts/m3/m3-real-validation-report.json", "utf8"));
 assert.deepEqual(Object.keys(committedReport.strategies).sort(), [...DYNAMIC_STRATEGY_IDS].sort());
+assert.equal(committedReport.dataset.universeSource, HISTORICAL_BINANCE_VISION_UNIVERSE);
 assert.equal(committedReport.quality.exchangeFilterTemporalQuality, "CURRENT_SNAPSHOT_PROXY");
 assert.equal(committedReport.quality.orderBookAvailabilitySensitive, true);
-assert.equal(committedReport.quality.productionPolicyComplete, true);
+assert.equal(committedReport.quality.productionPolicyComplete, false);
+assert.equal(committedReport.quality.coreSignalPolicyComplete, true);
 assert.equal(committedReport.fullProductionPolicyValidated, false);
+assert.equal(committedReport.productionPolicyComplete, false);
 for (const strategyId of DYNAMIC_STRATEGY_IDS) {
   const report = committedReport.strategies[strategyId];
   assert.equal(report.validationVerdict, "PROVISIONAL");
@@ -190,6 +234,10 @@ try {
     benchmarkInterval: M3_REAL_DATA_INTERVALS.benchmark,
     benchmarkPath: "benchmark.json",
     datasets: [{ asset: "TESTUSDT", path: "datasets/TESTUSDT.json" }],
+    universeSource: HISTORICAL_BINANCE_VISION_UNIVERSE,
+    historicalUniverseComplete: true,
+    survivorshipBiasRisk: false,
+    historicalUniverse: [{ time: M3_REAL_DATA_WINDOW.start, assets: ["TESTUSDT"] }],
     checksums: { algorithm: "SHA-256", files: fixtureFiles }
   };
   await writeFile(join(fixtureDataDir, "index.json"), `${JSON.stringify(fixtureIndex)}\n`, "utf8");
@@ -203,7 +251,11 @@ try {
     assetCount: 1,
     assets: [{ asset: "TESTUSDT" }],
     benchmark: {},
-    universeProvenance: { universeSource: "fixture", survivorshipBiasRisk: true },
+    universeProvenance: {
+      universeSource: HISTORICAL_BINANCE_VISION_UNIVERSE,
+      survivorshipBiasRisk: false,
+      historicalUniverseComplete: true
+    },
     exchangeFilterProvenance: { exchangeFilterProvenance: "CURRENT_SNAPSHOT_PROXY" },
     checksums: { algorithm: "SHA-256", files: fixtureFiles }
   };

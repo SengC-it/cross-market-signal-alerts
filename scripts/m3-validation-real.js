@@ -47,6 +47,7 @@ function runStrategy(input, strategyId) {
     existingAssets: input.existingAssets || [],
     futuresSymbols: input.universeProvenance?.assets || input.datasets.map((dataset) => dataset.asset),
     historicalUniverse: input.historicalUniverse,
+    historicalUniverseComplete: input.historicalUniverseComplete,
     universeSource: input.universeSource,
     dataSource: input.dataSource,
     productionGroup: input.productionGroup || "all",
@@ -77,7 +78,8 @@ function formatStrategyResult({ strategyId, result, input, validationDatasetCoun
     holdoutStart: result.holdout.start,
     holdoutEnd: result.holdout.end,
     productionPolicy: result.productionPolicy,
-    fullProductionPolicyValidated: false,
+    coreSignalPolicyComplete: result.coreSignalPolicyComplete,
+    fullProductionPolicyValidated: result.fullProductionPolicyValidated,
     productionPolicyReason: result.productionPolicyReason,
     universeSource: result.universeSource,
     survivorshipBiasRisk: result.survivorshipBiasRisk,
@@ -133,7 +135,10 @@ function buildValidationReport({ input, results }) {
       formatReportStrategy(result, quality)
     ])),
     policyScope: CORE_SIGNAL_POLICY,
-    fullProductionPolicyValidated: false
+    coreSignalPolicyComplete: quality.coreSignalPolicyComplete,
+    fullProductionPolicyValidated: quality.fullProductionPolicyValidated,
+    productionPolicyComplete: quality.productionPolicyComplete,
+    productionPolicyIncompleteReason: quality.productionPolicyIncompleteReason
   };
 }
 
@@ -153,24 +158,45 @@ function buildQualitySummary({ input, results }) {
   const coverageValue = (row, field) => field === "fundingCoverage"
     ? row?.fundingCoverage?.complete === true
     : row?.[field]?.complete === true;
+  const historicalUniverseComplete = manifest.universeProvenance?.universeSource
+    === "historical_binance_vision_archive"
+    && manifest.universeProvenance?.historicalUniverseComplete === true;
+  const signalQualityValue = (field) => {
+    const values = results.map((result) => result.dataQuality?.[field]).filter(Boolean);
+    return values.length && values.every((value) => value === "COMPLETE")
+      ? "COMPLETE"
+      : values.length && values.some((value) => value === "COMPLETE") ? "PARTIAL" : "INCOMPLETE";
+  };
+  const coreSignalPolicyComplete = results.length > 0
+    && results.every((result) => result.coreSignalPolicyComplete === true);
+  const fullProductionPolicyValidated = results.length > 0
+    && results.every((result) => result.fullProductionPolicyValidated === true);
   const productionPolicyComplete = results.length > 0
     && results.every((result) => result.productionPolicyComplete === true);
   return {
     survivorshipBiasRisk: Boolean(manifest.universeProvenance?.survivorshipBiasRisk),
     tickerReconstructionQuality: qualityValue("tickerReconstruction"),
     benchmarkQuality: qualityValue("benchmark"),
-    universeQuality: qualityValue("universe"),
+    universeQuality: historicalUniverseComplete ? "COMPLETE" : "INCOMPLETE",
     exchangeFilterTemporalQuality: manifest.exchangeFilterProvenance?.exchangeFilterProvenance
       || "UNKNOWN",
     fundingCoverageQuality: completeCoverage(manifest.assets.map((row) => ({ complete: coverageValue(row, "fundingCoverage") })), "complete"),
     lowerTimeframeQuality: completeCoverage(manifest.assets.map((row) => ({ complete: coverageValue(row, "candles5m") })), "complete"),
+    signalRelevantFundingCoverage: signalQualityValue("signalRelevantFundingCoverage"),
+    signalRelevantLowerTfCoverage: signalQualityValue("signalRelevantLowerTfCoverage"),
+    primaryExcludedByFunding: results.reduce((sum, result) => sum
+      + (Number(result.replayDiagnostics?.primaryExcludedByFunding) || 0), 0),
+    primaryExcludedByLowerTf: results.reduce((sum, result) => sum
+      + (Number(result.replayDiagnostics?.primaryExcludedByLowerTf) || 0), 0),
     orderBookAvailabilitySensitive: results.some((result) => result.orderBookSensitivity?.orderBookAvailabilitySensitive === true),
+    coreSignalPolicyComplete,
+    fullProductionPolicyValidated,
     productionPolicyComplete,
-    productionPolicyIncompleteReason: productionPolicyComplete
-      ? "FULL_PRODUCTION_POLICY_NOT_VALIDATED"
+    productionPolicyIncompleteReason: productionPolicyComplete && fullProductionPolicyValidated
+      ? null
       : results.find((result) => result.productionPolicyReason)?.productionPolicyReason
         || "PRODUCTION_POLICY_NOT_COMPLETE",
-    fullProductionPolicyValidated: false
+    historicalUniverseComplete
   };
 }
 
@@ -189,6 +215,8 @@ function formatReportStrategy(result, quality) {
     holdout: formatHoldoutMetrics(result.holdoutMetrics),
     stability: result.stability,
     productionPolicy: result.productionPolicy,
+    coreSignalPolicyComplete: result.coreSignalPolicyComplete,
+    fullProductionPolicyValidated: result.fullProductionPolicyValidated,
     productionPolicyComplete: result.productionPolicyComplete,
     statisticalVerdict: result.statisticalVerdict,
     validationVerdict,
@@ -293,6 +321,7 @@ function canPromoteToM4({ result, quality, validationVerdict }) {
     && Number(holdout.profitFactor) >= 1.1
     && quality.survivorshipBiasRisk === false
     && quality.orderBookAvailabilitySensitive === false
+    && quality.fullProductionPolicyValidated === true
     && quality.productionPolicyComplete === true
     && quality.exchangeFilterTemporalQuality === "HISTORICAL_COMPLETE"
     && quality.benchmarkQuality === "COMPLETE"
@@ -356,6 +385,8 @@ function summarizeReplayDiagnostics(diagnostics = {}) {
     replaySignalsPrimaryEligible: diagnostics.replaySignalsPrimaryEligible ?? null,
     replaySignalsExcluded: diagnostics.replaySignalsExcluded ?? null,
     excludedByReason: diagnostics.excludedByReason || null,
+    primaryExcludedByFunding: diagnostics.primaryExcludedByFunding ?? 0,
+    primaryExcludedByLowerTf: diagnostics.primaryExcludedByLowerTf ?? 0,
     inputExcludedByReason: diagnostics.inputExcludedByReason || null,
     tickerDiagnostics: summarizeDiagnosticRows(diagnostics.tickerDiagnostics),
     benchmarkDiagnostics: summarizeDiagnosticRows(diagnostics.benchmarkDiagnostics)
@@ -377,6 +408,16 @@ function validateRealInput(input) {
   }
   if (!Array.isArray(input.datasets) || !input.datasets.length || !Array.isArray(input.benchmarkCandles)) {
     throw new Error("M3_REAL_DATA_REQUIRED");
+  }
+  if (input.universeSource !== "historical_binance_vision_archive"
+    || input.historicalUniverseComplete !== true
+    || input.survivorshipBiasRisk !== false
+    || !Array.isArray(input.historicalUniverse)
+    || !input.universeProvenance
+    || input.universeProvenance.universeSource !== "historical_binance_vision_archive"
+    || input.universeProvenance.historicalUniverseComplete !== true
+    || input.universeProvenance.survivorshipBiasRisk !== false) {
+    throw new Error("HISTORICAL_UNIVERSE_UNAVAILABLE");
   }
   for (const [index, dataset] of input.datasets.entries()) {
     if (!dataset?.asset

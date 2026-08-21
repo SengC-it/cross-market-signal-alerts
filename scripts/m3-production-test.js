@@ -350,6 +350,15 @@ function testIncompleteHistoryBenchmarkAndUniverse() {
   assert.equal(incompleteUniverse.excludedByReason.incomplete_universe > 0, true);
   assert.equal(incompleteUniverse.excludedByReason.survivorship_bias > 0, true);
   assert.equal(incompleteUniverse.validationVerdict, "PROVISIONAL");
+
+  const incompleteHistoricalArchive = replayDynamicProductionSignals({
+    ...makeReplayOptions(),
+    universeSource: "historical_binance_vision_archive",
+    historicalUniverseComplete: false
+  });
+  assert.equal(incompleteHistoricalArchive.signals[0].quality.universe, "INCOMPLETE");
+  assert.equal(incompleteHistoricalArchive.signals[0].primaryEligible, false);
+  assert.equal(incompleteHistoricalArchive.excludedByReason.incomplete_universe > 0, true);
 }
 
 function testPrimaryEligibilityFiltersProvisionalSignals() {
@@ -403,6 +412,83 @@ function testPrimaryEligibilityFiltersProvisionalSignals() {
   });
   assert.equal(validation.aggregate.completeTrades, 0);
   assert.equal(validation.replaySignalsExcluded > 0, true);
+}
+
+function makeExecutionReplayOptions() {
+  const signalAvailableAt = BASE + 49 * HOUR;
+  const requestedEnd = signalAvailableAt + 8 * HOUR;
+  const lowerTimeframeCandles = Array.from({ length: 96 }, (_, index) => ({
+    openTime: signalAvailableAt + index * 5 * 60 * 1000,
+    open: 100,
+    high: 101,
+    low: 99,
+    close: 100,
+    volume: 1000
+  }));
+  const dataset = {
+    asset: "DYNSTRONGUSDT",
+    candles: makeCandles("strong"),
+    lowerTimeframeCandles,
+    fundingEvents: [],
+    fundingCoverage: buildFundingCoverage({
+      requestedStart: signalAvailableAt,
+      requestedEnd,
+      events: [],
+      complete: true
+    }),
+    exchangeFilters: { tickSize: 0.1, stepSize: 0.001 },
+    marketType: "futures"
+  };
+  return {
+    ...makeReplayOptions({
+      kind: "strong",
+      universeSource: "historical_binance_vision_archive"
+    }),
+    historicalUniverseComplete: true,
+    datasets: [dataset]
+  };
+}
+
+function testSignalRelevantExecutionCoverage() {
+  const complete = replayDynamicProductionSignals(makeExecutionReplayOptions());
+  const completeSignal = complete.signals.find((signal) => signal.signalAvailableAt === BASE + 49 * HOUR);
+  assert.ok(completeSignal, "complete signal-relevant execution data should retain the signal");
+  assert.equal(completeSignal.primaryEligible, true);
+  assert.equal(completeSignal.quality.lowerTimeframe, "COMPLETE");
+  assert.equal(completeSignal.quality.funding, "COMPLETE");
+  assert.equal(complete.quality.signalRelevantLowerTfCoverage, "COMPLETE");
+  assert.equal(complete.quality.signalRelevantFundingCoverage, "COMPLETE");
+
+  const missingLower = makeExecutionReplayOptions();
+  missingLower.datasets[0] = { ...missingLower.datasets[0], lowerTimeframeCandles: [] };
+  const lowerResult = replayDynamicProductionSignals(missingLower);
+  const lowerSignal = lowerResult.signals.find((signal) => signal.signalAvailableAt === BASE + 49 * HOUR);
+  assert.equal(lowerSignal.primaryEligible, false);
+  assert.equal(lowerSignal.quality.exclusionReasons.includes("incomplete_lower_timeframe"), true);
+  assert.equal(lowerResult.replayDiagnostics.primaryExcludedByLowerTf > 0, true);
+
+  const missingFunding = makeExecutionReplayOptions();
+  missingFunding.datasets[0] = {
+    ...missingFunding.datasets[0],
+    fundingCoverage: buildFundingCoverage({
+      requestedStart: BASE + 49 * HOUR,
+      requestedEnd: BASE + 57 * HOUR,
+      events: [],
+      complete: false,
+      gaps: [{ start: BASE + 49 * HOUR, end: BASE + 57 * HOUR, reason: "test_gap" }]
+    })
+  };
+  const fundingResult = replayDynamicProductionSignals(missingFunding);
+  const fundingSignal = fundingResult.signals.find((signal) => signal.signalAvailableAt === BASE + 49 * HOUR);
+  assert.equal(fundingSignal.primaryEligible, false);
+  assert.equal(fundingSignal.quality.exclusionReasons.includes("incomplete_funding"), true);
+  assert.equal(fundingResult.replayDiagnostics.primaryExcludedByFunding > 0, true);
+
+  const unrelatedGap = makeExecutionReplayOptions();
+  unrelatedGap.datasets.push({ asset: "UNRELATEDUSDT", candles: [] });
+  const unrelatedResult = replayDynamicProductionSignals(unrelatedGap);
+  const unrelatedSignal = unrelatedResult.signals.find((signal) => signal.signalAvailableAt === BASE + 49 * HOUR);
+  assert.equal(unrelatedSignal.primaryEligible, true);
 }
 
 function testStrictTickerContinuityAndBenchmarkCompleteness() {
@@ -576,7 +662,9 @@ function testM3ProductionAdapterMetadataAndNoOptimization() {
   assert.equal(result.validationVerdict, "PROVISIONAL");
   assert.equal(result.productionPolicy, FULL_PRODUCTION_POLICY);
   assert.equal(result.productionPolicyComplete, false);
-  assert.equal(result.productionPolicyReason, "LIVE_PERFORMANCE_REPLAY_NOT_IMPLEMENTED");
+  assert.equal(result.coreSignalPolicyComplete, true);
+  assert.equal(result.fullProductionPolicyValidated, false);
+  assert.equal(result.productionPolicyReason, "LIVE_PERFORMANCE_HISTORY_UNAVAILABLE");
   assert.equal(result.replaySignalsPrimaryEligible <= result.replaySignalsTotal, true);
 
   const recordsOnly = replayDynamicProductionSignals({
@@ -588,7 +676,9 @@ function testM3ProductionAdapterMetadataAndNoOptimization() {
     }
   });
   assert.equal(recordsOnly.productionPolicyComplete, false);
-  assert.equal(recordsOnly.productionPolicyReason, "LIVE_PERFORMANCE_REPLAY_NOT_IMPLEMENTED");
+  assert.equal(recordsOnly.coreSignalPolicyComplete, true);
+  assert.equal(recordsOnly.fullProductionPolicyValidated, false);
+  assert.equal(recordsOnly.productionPolicyReason, "LIVE_PERFORMANCE_HISTORY_UNAVAILABLE");
   assert.equal(recordsOnly.validationVerdict, "PROVISIONAL");
 }
 
@@ -601,6 +691,7 @@ testStrongAndWeakHistoricalSignals();
 testOrderBookModesAndSensitivity();
 testIncompleteHistoryBenchmarkAndUniverse();
 testPrimaryEligibilityFiltersProvisionalSignals();
+testSignalRelevantExecutionCoverage();
 testStrictTickerContinuityAndBenchmarkCompleteness();
 testProductionGroupParityAndFrozenTiming();
 testSignalEntersExistingM2BExecution();
