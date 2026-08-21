@@ -1,0 +1,1826 @@
+{
+  "version": "V4-M3.6",
+  "frozenBaseSha": "975f0d11231947c306b02e0241ca5179eed5a650",
+  "manifestSha256": "6431787daf657f0d861b367fa549d7d71582e37b381448f995a746b13dd1e08c",
+  "oldWindowRole": "RESEARCH_AFTER_FAILURE_ANALYSIS",
+  "oldWindow": {
+    "start": "2025-08-01T00:00:00.000Z",
+    "end": "2026-08-01T00:00:00.000Z"
+  },
+  "newUntouchedOosAvailable": false,
+  "newUntouchedOosReason": "FORWARD_DATASET_NOT_CONFIGURED",
+  "researchStatus": "RESEARCH_ONLY_NOT_UNTOUCHED_OOS",
+  "baselineWeak": {
+    "strategyId": "dynamic_relative_weakness_breakdown",
+    "baselineId": "BASELINE_V4_WEAK",
+    "deploymentStatus": "NEGATIVE_EDGE_BASELINE",
+    "deploymentMode": "SHADOW_ONLY_RESEARCH_ONLY",
+    "actionable": false,
+    "frozenMetrics": {
+      "replaySignals": 78,
+      "developmentOosSignals": 61,
+      "completeTrades": 61,
+      "degradedTrades": 0,
+      "fundingIncompleteTrades": 0,
+      "expectancyR": -0.2023577937552056,
+      "profitFactor": 0.5699430218673189,
+      "holdoutCompleteTrades": 13,
+      "holdoutExpectancyR": -0.13831305506178365,
+      "holdoutProfitFactor": 0.729351248615061,
+      "statisticalVerdict": "NEGATIVE_EDGE"
+    },
+    "researchResult": {
+      "strategyId": "BASELINE_V4_WEAK",
+      "candidateDefinitionId": null,
+      "researchClassification": "RESEARCH_ONLY_NOT_UNTOUCHED_OOS",
+      "signals": 78,
+      "rawTradeRows": 78,
+      "completeTrades": 78,
+      "degradedTrades": 0,
+      "fundingIncompleteTrades": 0,
+      "missedEntries": 0,
+      "metrics": {
+        "signals": 78,
+        "completeTrades": 78,
+        "grossExpectancyR": -0.1482088553161993,
+        "netExpectancyR": -0.18143580658297762,
+        "profitFactor": 0.6199643819002939,
+        "winRate": 0.3333333333333333,
+        "averageNetReturn": -0.007722803355550627,
+        "totalNetReturn": -0.4924688224511343,
+        "maxDrawdown": -0.5985792254982205,
+        "feeDrag": 0.09386225637321582,
+        "spreadDrag": 0,
+        "slippageDrag": 0.0002442741008540361,
+        "fundingDrag": 0.07142245,
+        "avgWinR": 0.6860500720508421,
+        "avgLossR": -0.6151787458998875,
+        "mfeR": 0.5469993886549683,
+        "maeR": -0.6209480376817382,
+        "maxAssetTradeShare": 0.10256410256410256,
+        "maxFoldTradeShare": 0.358974358974359
+      },
+      "byAsset": [
+        {
+          "key": "1000BONKUSDT",
+          "trades": 3,
+          "netExpectancyR": 0.19211370743273046,
+          "profitFactor": 1.445432075114784,
+          "winRate": 0.3333333333333333,
+          "totalNetReturn": 0.015281289267049525,
+          "maxDrawdown": -0.03828701345245611
+        },
+        {
+          "key": "1000PEPEUSDT",
+          "trades": 1,
+          "netExpectancyR": 0.3501094433511,
+          "profitFactor": null,
+          "winRate": 1,
+          "totalNetReturn": 0.012843356560157115,
+          "maxDrawdown": 0
+        },
+        {
+          "key": "ALPINEUSDT",
+          "trades": 1,
+          "netExpectancyR": -0.18417585912938383,
+          "profitFactor": 0,
+          "winRate": 0,
+          "totalNetReturn": -0.011614567294494504,
+          "maxDrawdown": -0.011614567294494504
+        },
+        {
+          "key": "AUCTIONUSDT",
+          "trades": 1,
+          "netExpectancyR": -0.4565486155045889,
+          "profitFactor": 0,
+          "winRate": 0,
+          "totalNetReturn": -0.023806633275394784,
+          "maxDrawdown": -0.023806633275394784
+        },
+        {
+          "key": "BIOUSDT",
+          "trades": 1,
+          "netExpectancyR": 0.5690669341721841,
+          "profitFactor": null,
+          "winRate": 1,
+          "totalNetReturn": 0.03097660672674829,
+          "maxDrawdown": 0
+        },
+        {
+          "key": "CHZUSDT",
+          "trades": 1,
+          "netExpectancyR": -1.0337999999999978,
+          "profitFactor": 0,
+          "winRate": 0,
+          "totalNetReturn": -0.03736626506024099,
+          "maxDrawdown": -0.03736626506024099
+        },
+        {
+          "key": "CRVUSDT",
+          "trades": 1,
+          "netExpectancyR": -0.07836125654450216,
+          "profitFactor": 0,
+          "winRate": 0,
+          "totalNetReturn": -0.0033186252771618685,
+          "maxDrawdown": -0.0033186252771618685
+        },
+        {
+          "key": "DASHUSDT",
+          "trades": 1,
+          "netExpectancyR": -1.023354929577464,
+          "profitFactor": 0,
+          "winRate": 0,
+          "totalNetReturn": -0.05396746719485024,
+          "maxDrawdown": -0.05396746719485024
+        },
+        {
+          "key": "DEXEUSDT",
+          "trades": 1,
+          "netExpectancyR": -1.0157310507674149,
+          "profitFactor": 0,
+          "winRate": 0,
+          "totalNetReturn": -0.08055470037453194,
+          "maxDrawdown": -0.08055470037453194
+        },
+        {
+          "key": "ENAUSDT",
+          "trades": 5,
+          "netExpectancyR": -0.13406872310660436,
+          "profitFactor": 0.8474155359970045,
+          "winRate": 0.4,
+          "totalNetReturn": -0.016338844892470283,
+          "maxDrawdown": -0.045241377905704594
+        },
+        {
+          "key": "EPICUSDT",
+          "trades": 1,
+          "netExpectancyR": 0.8040511355034079,
+          "profitFactor": null,
+          "winRate": 1,
+          "totalNetReturn": 0.03877173024274505,
+          "maxDrawdown": 0
+        },
+        {
+          "key": "FARTCOINUSDT",
+          "trades": 8,
+          "netExpectancyR": -0.28241496810696126,
+          "profitFactor": 0.3508016711488394,
+          "winRate": 0.25,
+          "totalNetReturn": -0.10383151261464563,
+          "maxDrawdown": -0.10749418323284943
+        },
+        {
+          "key": "FORMUSDT",
+          "trades": 1,
+          "netExpectancyR": -0.2749281914893596,
+          "profitFactor": 0,
+          "winRate": 0,
+          "totalNetReturn": -0.013673677248677185,
+          "maxDrawdown": -0.013673677248677185
+        },
+        {
+          "key": "GALAUSDT",
+          "trades": 1,
+          "netExpectancyR": -0.8106478833333358,
+          "profitFactor": 0,
+          "winRate": 0,
+          "totalNetReturn": -0.03558941926829273,
+          "maxDrawdown": -0.03558941926829273
+        },
+        {
+          "key": "HOMEUSDT",
+          "trades": 1,
+          "netExpectancyR": 0.9212434382850909,
+          "profitFactor": null,
+          "winRate": 1,
+          "totalNetReturn": 0.1733604044707091,
+          "maxDrawdown": 0
+        },
+        {
+          "key": "HUSDT",
+          "trades": 2,
+          "netExpectancyR": -0.3029319590756147,
+          "profitFactor": 0,
+          "winRate": 0,
+          "totalNetReturn": -0.057563564883987506,
+          "maxDrawdown": -0.057563564883987506
+        },
+        {
+          "key": "HYPEUSDT",
+          "trades": 4,
+          "netExpectancyR": -0.01095342479758507,
+          "profitFactor": 0.7411250903677798,
+          "winRate": 0.5,
+          "totalNetReturn": -0.011197891789883174,
+          "maxDrawdown": -0.03332846944812351
+        },
+        {
+          "key": "ICPUSDT",
+          "trades": 1,
+          "netExpectancyR": -0.33972183052631627,
+          "profitFactor": 0,
+          "winRate": 0,
+          "totalNetReturn": -0.012460839343629404,
+          "maxDrawdown": -0.012460839343629404
+        },
+        {
+          "key": "JTOUSDT",
+          "trades": 1,
+          "netExpectancyR": 0.20214760546052332,
+          "profitFactor": null,
+          "winRate": 1,
+          "totalNetReturn": 0.009433968692047712,
+          "maxDrawdown": 0
+        },
+        {
+          "key": "LAUSDT",
+          "trades": 1,
+          "netExpectancyR": 0.028259622238062693,
+          "profitFactor": null,
+          "winRate": 1,
+          "totalNetReturn": 0.002192994828396966,
+          "maxDrawdown": 0
+        },
+        {
+          "key": "LDOUSDT",
+          "trades": 1,
+          "netExpectancyR": -1.0258966791122706,
+          "profitFactor": 0,
+          "winRate": 0,
+          "totalNetReturn": -0.04788768166971358,
+          "maxDrawdown": -0.04788768166971358
+        },
+        {
+          "key": "MUSDT",
+          "trades": 1,
+          "netExpectancyR": -0.6933731059245961,
+          "profitFactor": 0,
+          "winRate": 0,
+          "totalNetReturn": -0.14260720035447894,
+          "maxDrawdown": -0.14260720035447894
+        },
+        {
+          "key": "OMUSDT",
+          "trades": 1,
+          "netExpectancyR": -0.4808675869969034,
+          "profitFactor": 0,
+          "winRate": 0,
+          "totalNetReturn": -0.03160126767039673,
+          "maxDrawdown": -0.03160126767039673
+        },
+        {
+          "key": "ONDOUSDT",
+          "trades": 1,
+          "netExpectancyR": -0.842944149132074,
+          "profitFactor": 0,
+          "winRate": 0,
+          "totalNetReturn": -0.03283071715461483,
+          "maxDrawdown": -0.03283071715461483
+        },
+        {
+          "key": "ORDIUSDT",
+          "trades": 1,
+          "netExpectancyR": -0.4880571759090936,
+          "profitFactor": 0,
+          "winRate": 0,
+          "totalNetReturn": -0.017090740740151267,
+          "maxDrawdown": -0.017090740740151267
+        },
+        {
+          "key": "PAXGUSDT",
+          "trades": 1,
+          "netExpectancyR": -0.2312706196424176,
+          "profitFactor": 0,
+          "winRate": 0,
+          "totalNetReturn": -0.009259395497098755,
+          "maxDrawdown": -0.009259395497098755
+        },
+        {
+          "key": "PENGUUSDT",
+          "trades": 2,
+          "netExpectancyR": -0.526198865024123,
+          "profitFactor": 0,
+          "winRate": 0,
+          "totalNetReturn": -0.045159298960669725,
+          "maxDrawdown": -0.045159298960669725
+        },
+        {
+          "key": "PIPPINUSDT",
+          "trades": 1,
+          "netExpectancyR": -1.0326014820835836,
+          "profitFactor": 0,
+          "winRate": 0,
+          "totalNetReturn": -0.048464196688745353,
+          "maxDrawdown": -0.048464196688745353
+        },
+        {
+          "key": "PUMPUSDT",
+          "trades": 4,
+          "netExpectancyR": -0.21557367599863053,
+          "profitFactor": 0.6315178620022727,
+          "winRate": 0.25,
+          "totalNetReturn": -0.05004740723235901,
+          "maxDrawdown": -0.11847980862808172
+        },
+        {
+          "key": "RESOLVUSDT",
+          "trades": 1,
+          "netExpectancyR": -1.071902163601693,
+          "profitFactor": 0,
+          "winRate": 0,
+          "totalNetReturn": -0.05802482849071022,
+          "maxDrawdown": -0.05802482849071022
+        },
+        {
+          "key": "SAGAUSDT",
+          "trades": 1,
+          "netExpectancyR": 0.45836032927536324,
+          "profitFactor": null,
+          "winRate": 1,
+          "totalNetReturn": 0.027549531986062803,
+          "maxDrawdown": 0
+        },
+        {
+          "key": "SEIUSDT",
+          "trades": 1,
+          "netExpectancyR": 0.4653878159239129,
+          "profitFactor": null,
+          "winRate": 1,
+          "totalNetReturn": 0.01762052742013487,
+          "maxDrawdown": 0
+        },
+        {
+          "key": "SIRENUSDT",
+          "trades": 2,
+          "netExpectancyR": -0.47552853052217703,
+          "profitFactor": 0.16637221756906634,
+          "winRate": 0.5,
+          "totalNetReturn": -0.048938195008325414,
+          "maxDrawdown": -0.05803295394340191
+        },
+        {
+          "key": "SOONUSDT",
+          "trades": 1,
+          "netExpectancyR": 0.5402485456756774,
+          "profitFactor": null,
+          "winRate": 1,
+          "totalNetReturn": 0.023433993188745728,
+          "maxDrawdown": 0
+        },
+        {
+          "key": "SPXUSDT",
+          "trades": 1,
+          "netExpectancyR": 1.4651507302823754,
+          "profitFactor": null,
+          "winRate": 1,
+          "totalNetReturn": 0.11878037574992106,
+          "maxDrawdown": 0
+        },
+        {
+          "key": "TAOUSDT",
+          "trades": 2,
+          "netExpectancyR": -0.424975789042439,
+          "profitFactor": 0.28416412175951467,
+          "winRate": 0.5,
+          "totalNetReturn": -0.027399390082033626,
+          "maxDrawdown": -0.03771152617616791
+        },
+        {
+          "key": "TIAUSDT",
+          "trades": 1,
+          "netExpectancyR": -1.0325604806796127,
+          "profitFactor": 0,
+          "winRate": 0,
+          "totalNetReturn": -0.043934206138593446,
+          "maxDrawdown": -0.043934206138593446
+        },
+        {
+          "key": "TONUSDT",
+          "trades": 1,
+          "netExpectancyR": -0.1540883102842343,
+          "profitFactor": 0,
+          "winRate": 0,
+          "totalNetReturn": -0.005703153794950122,
+          "maxDrawdown": -0.005703153794950122
+        },
+        {
+          "key": "TREEUSDT",
+          "trades": 1,
+          "netExpectancyR": -0.13989057319947562,
+          "profitFactor": 0,
+          "winRate": 0,
+          "totalNetReturn": -0.0076343330919484975,
+          "maxDrawdown": -0.0076343330919484975
+        },
+        {
+          "key": "TUTUSDT",
+          "trades": 1,
+          "netExpectancyR": 0.44682709621621536,
+          "profitFactor": null,
+          "winRate": 1,
+          "totalNetReturn": 0.03527582338549062,
+          "maxDrawdown": 0
+        },
+        {
+          "key": "VIRTUALUSDT",
+          "trades": 1,
+          "netExpectancyR": -0.3684142739449572,
+          "profitFactor": 0,
+          "winRate": 0,
+          "totalNetReturn": -0.014331604518201368,
+          "maxDrawdown": -0.014331604518201368
+        },
+        {
+          "key": "WIFUSDT",
+          "trades": 3,
+          "netExpectancyR": -0.5716687106667742,
+          "profitFactor": 0,
+          "winRate": 0,
+          "totalNetReturn": -0.04806320128332475,
+          "maxDrawdown": -0.04806320128332475
+        },
+        {
+          "key": "WLDUSDT",
+          "trades": 5,
+          "netExpectancyR": -0.24829351726253934,
+          "profitFactor": 0.39134733959106943,
+          "winRate": 0.2,
+          "totalNetReturn": -0.06171177457526522,
+          "maxDrawdown": -0.07738743072458032
+        },
+        {
+          "key": "XMRUSDT",
+          "trades": 2,
+          "netExpectancyR": -0.2589662554536667,
+          "profitFactor": 0.658423020489411,
+          "winRate": 0.5,
+          "totalNetReturn": -0.019567709716526438,
+          "maxDrawdown": -0.0520617686593563
+        },
+        {
+          "key": "ZECUSDT",
+          "trades": 2,
+          "netExpectancyR": 0.5878355313146341,
+          "profitFactor": null,
+          "winRate": 1,
+          "totalNetReturn": 0.05264092086124772,
+          "maxDrawdown": 0
+        },
+        {
+          "key": "ZENUSDT",
+          "trades": 1,
+          "netExpectancyR": -0.07563086907928591,
+          "profitFactor": 0,
+          "winRate": 0,
+          "totalNetReturn": -0.003083915925539804,
+          "maxDrawdown": -0.003083915925539804
+        },
+        {
+          "key": "ZROUSDT",
+          "trades": 1,
+          "netExpectancyR": 1.4693575718015652,
+          "profitFactor": null,
+          "winRate": 1,
+          "totalNetReturn": 0.053571056639695414,
+          "maxDrawdown": 0
+        }
+      ],
+      "byFold": [
+        {
+          "key": "research-fold-1",
+          "trades": 15,
+          "netExpectancyR": 0.29761130545418285,
+          "profitFactor": 2.2934844974939064,
+          "winRate": 0.5333333333333333,
+          "totalNetReturn": 0.22125627830997074,
+          "maxDrawdown": -0.04956385244745376
+        },
+        {
+          "key": "research-fold-2",
+          "trades": 28,
+          "netExpectancyR": -0.31349668038933126,
+          "profitFactor": 0.24062176408308922,
+          "winRate": 0.21428571428571427,
+          "totalNetReturn": -0.3507707971010965,
+          "maxDrawdown": -0.37289252947505613
+        },
+        {
+          "key": "research-fold-3",
+          "trades": 15,
+          "netExpectancyR": -0.4824898475410115,
+          "profitFactor": 0.3306855143026253,
+          "winRate": 0.26666666666666666,
+          "totalNetReturn": -0.2409472862781119,
+          "maxDrawdown": -0.2409472862781119
+        },
+        {
+          "key": "research-fold-4",
+          "trades": 7,
+          "netExpectancyR": -0.11469114506648063,
+          "profitFactor": 0.6476470290704528,
+          "winRate": 0.42857142857142855,
+          "totalNetReturn": -0.03492727188147182,
+          "maxDrawdown": -0.06080174426898777
+        },
+        {
+          "key": "research-fold-5",
+          "trades": 13,
+          "netExpectancyR": -0.13831305506178368,
+          "profitFactor": 0.7293512486150611,
+          "winRate": 0.38461538461538464,
+          "totalNetReturn": -0.1261721346681285,
+          "maxDrawdown": -0.28993905694012834
+        }
+      ],
+      "byRegime": [
+        {
+          "key": "btc_down",
+          "trades": 26,
+          "netExpectancyR": -0.2885199474191728,
+          "profitFactor": 0.5583234924551251,
+          "winRate": 0.2692307692307692,
+          "totalNetReturn": -0.20685737597785292,
+          "maxDrawdown": -0.2910649478540399
+        },
+        {
+          "key": "btc_flat",
+          "trades": 48,
+          "netExpectancyR": -0.15115040334960214,
+          "profitFactor": 0.49642790734563386,
+          "winRate": 0.3541666666666667,
+          "totalNetReturn": -0.440116472397617,
+          "maxDrawdown": -0.5265496978968943
+        },
+        {
+          "key": "btc_up",
+          "trades": 4,
+          "netExpectancyR": 0.15118627005178464,
+          "profitFactor": 5.033737867681408,
+          "winRate": 0.5,
+          "totalNetReturn": 0.14291450897871583,
+          "maxDrawdown": -0.036238323841811915
+        }
+      ],
+      "mfeMae": {
+        "averageMfeR": 0.5469993886549683,
+        "averageMaeR": -0.6209480376817382
+      },
+      "causalSignalCount": 78,
+      "candidateUsesRecommendationScoreAsGate": false
+    }
+  },
+  "strongReference": {
+    "strategyId": "dynamic_relative_strength_breakout",
+    "status": "KEEP_FOR_MORE_DATA",
+    "changed": false,
+    "frozenMetrics": {
+      "replaySignals": 8,
+      "developmentOosSignals": 8,
+      "completeTrades": 8,
+      "degradedTrades": 0,
+      "fundingIncompleteTrades": 0,
+      "expectancyR": 0.5401397404914746,
+      "profitFactor": 3.9220048046653218,
+      "holdoutCompleteTrades": 0,
+      "holdoutExpectancyR": null,
+      "holdoutProfitFactor": null,
+      "statisticalVerdict": "INSUFFICIENT_DATA"
+    }
+  },
+  "candidateDefinitions": [
+    {
+      "id": "weak_breakdown_confirmed_continuation_v1",
+      "label": "Continuation confirmation",
+      "hypothesis": "H1",
+      "side": "SHORT",
+      "coreEdge": [
+        "price_action",
+        "relative_move",
+        "volume_structure"
+      ],
+      "formula": [
+        "return1 <= -0.5%",
+        "return3 <= -1.5%",
+        "close < previousLow",
+        "closeLocationValue <= -0.25",
+        "volumeAcceleration >= 1",
+        "volumeClimax < 2.5"
+      ],
+      "causalTiming": "All features use the closed signal candle and candles with openTime <= signalCandleOpenTime; entry is the next eligible candle open."
+    },
+    {
+      "id": "weak_breakdown_exhaustion_filtered_v1",
+      "label": "Exhaustion rejection filter",
+      "hypothesis": "H2",
+      "side": "SHORT",
+      "coreEdge": [
+        "price_action",
+        "relative_move",
+        "volume_structure"
+      ],
+      "formula": [
+        "return1 <= -0.5%",
+        "close < previousLow",
+        "NOT(volumeClimax >= 2.5 AND lowerWickRatio >= 0.35 AND reboundFromLow >= 0.3%)"
+      ],
+      "causalTiming": "The exhaustion pattern is evaluated at signal candle close; no post-entry candle is read."
+    },
+    {
+      "id": "weak_breakdown_confirmed_market_v1",
+      "label": "Continuation plus market confirmation",
+      "hypothesis": "H1/H3",
+      "side": "SHORT",
+      "coreEdge": [
+        "price_action",
+        "relative_move",
+        "volume_structure",
+        "market_context"
+      ],
+      "formula": [
+        "all weak_breakdown_confirmed_continuation_v1 rules",
+        "BTC 24h momentum <= 0"
+      ],
+      "causalTiming": "BTC context is the latest completed benchmark value available at signalAvailableAt; entry remains next-bar eligible."
+    }
+  ],
+  "causalTiming": {
+    "weak_breakdown_confirmed_continuation_v1": "All features use the closed signal candle and candles with openTime <= signalCandleOpenTime; entry is the next eligible candle open.",
+    "weak_breakdown_exhaustion_filtered_v1": "The exhaustion pattern is evaluated at signal candle close; no post-entry candle is read.",
+    "weak_breakdown_confirmed_market_v1": "BTC context is the latest completed benchmark value available at signalAvailableAt; entry remains next-bar eligible."
+  },
+  "researchResults": {
+    "BASELINE_V4_WEAK": {
+      "strategyId": "BASELINE_V4_WEAK",
+      "candidateDefinitionId": null,
+      "researchClassification": "RESEARCH_ONLY_NOT_UNTOUCHED_OOS",
+      "signals": 78,
+      "rawTradeRows": 78,
+      "completeTrades": 78,
+      "degradedTrades": 0,
+      "fundingIncompleteTrades": 0,
+      "missedEntries": 0,
+      "metrics": {
+        "signals": 78,
+        "completeTrades": 78,
+        "grossExpectancyR": -0.1482088553161993,
+        "netExpectancyR": -0.18143580658297762,
+        "profitFactor": 0.6199643819002939,
+        "winRate": 0.3333333333333333,
+        "averageNetReturn": -0.007722803355550627,
+        "totalNetReturn": -0.4924688224511343,
+        "maxDrawdown": -0.5985792254982205,
+        "feeDrag": 0.09386225637321582,
+        "spreadDrag": 0,
+        "slippageDrag": 0.0002442741008540361,
+        "fundingDrag": 0.07142245,
+        "avgWinR": 0.6860500720508421,
+        "avgLossR": -0.6151787458998875,
+        "mfeR": 0.5469993886549683,
+        "maeR": -0.6209480376817382,
+        "maxAssetTradeShare": 0.10256410256410256,
+        "maxFoldTradeShare": 0.358974358974359
+      },
+      "byAsset": [
+        {
+          "key": "1000BONKUSDT",
+          "trades": 3,
+          "netExpectancyR": 0.19211370743273046,
+          "profitFactor": 1.445432075114784,
+          "winRate": 0.3333333333333333,
+          "totalNetReturn": 0.015281289267049525,
+          "maxDrawdown": -0.03828701345245611
+        },
+        {
+          "key": "1000PEPEUSDT",
+          "trades": 1,
+          "netExpectancyR": 0.3501094433511,
+          "profitFactor": null,
+          "winRate": 1,
+          "totalNetReturn": 0.012843356560157115,
+          "maxDrawdown": 0
+        },
+        {
+          "key": "ALPINEUSDT",
+          "trades": 1,
+          "netExpectancyR": -0.18417585912938383,
+          "profitFactor": 0,
+          "winRate": 0,
+          "totalNetReturn": -0.011614567294494504,
+          "maxDrawdown": -0.011614567294494504
+        },
+        {
+          "key": "AUCTIONUSDT",
+          "trades": 1,
+          "netExpectancyR": -0.4565486155045889,
+          "profitFactor": 0,
+          "winRate": 0,
+          "totalNetReturn": -0.023806633275394784,
+          "maxDrawdown": -0.023806633275394784
+        },
+        {
+          "key": "BIOUSDT",
+          "trades": 1,
+          "netExpectancyR": 0.5690669341721841,
+          "profitFactor": null,
+          "winRate": 1,
+          "totalNetReturn": 0.03097660672674829,
+          "maxDrawdown": 0
+        },
+        {
+          "key": "CHZUSDT",
+          "trades": 1,
+          "netExpectancyR": -1.0337999999999978,
+          "profitFactor": 0,
+          "winRate": 0,
+          "totalNetReturn": -0.03736626506024099,
+          "maxDrawdown": -0.03736626506024099
+        },
+        {
+          "key": "CRVUSDT",
+          "trades": 1,
+          "netExpectancyR": -0.07836125654450216,
+          "profitFactor": 0,
+          "winRate": 0,
+          "totalNetReturn": -0.0033186252771618685,
+          "maxDrawdown": -0.0033186252771618685
+        },
+        {
+          "key": "DASHUSDT",
+          "trades": 1,
+          "netExpectancyR": -1.023354929577464,
+          "profitFactor": 0,
+          "winRate": 0,
+          "totalNetReturn": -0.05396746719485024,
+          "maxDrawdown": -0.05396746719485024
+        },
+        {
+          "key": "DEXEUSDT",
+          "trades": 1,
+          "netExpectancyR": -1.0157310507674149,
+          "profitFactor": 0,
+          "winRate": 0,
+          "totalNetReturn": -0.08055470037453194,
+          "maxDrawdown": -0.08055470037453194
+        },
+        {
+          "key": "ENAUSDT",
+          "trades": 5,
+          "netExpectancyR": -0.13406872310660436,
+          "profitFactor": 0.8474155359970045,
+          "winRate": 0.4,
+          "totalNetReturn": -0.016338844892470283,
+          "maxDrawdown": -0.045241377905704594
+        },
+        {
+          "key": "EPICUSDT",
+          "trades": 1,
+          "netExpectancyR": 0.8040511355034079,
+          "profitFactor": null,
+          "winRate": 1,
+          "totalNetReturn": 0.03877173024274505,
+          "maxDrawdown": 0
+        },
+        {
+          "key": "FARTCOINUSDT",
+          "trades": 8,
+          "netExpectancyR": -0.28241496810696126,
+          "profitFactor": 0.3508016711488394,
+          "winRate": 0.25,
+          "totalNetReturn": -0.10383151261464563,
+          "maxDrawdown": -0.10749418323284943
+        },
+        {
+          "key": "FORMUSDT",
+          "trades": 1,
+          "netExpectancyR": -0.2749281914893596,
+          "profitFactor": 0,
+          "winRate": 0,
+          "totalNetReturn": -0.013673677248677185,
+          "maxDrawdown": -0.013673677248677185
+        },
+        {
+          "key": "GALAUSDT",
+          "trades": 1,
+          "netExpectancyR": -0.8106478833333358,
+          "profitFactor": 0,
+          "winRate": 0,
+          "totalNetReturn": -0.03558941926829273,
+          "maxDrawdown": -0.03558941926829273
+        },
+        {
+          "key": "HOMEUSDT",
+          "trades": 1,
+          "netExpectancyR": 0.9212434382850909,
+          "profitFactor": null,
+          "winRate": 1,
+          "totalNetReturn": 0.1733604044707091,
+          "maxDrawdown": 0
+        },
+        {
+          "key": "HUSDT",
+          "trades": 2,
+          "netExpectancyR": -0.3029319590756147,
+          "profitFactor": 0,
+          "winRate": 0,
+          "totalNetReturn": -0.057563564883987506,
+          "maxDrawdown": -0.057563564883987506
+        },
+        {
+          "key": "HYPEUSDT",
+          "trades": 4,
+          "netExpectancyR": -0.01095342479758507,
+          "profitFactor": 0.7411250903677798,
+          "winRate": 0.5,
+          "totalNetReturn": -0.011197891789883174,
+          "maxDrawdown": -0.03332846944812351
+        },
+        {
+          "key": "ICPUSDT",
+          "trades": 1,
+          "netExpectancyR": -0.33972183052631627,
+          "profitFactor": 0,
+          "winRate": 0,
+          "totalNetReturn": -0.012460839343629404,
+          "maxDrawdown": -0.012460839343629404
+        },
+        {
+          "key": "JTOUSDT",
+          "trades": 1,
+          "netExpectancyR": 0.20214760546052332,
+          "profitFactor": null,
+          "winRate": 1,
+          "totalNetReturn": 0.009433968692047712,
+          "maxDrawdown": 0
+        },
+        {
+          "key": "LAUSDT",
+          "trades": 1,
+          "netExpectancyR": 0.028259622238062693,
+          "profitFactor": null,
+          "winRate": 1,
+          "totalNetReturn": 0.002192994828396966,
+          "maxDrawdown": 0
+        },
+        {
+          "key": "LDOUSDT",
+          "trades": 1,
+          "netExpectancyR": -1.0258966791122706,
+          "profitFactor": 0,
+          "winRate": 0,
+          "totalNetReturn": -0.04788768166971358,
+          "maxDrawdown": -0.04788768166971358
+        },
+        {
+          "key": "MUSDT",
+          "trades": 1,
+          "netExpectancyR": -0.6933731059245961,
+          "profitFactor": 0,
+          "winRate": 0,
+          "totalNetReturn": -0.14260720035447894,
+          "maxDrawdown": -0.14260720035447894
+        },
+        {
+          "key": "OMUSDT",
+          "trades": 1,
+          "netExpectancyR": -0.4808675869969034,
+          "profitFactor": 0,
+          "winRate": 0,
+          "totalNetReturn": -0.03160126767039673,
+          "maxDrawdown": -0.03160126767039673
+        },
+        {
+          "key": "ONDOUSDT",
+          "trades": 1,
+          "netExpectancyR": -0.842944149132074,
+          "profitFactor": 0,
+          "winRate": 0,
+          "totalNetReturn": -0.03283071715461483,
+          "maxDrawdown": -0.03283071715461483
+        },
+        {
+          "key": "ORDIUSDT",
+          "trades": 1,
+          "netExpectancyR": -0.4880571759090936,
+          "profitFactor": 0,
+          "winRate": 0,
+          "totalNetReturn": -0.017090740740151267,
+          "maxDrawdown": -0.017090740740151267
+        },
+        {
+          "key": "PAXGUSDT",
+          "trades": 1,
+          "netExpectancyR": -0.2312706196424176,
+          "profitFactor": 0,
+          "winRate": 0,
+          "totalNetReturn": -0.009259395497098755,
+          "maxDrawdown": -0.009259395497098755
+        },
+        {
+          "key": "PENGUUSDT",
+          "trades": 2,
+          "netExpectancyR": -0.526198865024123,
+          "profitFactor": 0,
+          "winRate": 0,
+          "totalNetReturn": -0.045159298960669725,
+          "maxDrawdown": -0.045159298960669725
+        },
+        {
+          "key": "PIPPINUSDT",
+          "trades": 1,
+          "netExpectancyR": -1.0326014820835836,
+          "profitFactor": 0,
+          "winRate": 0,
+          "totalNetReturn": -0.048464196688745353,
+          "maxDrawdown": -0.048464196688745353
+        },
+        {
+          "key": "PUMPUSDT",
+          "trades": 4,
+          "netExpectancyR": -0.21557367599863053,
+          "profitFactor": 0.6315178620022727,
+          "winRate": 0.25,
+          "totalNetReturn": -0.05004740723235901,
+          "maxDrawdown": -0.11847980862808172
+        },
+        {
+          "key": "RESOLVUSDT",
+          "trades": 1,
+          "netExpectancyR": -1.071902163601693,
+          "profitFactor": 0,
+          "winRate": 0,
+          "totalNetReturn": -0.05802482849071022,
+          "maxDrawdown": -0.05802482849071022
+        },
+        {
+          "key": "SAGAUSDT",
+          "trades": 1,
+          "netExpectancyR": 0.45836032927536324,
+          "profitFactor": null,
+          "winRate": 1,
+          "totalNetReturn": 0.027549531986062803,
+          "maxDrawdown": 0
+        },
+        {
+          "key": "SEIUSDT",
+          "trades": 1,
+          "netExpectancyR": 0.4653878159239129,
+          "profitFactor": null,
+          "winRate": 1,
+          "totalNetReturn": 0.01762052742013487,
+          "maxDrawdown": 0
+        },
+        {
+          "key": "SIRENUSDT",
+          "trades": 2,
+          "netExpectancyR": -0.47552853052217703,
+          "profitFactor": 0.16637221756906634,
+          "winRate": 0.5,
+          "totalNetReturn": -0.048938195008325414,
+          "maxDrawdown": -0.05803295394340191
+        },
+        {
+          "key": "SOONUSDT",
+          "trades": 1,
+          "netExpectancyR": 0.5402485456756774,
+          "profitFactor": null,
+          "winRate": 1,
+          "totalNetReturn": 0.023433993188745728,
+          "maxDrawdown": 0
+        },
+        {
+          "key": "SPXUSDT",
+          "trades": 1,
+          "netExpectancyR": 1.4651507302823754,
+          "profitFactor": null,
+          "winRate": 1,
+          "totalNetReturn": 0.11878037574992106,
+          "maxDrawdown": 0
+        },
+        {
+          "key": "TAOUSDT",
+          "trades": 2,
+          "netExpectancyR": -0.424975789042439,
+          "profitFactor": 0.28416412175951467,
+          "winRate": 0.5,
+          "totalNetReturn": -0.027399390082033626,
+          "maxDrawdown": -0.03771152617616791
+        },
+        {
+          "key": "TIAUSDT",
+          "trades": 1,
+          "netExpectancyR": -1.0325604806796127,
+          "profitFactor": 0,
+          "winRate": 0,
+          "totalNetReturn": -0.043934206138593446,
+          "maxDrawdown": -0.043934206138593446
+        },
+        {
+          "key": "TONUSDT",
+          "trades": 1,
+          "netExpectancyR": -0.1540883102842343,
+          "profitFactor": 0,
+          "winRate": 0,
+          "totalNetReturn": -0.005703153794950122,
+          "maxDrawdown": -0.005703153794950122
+        },
+        {
+          "key": "TREEUSDT",
+          "trades": 1,
+          "netExpectancyR": -0.13989057319947562,
+          "profitFactor": 0,
+          "winRate": 0,
+          "totalNetReturn": -0.0076343330919484975,
+          "maxDrawdown": -0.0076343330919484975
+        },
+        {
+          "key": "TUTUSDT",
+          "trades": 1,
+          "netExpectancyR": 0.44682709621621536,
+          "profitFactor": null,
+          "winRate": 1,
+          "totalNetReturn": 0.03527582338549062,
+          "maxDrawdown": 0
+        },
+        {
+          "key": "VIRTUALUSDT",
+          "trades": 1,
+          "netExpectancyR": -0.3684142739449572,
+          "profitFactor": 0,
+          "winRate": 0,
+          "totalNetReturn": -0.014331604518201368,
+          "maxDrawdown": -0.014331604518201368
+        },
+        {
+          "key": "WIFUSDT",
+          "trades": 3,
+          "netExpectancyR": -0.5716687106667742,
+          "profitFactor": 0,
+          "winRate": 0,
+          "totalNetReturn": -0.04806320128332475,
+          "maxDrawdown": -0.04806320128332475
+        },
+        {
+          "key": "WLDUSDT",
+          "trades": 5,
+          "netExpectancyR": -0.24829351726253934,
+          "profitFactor": 0.39134733959106943,
+          "winRate": 0.2,
+          "totalNetReturn": -0.06171177457526522,
+          "maxDrawdown": -0.07738743072458032
+        },
+        {
+          "key": "XMRUSDT",
+          "trades": 2,
+          "netExpectancyR": -0.2589662554536667,
+          "profitFactor": 0.658423020489411,
+          "winRate": 0.5,
+          "totalNetReturn": -0.019567709716526438,
+          "maxDrawdown": -0.0520617686593563
+        },
+        {
+          "key": "ZECUSDT",
+          "trades": 2,
+          "netExpectancyR": 0.5878355313146341,
+          "profitFactor": null,
+          "winRate": 1,
+          "totalNetReturn": 0.05264092086124772,
+          "maxDrawdown": 0
+        },
+        {
+          "key": "ZENUSDT",
+          "trades": 1,
+          "netExpectancyR": -0.07563086907928591,
+          "profitFactor": 0,
+          "winRate": 0,
+          "totalNetReturn": -0.003083915925539804,
+          "maxDrawdown": -0.003083915925539804
+        },
+        {
+          "key": "ZROUSDT",
+          "trades": 1,
+          "netExpectancyR": 1.4693575718015652,
+          "profitFactor": null,
+          "winRate": 1,
+          "totalNetReturn": 0.053571056639695414,
+          "maxDrawdown": 0
+        }
+      ],
+      "byFold": [
+        {
+          "key": "research-fold-1",
+          "trades": 15,
+          "netExpectancyR": 0.29761130545418285,
+          "profitFactor": 2.2934844974939064,
+          "winRate": 0.5333333333333333,
+          "totalNetReturn": 0.22125627830997074,
+          "maxDrawdown": -0.04956385244745376
+        },
+        {
+          "key": "research-fold-2",
+          "trades": 28,
+          "netExpectancyR": -0.31349668038933126,
+          "profitFactor": 0.24062176408308922,
+          "winRate": 0.21428571428571427,
+          "totalNetReturn": -0.3507707971010965,
+          "maxDrawdown": -0.37289252947505613
+        },
+        {
+          "key": "research-fold-3",
+          "trades": 15,
+          "netExpectancyR": -0.4824898475410115,
+          "profitFactor": 0.3306855143026253,
+          "winRate": 0.26666666666666666,
+          "totalNetReturn": -0.2409472862781119,
+          "maxDrawdown": -0.2409472862781119
+        },
+        {
+          "key": "research-fold-4",
+          "trades": 7,
+          "netExpectancyR": -0.11469114506648063,
+          "profitFactor": 0.6476470290704528,
+          "winRate": 0.42857142857142855,
+          "totalNetReturn": -0.03492727188147182,
+          "maxDrawdown": -0.06080174426898777
+        },
+        {
+          "key": "research-fold-5",
+          "trades": 13,
+          "netExpectancyR": -0.13831305506178368,
+          "profitFactor": 0.7293512486150611,
+          "winRate": 0.38461538461538464,
+          "totalNetReturn": -0.1261721346681285,
+          "maxDrawdown": -0.28993905694012834
+        }
+      ],
+      "byRegime": [
+        {
+          "key": "btc_down",
+          "trades": 26,
+          "netExpectancyR": -0.2885199474191728,
+          "profitFactor": 0.5583234924551251,
+          "winRate": 0.2692307692307692,
+          "totalNetReturn": -0.20685737597785292,
+          "maxDrawdown": -0.2910649478540399
+        },
+        {
+          "key": "btc_flat",
+          "trades": 48,
+          "netExpectancyR": -0.15115040334960214,
+          "profitFactor": 0.49642790734563386,
+          "winRate": 0.3541666666666667,
+          "totalNetReturn": -0.440116472397617,
+          "maxDrawdown": -0.5265496978968943
+        },
+        {
+          "key": "btc_up",
+          "trades": 4,
+          "netExpectancyR": 0.15118627005178464,
+          "profitFactor": 5.033737867681408,
+          "winRate": 0.5,
+          "totalNetReturn": 0.14291450897871583,
+          "maxDrawdown": -0.036238323841811915
+        }
+      ],
+      "mfeMae": {
+        "averageMfeR": 0.5469993886549683,
+        "averageMaeR": -0.6209480376817382
+      },
+      "causalSignalCount": 78,
+      "candidateUsesRecommendationScoreAsGate": false
+    },
+    "weak_breakdown_confirmed_continuation_v1": {
+      "strategyId": "weak_breakdown_confirmed_continuation_v1",
+      "candidateDefinitionId": "weak_breakdown_confirmed_continuation_v1",
+      "researchClassification": "RESEARCH_ONLY_NOT_UNTOUCHED_OOS",
+      "signals": 0,
+      "rawTradeRows": 0,
+      "completeTrades": 0,
+      "degradedTrades": 0,
+      "fundingIncompleteTrades": 0,
+      "missedEntries": 0,
+      "metrics": {
+        "signals": 0,
+        "completeTrades": 0,
+        "grossExpectancyR": null,
+        "netExpectancyR": null,
+        "profitFactor": null,
+        "winRate": null,
+        "averageNetReturn": null,
+        "totalNetReturn": 0,
+        "maxDrawdown": 0,
+        "feeDrag": 0,
+        "spreadDrag": 0,
+        "slippageDrag": 0,
+        "fundingDrag": 0,
+        "avgWinR": 0,
+        "avgLossR": 0,
+        "mfeR": null,
+        "maeR": null,
+        "maxAssetTradeShare": 0,
+        "maxFoldTradeShare": 0
+      },
+      "byAsset": [],
+      "byFold": [],
+      "byRegime": [],
+      "mfeMae": {
+        "averageMfeR": null,
+        "averageMaeR": null
+      },
+      "causalSignalCount": 0,
+      "candidateUsesRecommendationScoreAsGate": false
+    },
+    "weak_breakdown_exhaustion_filtered_v1": {
+      "strategyId": "weak_breakdown_exhaustion_filtered_v1",
+      "candidateDefinitionId": "weak_breakdown_exhaustion_filtered_v1",
+      "researchClassification": "RESEARCH_ONLY_NOT_UNTOUCHED_OOS",
+      "signals": 58,
+      "rawTradeRows": 58,
+      "completeTrades": 58,
+      "degradedTrades": 0,
+      "fundingIncompleteTrades": 0,
+      "missedEntries": 0,
+      "metrics": {
+        "signals": 58,
+        "completeTrades": 58,
+        "grossExpectancyR": -0.22442696576676766,
+        "netExpectancyR": -0.260142143354018,
+        "profitFactor": 0.5451897172328126,
+        "winRate": 0.27586206896551724,
+        "averageNetReturn": -0.01025509203247378,
+        "totalNetReturn": -0.4824404699263065,
+        "maxDrawdown": -0.580108068584655,
+        "feeDrag": 0.0698733871624326,
+        "spreadDrag": 0,
+        "slippageDrag": 0.00016861143518220878,
+        "fundingDrag": 0.06927668,
+        "avgWinR": 0.7636892199985793,
+        "avgLossR": -0.6501731389169121,
+        "mfeR": 0.5051668748178444,
+        "maeR": -0.6759139868292219,
+        "maxAssetTradeShare": 0.10344827586206896,
+        "maxFoldTradeShare": 0.3620689655172414
+      },
+      "byAsset": [
+        {
+          "key": "1000BONKUSDT",
+          "trades": 1,
+          "netExpectancyR": 1.4782168498168455,
+          "profitFactor": null,
+          "winRate": 1,
+          "totalNetReturn": 0.05570092477570743,
+          "maxDrawdown": 0
+        },
+        {
+          "key": "1000PEPEUSDT",
+          "trades": 1,
+          "netExpectancyR": 0.3501094433511,
+          "profitFactor": null,
+          "winRate": 1,
+          "totalNetReturn": 0.012843356560157115,
+          "maxDrawdown": 0
+        },
+        {
+          "key": "BIOUSDT",
+          "trades": 1,
+          "netExpectancyR": 0.5690669341721841,
+          "profitFactor": null,
+          "winRate": 1,
+          "totalNetReturn": 0.03097660672674829,
+          "maxDrawdown": 0
+        },
+        {
+          "key": "CHZUSDT",
+          "trades": 1,
+          "netExpectancyR": -1.0337999999999978,
+          "profitFactor": 0,
+          "winRate": 0,
+          "totalNetReturn": -0.03736626506024099,
+          "maxDrawdown": -0.03736626506024099
+        },
+        {
+          "key": "CRVUSDT",
+          "trades": 1,
+          "netExpectancyR": -0.07836125654450216,
+          "profitFactor": 0,
+          "winRate": 0,
+          "totalNetReturn": -0.0033186252771618685,
+          "maxDrawdown": -0.0033186252771618685
+        },
+        {
+          "key": "DASHUSDT",
+          "trades": 1,
+          "netExpectancyR": -1.023354929577464,
+          "profitFactor": 0,
+          "winRate": 0,
+          "totalNetReturn": -0.05396746719485024,
+          "maxDrawdown": -0.05396746719485024
+        },
+        {
+          "key": "ENAUSDT",
+          "trades": 5,
+          "netExpectancyR": -0.13406872310660436,
+          "profitFactor": 0.8474155359970045,
+          "winRate": 0.4,
+          "totalNetReturn": -0.016338844892470283,
+          "maxDrawdown": -0.045241377905704594
+        },
+        {
+          "key": "FARTCOINUSDT",
+          "trades": 6,
+          "netExpectancyR": -0.4573384452763978,
+          "profitFactor": 0.001867829853077264,
+          "winRate": 0.16666666666666666,
+          "totalNetReturn": -0.10980545413405562,
+          "maxDrawdown": -0.10980545413405562
+        },
+        {
+          "key": "FORMUSDT",
+          "trades": 1,
+          "netExpectancyR": -0.2749281914893596,
+          "profitFactor": 0,
+          "winRate": 0,
+          "totalNetReturn": -0.013673677248677185,
+          "maxDrawdown": -0.013673677248677185
+        },
+        {
+          "key": "HOMEUSDT",
+          "trades": 1,
+          "netExpectancyR": 0.9212434382850909,
+          "profitFactor": null,
+          "winRate": 1,
+          "totalNetReturn": 0.1733604044707091,
+          "maxDrawdown": 0
+        },
+        {
+          "key": "HUSDT",
+          "trades": 2,
+          "netExpectancyR": -0.3029319590756147,
+          "profitFactor": 0,
+          "winRate": 0,
+          "totalNetReturn": -0.057563564883987506,
+          "maxDrawdown": -0.057563564883987506
+        },
+        {
+          "key": "HYPEUSDT",
+          "trades": 2,
+          "netExpectancyR": -0.025258652557632988,
+          "profitFactor": 0.7471322800176858,
+          "winRate": 0.5,
+          "totalNetReturn": -0.00844986261915337,
+          "maxDrawdown": -0.030641944467630577
+        },
+        {
+          "key": "ICPUSDT",
+          "trades": 1,
+          "netExpectancyR": -0.33972183052631627,
+          "profitFactor": 0,
+          "winRate": 0,
+          "totalNetReturn": -0.012460839343629404,
+          "maxDrawdown": -0.012460839343629404
+        },
+        {
+          "key": "JTOUSDT",
+          "trades": 1,
+          "netExpectancyR": 0.20214760546052332,
+          "profitFactor": null,
+          "winRate": 1,
+          "totalNetReturn": 0.009433968692047712,
+          "maxDrawdown": 0
+        },
+        {
+          "key": "LDOUSDT",
+          "trades": 1,
+          "netExpectancyR": -1.0258966791122706,
+          "profitFactor": 0,
+          "winRate": 0,
+          "totalNetReturn": -0.04788768166971358,
+          "maxDrawdown": -0.04788768166971358
+        },
+        {
+          "key": "MUSDT",
+          "trades": 1,
+          "netExpectancyR": -0.6933731059245961,
+          "profitFactor": 0,
+          "winRate": 0,
+          "totalNetReturn": -0.14260720035447894,
+          "maxDrawdown": -0.14260720035447894
+        },
+        {
+          "key": "OMUSDT",
+          "trades": 1,
+          "netExpectancyR": -0.4808675869969034,
+          "profitFactor": 0,
+          "winRate": 0,
+          "totalNetReturn": -0.03160126767039673,
+          "maxDrawdown": -0.03160126767039673
+        },
+        {
+          "key": "ONDOUSDT",
+          "trades": 1,
+          "netExpectancyR": -0.842944149132074,
+          "profitFactor": 0,
+          "winRate": 0,
+          "totalNetReturn": -0.03283071715461483,
+          "maxDrawdown": -0.03283071715461483
+        },
+        {
+          "key": "PAXGUSDT",
+          "trades": 1,
+          "netExpectancyR": -0.2312706196424176,
+          "profitFactor": 0,
+          "winRate": 0,
+          "totalNetReturn": -0.009259395497098755,
+          "maxDrawdown": -0.009259395497098755
+        },
+        {
+          "key": "PENGUUSDT",
+          "trades": 3,
+          "netExpectancyR": -0.6949516204006975,
+          "profitFactor": 0,
+          "winRate": 0,
+          "totalNetReturn": -0.07928930477092799,
+          "maxDrawdown": -0.07928930477092799
+        },
+        {
+          "key": "PIPPINUSDT",
+          "trades": 1,
+          "netExpectancyR": -1.0326014820835836,
+          "profitFactor": 0,
+          "winRate": 0,
+          "totalNetReturn": -0.048464196688745353,
+          "maxDrawdown": -0.048464196688745353
+        },
+        {
+          "key": "PUMPUSDT",
+          "trades": 3,
+          "netExpectancyR": 0.05323471396825332,
+          "profitFactor": 1.1676019677116174,
+          "winRate": 0.3333333333333333,
+          "totalNetReturn": 0.006774276798937828,
+          "maxDrawdown": -0.06575142811447088
+        },
+        {
+          "key": "RESOLVUSDT",
+          "trades": 1,
+          "netExpectancyR": -1.071902163601693,
+          "profitFactor": 0,
+          "winRate": 0,
+          "totalNetReturn": -0.05802482849071022,
+          "maxDrawdown": -0.05802482849071022
+        },
+        {
+          "key": "SEIUSDT",
+          "trades": 1,
+          "netExpectancyR": 0.4653878159239129,
+          "profitFactor": null,
+          "winRate": 1,
+          "totalNetReturn": 0.01762052742013487,
+          "maxDrawdown": 0
+        },
+        {
+          "key": "SIRENUSDT",
+          "trades": 2,
+          "netExpectancyR": -0.47552853052217703,
+          "profitFactor": 0.16637221756906634,
+          "winRate": 0.5,
+          "totalNetReturn": -0.048938195008325414,
+          "maxDrawdown": -0.05803295394340191
+        },
+        {
+          "key": "SOONUSDT",
+          "trades": 1,
+          "netExpectancyR": 0.5402485456756774,
+          "profitFactor": null,
+          "winRate": 1,
+          "totalNetReturn": 0.023433993188745728,
+          "maxDrawdown": 0
+        },
+        {
+          "key": "SPXUSDT",
+          "trades": 1,
+          "netExpectancyR": 1.4651507302823754,
+          "profitFactor": null,
+          "winRate": 1,
+          "totalNetReturn": 0.11878037574992106,
+          "maxDrawdown": 0
+        },
+        {
+          "key": "TAOUSDT",
+          "trades": 1,
+          "netExpectancyR": -1.033486053412462,
+          "profitFactor": 0,
+          "winRate": 0,
+          "totalNetReturn": -0.03771152617616791,
+          "maxDrawdown": -0.03771152617616791
+        },
+        {
+          "key": "TIAUSDT",
+          "trades": 1,
+          "netExpectancyR": -1.0325604806796127,
+          "profitFactor": 0,
+          "winRate": 0,
+          "totalNetReturn": -0.043934206138593446,
+          "maxDrawdown": -0.043934206138593446
+        },
+        {
+          "key": "TONUSDT",
+          "trades": 1,
+          "netExpectancyR": -0.1540883102842343,
+          "profitFactor": 0,
+          "winRate": 0,
+          "totalNetReturn": -0.005703153794950122,
+          "maxDrawdown": -0.005703153794950122
+        },
+        {
+          "key": "TREEUSDT",
+          "trades": 1,
+          "netExpectancyR": -0.13989057319947562,
+          "profitFactor": 0,
+          "winRate": 0,
+          "totalNetReturn": -0.0076343330919484975,
+          "maxDrawdown": -0.0076343330919484975
+        },
+        {
+          "key": "VIRTUALUSDT",
+          "trades": 1,
+          "netExpectancyR": -0.3684142739449572,
+          "profitFactor": 0,
+          "winRate": 0,
+          "totalNetReturn": -0.014331604518201368,
+          "maxDrawdown": -0.014331604518201368
+        },
+        {
+          "key": "WIFUSDT",
+          "trades": 3,
+          "netExpectancyR": -0.5716687106667742,
+          "profitFactor": 0,
+          "winRate": 0,
+          "totalNetReturn": -0.04806320128332475,
+          "maxDrawdown": -0.04806320128332475
+        },
+        {
+          "key": "WLDUSDT",
+          "trades": 3,
+          "netExpectancyR": -0.49333625800372,
+          "profitFactor": 0,
+          "winRate": 0,
+          "totalNetReturn": -0.07336030894409684,
+          "maxDrawdown": -0.07336030894409684
+        },
+        {
+          "key": "XMRUSDT",
+          "trades": 2,
+          "netExpectancyR": -0.2589662554536667,
+          "profitFactor": 0.658423020489411,
+          "winRate": 0.5,
+          "totalNetReturn": -0.019567709716526438,
+          "maxDrawdown": -0.0520617686593563
+        },
+        {
+          "key": "ZECUSDT",
+          "trades": 1,
+          "netExpectancyR": -1.0318008554319908,
+          "profitFactor": 0,
+          "winRate": 0,
+          "totalNetReturn": -0.036376596899692304,
+          "maxDrawdown": -0.036376596899692304
+        },
+        {
+          "key": "ZROUSDT",
+          "trades": 1,
+          "netExpectancyR": 1.4693575718015652,
+          "profitFactor": null,
+          "winRate": 1,
+          "totalNetReturn": 0.053571056639695414,
+          "maxDrawdown": 0
+        }
+      ],
+      "byFold": [
+        {
+          "key": "research-fold-1",
+          "trades": 9,
+          "netExpectancyR": 0.3975627198098109,
+          "profitFactor": 2.971559022322709,
+          "winRate": 0.5555555555555556,
+          "totalNetReturn": 0.1936499735516315,
+          "maxDrawdown": -0.035597940797940875
+        },
+        {
+          "key": "research-fold-2",
+          "trades": 21,
+          "netExpectancyR": -0.3304751897390287,
+          "profitFactor": 0.20503579092481614,
+          "winRate": 0.19047619047619047,
+          "totalNetReturn": -0.30330703948858895,
+          "maxDrawdown": -0.30330703948858895
+        },
+        {
+          "key": "research-fold-3",
+          "trades": 15,
+          "netExpectancyR": -0.5307614325298713,
+          "profitFactor": 0.32913393447742356,
+          "winRate": 0.26666666666666666,
+          "totalNetReturn": -0.24204171394485263,
+          "maxDrawdown": -0.24204171394485263
+        },
+        {
+          "key": "research-fold-4",
+          "trades": 5,
+          "netExpectancyR": -0.15462823376632687,
+          "profitFactor": 0.4313553644797639,
+          "winRate": 0.4,
+          "totalNetReturn": -0.044471046657706514,
+          "maxDrawdown": -0.05803295394340191
+        },
+        {
+          "key": "research-fold-5",
+          "trades": 8,
+          "netExpectancyR": -0.37397089394025435,
+          "profitFactor": 0.5826457983469505,
+          "winRate": 0.125,
+          "totalNetReturn": -0.14068431580455176,
+          "maxDrawdown": -0.23921799299104896
+        }
+      ],
+      "byRegime": [
+        {
+          "key": "btc_down",
+          "trades": 20,
+          "netExpectancyR": -0.38173870435452056,
+          "profitFactor": 0.5203315270107078,
+          "winRate": 0.2,
+          "totalNetReturn": -0.20100026214843414,
+          "maxDrawdown": -0.28582968098989536
+        },
+        {
+          "key": "btc_flat",
+          "trades": 34,
+          "netExpectancyR": -0.23700633257793435,
+          "profitFactor": 0.3624951957379013,
+          "winRate": 0.29411764705882354,
+          "totalNetReturn": -0.43323904026092286,
+          "maxDrawdown": -0.5038875618317684
+        },
+        {
+          "key": "btc_up",
+          "trades": 4,
+          "netExpectancyR": 0.15118627005178464,
+          "profitFactor": 5.033737867681408,
+          "winRate": 0.5,
+          "totalNetReturn": 0.14291450897871583,
+          "maxDrawdown": -0.036238323841811915
+        }
+      ],
+      "mfeMae": {
+        "averageMfeR": 0.5051668748178444,
+        "averageMaeR": -0.6759139868292219
+      },
+      "causalSignalCount": 58,
+      "candidateUsesRecommendationScoreAsGate": false
+    },
+    "weak_breakdown_confirmed_market_v1": {
+      "strategyId": "weak_breakdown_confirmed_market_v1",
+      "candidateDefinitionId": "weak_breakdown_confirmed_market_v1",
+      "researchClassification": "RESEARCH_ONLY_NOT_UNTOUCHED_OOS",
+      "signals": 0,
+      "rawTradeRows": 0,
+      "completeTrades": 0,
+      "degradedTrades": 0,
+      "fundingIncompleteTrades": 0,
+      "missedEntries": 0,
+      "metrics": {
+        "signals": 0,
+        "completeTrades": 0,
+        "grossExpectancyR": null,
+        "netExpectancyR": null,
+        "profitFactor": null,
+        "winRate": null,
+        "averageNetReturn": null,
+        "totalNetReturn": 0,
+        "maxDrawdown": 0,
+        "feeDrag": 0,
+        "spreadDrag": 0,
+        "slippageDrag": 0,
+        "fundingDrag": 0,
+        "avgWinR": 0,
+        "avgLossR": 0,
+        "mfeR": null,
+        "maeR": null,
+        "maxAssetTradeShare": 0,
+        "maxFoldTradeShare": 0
+      },
+      "byAsset": [],
+      "byFold": [],
+      "byRegime": [],
+      "mfeMae": {
+        "averageMfeR": null,
+        "averageMaeR": null
+      },
+      "causalSignalCount": 0,
+      "candidateUsesRecommendationScoreAsGate": false
+    }
+  },
+  "candidateComparison": {
+    "weak_breakdown_confirmed_continuation_v1": {
+      "candidateId": "weak_breakdown_confirmed_continuation_v1",
+      "baselineReference": "old-window research baseline",
+      "gates": {
+        "researchExpectancyAboveBaseline": true,
+        "researchProfitFactorAboveBaseline": false,
+        "drawdownMateriallyImproved": true,
+        "notDominatedByOneAsset": true,
+        "notDominatedByOneFold": true,
+        "reasonableSampleSize": false
+      },
+      "allGatesPassed": false,
+      "researchStatus": "REJECTED_CANDIDATE",
+      "promisingEdge": false,
+      "reason": "At least one deterministic research gate failed."
+    },
+    "weak_breakdown_exhaustion_filtered_v1": {
+      "candidateId": "weak_breakdown_exhaustion_filtered_v1",
+      "baselineReference": "old-window research baseline",
+      "gates": {
+        "researchExpectancyAboveBaseline": false,
+        "researchProfitFactorAboveBaseline": false,
+        "drawdownMateriallyImproved": false,
+        "notDominatedByOneAsset": true,
+        "notDominatedByOneFold": true,
+        "reasonableSampleSize": true
+      },
+      "allGatesPassed": false,
+      "researchStatus": "REJECTED_CANDIDATE",
+      "promisingEdge": false,
+      "reason": "At least one deterministic research gate failed."
+    },
+    "weak_breakdown_confirmed_market_v1": {
+      "candidateId": "weak_breakdown_confirmed_market_v1",
+      "baselineReference": "old-window research baseline",
+      "gates": {
+        "researchExpectancyAboveBaseline": true,
+        "researchProfitFactorAboveBaseline": false,
+        "drawdownMateriallyImproved": true,
+        "notDominatedByOneAsset": true,
+        "notDominatedByOneFold": true,
+        "reasonableSampleSize": false
+      },
+      "allGatesPassed": false,
+      "researchStatus": "REJECTED_CANDIDATE",
+      "promisingEdge": false,
+      "reason": "At least one deterministic research gate failed."
+    }
+  },
+  "forwardTestCandidates": [],
+  "rejectedCandidates": [
+    {
+      "candidateId": "weak_breakdown_confirmed_continuation_v1",
+      "failedGates": [
+        "researchProfitFactorAboveBaseline",
+        "reasonableSampleSize"
+      ]
+    },
+    {
+      "candidateId": "weak_breakdown_exhaustion_filtered_v1",
+      "failedGates": [
+        "researchExpectancyAboveBaseline",
+        "researchProfitFactorAboveBaseline",
+        "drawdownMateriallyImproved"
+      ]
+    },
+    {
+      "candidateId": "weak_breakdown_confirmed_market_v1",
+      "failedGates": [
+        "researchProfitFactorAboveBaseline",
+        "reasonableSampleSize"
+      ]
+    }
+  ],
+  "candidateGate": {
+    "reference": "same old-window research baseline, not frozen holdout optimization",
+    "minCompleteTrades": 10,
+    "drawdownMaterialImprovement": "+5 percentage points versus research baseline",
+    "assetAndFoldConcentrationMaxShare": 0.5,
+    "requiresAllGates": true,
+    "promisingEdgeWithoutNewUntouchedOos": false
+  },
+  "dataSource": {
+    "source": "BINANCE_VISION_REAL_DATA",
+    "validationDatasetCount": 499,
+    "historicalUniverse": "historical_binance_vision_archive",
+    "interval": "1h",
+    "lowerTimeframe": "5m",
+    "orderBookAvailability": "UNAVAILABLE",
+    "execution": "existing TradeSpec + M2-B runBacktest/simulateTrade"
+  },
+  "flags": {
+    "oldHoldoutReusedForOptimization": false,
+    "parameterGridSearch": false,
+    "automaticThresholdOptimization": false,
+    "strategyParametersChanged": false,
+    "strongChanged": false,
+    "M2BChanged": false,
+    "enteredM4": false,
+    "mergedMain": false
+  },
+  "validationVerdict": "NOT_READY_FOR_NEW_OOS"
+}
