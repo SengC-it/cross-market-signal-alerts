@@ -1,5 +1,6 @@
 import { existsSync } from "node:fs";
-import { resolve } from "node:path";
+import { mkdir, writeFile } from "node:fs/promises";
+import { dirname, resolve } from "node:path";
 import { DYNAMIC_STRATEGY_IDS } from "../lib/strategies/dynamic-production.js";
 import { runM3DynamicProductionValidation } from "../lib/validation/validation-engine.js";
 import {
@@ -9,6 +10,8 @@ import {
 import { loadM3RealInput, M3_REAL_DATA_WINDOW } from "../lib/validation/real-data.js";
 
 const dataDir = argumentValue("--data-dir") || process.env.M3_REAL_DATA_DIR || ".local/m3-data";
+const manifestPath = argumentValue("--manifest") || process.env.M3_REAL_MANIFEST || "artifacts/m3/manifest.json";
+const reportPath = argumentValue("--report") || process.env.M3_REAL_REPORT || "artifacts/m3/m3-real-validation-report.json";
 const strategyArgument = argumentValue("--strategy");
 const strategies = strategyArgument ? [strategyArgument] : DYNAMIC_STRATEGY_IDS;
 
@@ -16,21 +19,15 @@ if (!existsSync(resolve(dataDir, "index.json"))) {
   failClosed("M3_REAL_DATA_REQUIRED");
 } else {
   try {
-    const input = await loadM3RealInput({ dataDir });
+    const input = await loadM3RealInput({ dataDir, manifestPath });
     validateRealInput(input);
     if (strategies.some((strategyId) => !DYNAMIC_STRATEGY_IDS.includes(strategyId))) {
       throw new Error("M3_VALIDATION_STRATEGY_NOT_FOUND");
     }
     const results = strategies.map((strategyId) => runStrategy(input, strategyId));
-    console.log(JSON.stringify({
-      dataSource: input.dataSource,
-      datasetId: input.datasetId,
-      windowStart: M3_REAL_DATA_WINDOW.start,
-      windowEnd: M3_REAL_DATA_WINDOW.end,
-      policyScope: CORE_SIGNAL_POLICY,
-      fullProductionPolicyValidated: false,
-      strategies: results
-    }, null, 2));
+    const report = buildValidationReport({ input, results });
+    await writeJson(reportPath, report);
+    console.log(JSON.stringify({ ...report, reportPath: resolve(reportPath) }, null, 2));
   } catch (error) {
     failClosed(error?.message || String(error));
   }
@@ -84,9 +81,13 @@ function formatStrategyResult({ strategyId, result, input, validationDatasetCoun
     productionPolicyReason: result.productionPolicyReason,
     universeSource: result.universeSource,
     survivorshipBiasRisk: result.survivorshipBiasRisk,
+    dynamicPoolReplay: result.dynamicPoolReplay,
     folds: result.folds.map(formatFold),
     aggregateMetrics: result.aggregate,
     holdoutMetrics: result.holdoutMetrics,
+    stability: formatStability(result.stability),
+    productionPolicyComplete: result.productionPolicyComplete,
+    productionPolicy: result.productionPolicy,
     statisticalVerdict: result.statisticalVerdict || result.verdict,
     validationVerdict: result.validationVerdict || result.verdict,
     orderBookSensitivity: {
@@ -99,6 +100,205 @@ function formatStrategyResult({ strategyId, result, input, validationDatasetCoun
     inputDataQualityExclusions: input.datasets.length - validationDatasetCount,
     flags: result.flags
   };
+}
+
+function buildValidationReport({ input, results }) {
+  const manifest = input.manifest;
+  const quality = buildQualitySummary({ input, results });
+  const validationFlags = {
+    strategyParametersChanged: results.some((result) => result.flags?.strategyParametersChanged === true),
+    parameterSearchPerformed: results.some((result) => result.flags?.parameterSearchPerformed === true),
+    holdoutUsedForOptimization: results.some((result) => result.flags?.holdoutUsedForOptimization === true),
+    dynamicPoolReplay: results.every((result) => result.dynamicPoolReplay === true)
+  };
+  return {
+    dataset: {
+      datasetId: input.datasetId,
+      manifestSha256: input.manifestSha256,
+      generatedAt: manifest.generatedAt,
+      windowStart: manifest.windowStart,
+      windowEnd: manifest.windowEnd,
+      universeSource: input.universeSource,
+      assetCount: manifest.assetCount,
+      benchmark: manifest.benchmark,
+      primaryInterval: manifest.intervals?.candles,
+      lowerTimeframeInterval: manifest.intervals?.lowerTimeframe,
+      fundingSource: manifest.sources?.funding,
+      exchangeFilterSource: manifest.sources?.futuresExchangeInfo
+    },
+    validationFlags,
+    quality,
+    strategies: Object.fromEntries(results.map((result) => [
+      result.strategyId,
+      formatReportStrategy(result, quality)
+    ])),
+    policyScope: CORE_SIGNAL_POLICY,
+    fullProductionPolicyValidated: false
+  };
+}
+
+function buildQualitySummary({ input, results }) {
+  const manifest = input.manifest;
+  const completeCoverage = (rows, field) => {
+    const values = (Array.isArray(rows) ? rows : [])
+      .map((row) => row?.[field] === true)
+      .filter((value) => value != null);
+    if (!values.length || values.every((value) => value === false)) return "INCOMPLETE";
+    return values.every((value) => value === true) ? "COMPLETE" : "PARTIAL";
+  };
+  const qualityValue = (field) => {
+    const values = results.map((result) => result.dataQuality?.[field]).filter(Boolean);
+    return values.length && values.every((value) => value === values[0]) ? values[0] : "MIXED";
+  };
+  const coverageValue = (row, field) => field === "fundingCoverage"
+    ? row?.fundingCoverage?.complete === true
+    : row?.[field]?.complete === true;
+  const productionPolicyComplete = results.length > 0
+    && results.every((result) => result.productionPolicyComplete === true);
+  return {
+    survivorshipBiasRisk: Boolean(manifest.universeProvenance?.survivorshipBiasRisk),
+    tickerReconstructionQuality: qualityValue("tickerReconstruction"),
+    benchmarkQuality: qualityValue("benchmark"),
+    universeQuality: qualityValue("universe"),
+    exchangeFilterTemporalQuality: manifest.exchangeFilterProvenance?.exchangeFilterProvenance
+      || "UNKNOWN",
+    fundingCoverageQuality: completeCoverage(manifest.assets.map((row) => ({ complete: coverageValue(row, "fundingCoverage") })), "complete"),
+    lowerTimeframeQuality: completeCoverage(manifest.assets.map((row) => ({ complete: coverageValue(row, "candles5m") })), "complete"),
+    orderBookAvailabilitySensitive: results.some((result) => result.orderBookSensitivity?.orderBookAvailabilitySensitive === true),
+    productionPolicyComplete,
+    productionPolicyIncompleteReason: productionPolicyComplete
+      ? "FULL_PRODUCTION_POLICY_NOT_VALIDATED"
+      : results.find((result) => result.productionPolicyReason)?.productionPolicyReason
+        || "PRODUCTION_POLICY_NOT_COMPLETE",
+    fullProductionPolicyValidated: false
+  };
+}
+
+function formatReportStrategy(result, quality) {
+  const validationVerdict = result.validationVerdict || result.statisticalVerdict;
+  return {
+    strategyId: result.strategyId,
+    developmentStart: result.developmentStart,
+    developmentEnd: result.developmentEnd,
+    holdoutStart: result.holdoutStart,
+    holdoutEnd: result.holdoutEnd,
+    walkForward: {
+      folds: result.folds.map(formatReportFold)
+    },
+    aggregateOOS: formatAggregateMetrics(result.aggregateMetrics),
+    holdout: formatHoldoutMetrics(result.holdoutMetrics),
+    stability: result.stability,
+    productionPolicy: result.productionPolicy,
+    productionPolicyComplete: result.productionPolicyComplete,
+    statisticalVerdict: result.statisticalVerdict,
+    validationVerdict,
+    promotableToM4: canPromoteToM4({ result, quality, validationVerdict }),
+    orderBookAvailabilitySensitive: result.orderBookSensitivity?.orderBookAvailabilitySensitive === true,
+    flags: result.flags,
+    replayDiagnostics: result.replayDiagnostics
+  };
+}
+
+function formatReportFold(fold) {
+  return {
+    foldId: fold.foldId,
+    testStart: fold.testStart,
+    testEnd: fold.testEnd,
+    rawSignals: fold.rawSignals,
+    eligibleSignals: fold.eligibleOosSignals,
+    rawPlannedEntries: fold.rawPlannedEntries,
+    plannedEntries: fold.eligibleOosPlannedEntries,
+    completeTrades: fold.completeTrades,
+    degradedTrades: fold.degradedTrades,
+    noEntries: fold.noEntries,
+    missedEntries: fold.missedEntries,
+    purgedBoundary: fold.purgedBoundarySignals,
+    purgedBoundaryPlannedEntries: fold.purgedBoundaryPlannedEntries,
+    winRate: fold.winRate,
+    avgWinR: fold.avgWinR,
+    avgLossR: fold.avgLossR,
+    payoffRatio: fold.payoffRatio,
+    profitFactor: fold.profitFactor,
+    expectancyR: fold.expectancyR,
+    avgNetReturn: fold.averageNetReturn,
+    totalNetReturn: fold.totalNetReturn,
+    maxDrawdown: fold.maxDrawdown,
+    feeDrag: fold.feeDrag,
+    spreadDrag: fold.spreadDrag,
+    slippageDrag: fold.slippageDrag,
+    fundingDrag: fold.fundingDrag,
+    longTrades: fold.longTrades,
+    shortTrades: fold.shortTrades,
+    assetCount: fold.assetCount,
+    dataQuality: fold.dataQuality
+  };
+}
+
+function formatStability(stability = {}) {
+  const flags = stability.flags || {};
+  return {
+    byAsset: stability.byAsset || [],
+    bySide: stability.bySide || [],
+    byFold: stability.byFold || [],
+    assetUniverseSize: stability.assetUniverseSize,
+    assetConcentrationApplicable: stability.assetConcentrationApplicable,
+    assetConcentration: stability.assetConcentration,
+    singleAssetDominance: flags.singleAssetDominance === true,
+    singleFoldDominance: flags.singleFoldDominance === true,
+    sideDominance: flags.sideDominance === true,
+    concentrationRisk: flags.concentrationRisk === true,
+    foldCounts: stability.foldCounts || {}
+  };
+}
+
+function formatAggregateMetrics(metrics = {}) {
+  return {
+    completeTrades: metrics.completeTrades,
+    positiveFolds: metrics.positiveFolds,
+    negativeFolds: metrics.negativeFolds,
+    winRate: metrics.winRate,
+    avgWinR: metrics.avgWinR,
+    avgLossR: metrics.avgLossR,
+    payoffRatio: metrics.payoffRatio,
+    profitFactor: metrics.profitFactor,
+    expectancyR: metrics.expectancyR,
+    totalNetReturn: metrics.totalNetReturn,
+    maxDrawdown: metrics.maxDrawdown,
+    totalFeeDrag: metrics.feeDrag,
+    totalSpreadDrag: metrics.spreadDrag,
+    totalSlippageDrag: metrics.slippageDrag,
+    totalFundingDrag: metrics.fundingDrag
+  };
+}
+
+function formatHoldoutMetrics(metrics = {}) {
+  return {
+    completeTrades: metrics.completeTrades,
+    winRate: metrics.winRate,
+    profitFactor: metrics.profitFactor,
+    expectancyR: metrics.expectancyR,
+    totalNetReturn: metrics.totalNetReturn,
+    maxDrawdown: metrics.maxDrawdown
+  };
+}
+
+function canPromoteToM4({ result, quality, validationVerdict }) {
+  const aggregate = result.aggregateMetrics || {};
+  const holdout = result.holdoutMetrics || {};
+  return validationVerdict === "PROMISING_EDGE"
+    && Number(aggregate.completeTrades) >= 60
+    && Number(aggregate.expectancyR) > 0
+    && Number(holdout.expectancyR) > 0
+    && Number(aggregate.profitFactor) >= 1.2
+    && Number(holdout.profitFactor) >= 1.1
+    && quality.survivorshipBiasRisk === false
+    && quality.orderBookAvailabilitySensitive === false
+    && quality.productionPolicyComplete === true
+    && quality.exchangeFilterTemporalQuality === "HISTORICAL_COMPLETE"
+    && quality.benchmarkQuality === "COMPLETE"
+    && quality.universeQuality === "COMPLETE"
+    && quality.fundingCoverageQuality === "COMPLETE"
+    && quality.lowerTimeframeQuality === "COMPLETE";
 }
 
 function formatFold(fold) {
@@ -116,7 +316,22 @@ function formatFold(fold) {
     noEntries: fold.noEntries,
     missedEntries: fold.missedEntries,
     expectancyR: fold.expectancyR,
+    winRate: fold.winRate,
+    avgWinR: fold.avgWinR,
+    avgLossR: fold.avgLossR,
+    payoffRatio: fold.payoffRatio,
     profitFactor: fold.profitFactor,
+    averageNetReturn: fold.averageNetReturn,
+    totalNetReturn: fold.totalNetReturn,
+    maxDrawdown: fold.maxDrawdown,
+    feeDrag: fold.feeDrag,
+    spreadDrag: fold.spreadDrag,
+    slippageDrag: fold.slippageDrag,
+    fundingDrag: fold.fundingDrag,
+    longTrades: fold.longTrades,
+    shortTrades: fold.shortTrades,
+    assetCount: fold.assetCount,
+    purgedBoundaryPlannedEntries: fold.purgedBoundaryPlannedEntries,
     dataQuality: fold.dataQuality
   };
 }
@@ -188,6 +403,11 @@ function isCompleteHourlyDataset(dataset) {
 function argumentValue(name) {
   const index = process.argv.indexOf(name);
   return index >= 0 ? process.argv[index + 1] || null : null;
+}
+
+async function writeJson(path, value) {
+  await mkdir(dirname(resolve(path)), { recursive: true });
+  await writeFile(resolve(path), `${JSON.stringify(value, null, 2)}\n`, "utf8");
 }
 
 function failClosed(message) {

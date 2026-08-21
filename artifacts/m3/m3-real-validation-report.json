@@ -1,0 +1,826 @@
+{
+  "dataset": {
+    "datasetId": "binance_usdm_m3_2025_08_2026_08",
+    "manifestSha256": "1d38a6803c18464a976519d3c0efabca4b7c2896ce53965f96a9de4652ee6b81",
+    "generatedAt": "2026-08-20T16:14:37.018Z",
+    "windowStart": "2025-08-01T00:00:00.000Z",
+    "windowEnd": "2026-08-01T00:00:00.000Z",
+    "universeSource": "current_exchangeInfo_snapshot",
+    "assetCount": 527,
+    "benchmark": {
+      "barsExpected": 2190,
+      "barsActual": 2190,
+      "duplicateBars": 0,
+      "missingBars": 0,
+      "gapCount": 0,
+      "firstOpenTime": 1754006400000,
+      "lastCloseTime": 1785542400000,
+      "complete": true
+    },
+    "primaryInterval": "1h",
+    "lowerTimeframeInterval": "5m",
+    "fundingSource": "https://fapi.binance.com/fapi/v1/fundingRate",
+    "exchangeFilterSource": "https://fapi.binance.com/fapi/v1/exchangeInfo"
+  },
+  "validationFlags": {
+    "strategyParametersChanged": false,
+    "parameterSearchPerformed": false,
+    "holdoutUsedForOptimization": false,
+    "dynamicPoolReplay": true
+  },
+  "quality": {
+    "survivorshipBiasRisk": true,
+    "tickerReconstructionQuality": "HOURLY_RECONSTRUCTED",
+    "benchmarkQuality": "COMPLETE",
+    "universeQuality": "INCOMPLETE",
+    "exchangeFilterTemporalQuality": "CURRENT_SNAPSHOT_PROXY",
+    "fundingCoverageQuality": "PARTIAL",
+    "lowerTimeframeQuality": "PARTIAL",
+    "orderBookAvailabilitySensitive": true,
+    "productionPolicyComplete": true,
+    "productionPolicyIncompleteReason": "FULL_PRODUCTION_POLICY_NOT_VALIDATED",
+    "fullProductionPolicyValidated": false
+  },
+  "strategies": {
+    "dynamic_relative_strength_breakout": {
+      "strategyId": "dynamic_relative_strength_breakout",
+      "developmentStart": 1754006400000,
+      "developmentEnd": 1779235200000,
+      "holdoutStart": 1779235200000,
+      "holdoutEnd": 1785542400000,
+      "walkForward": {
+        "folds": [
+          {
+            "foldId": "fold-1",
+            "testStart": 1758211200000,
+            "testEnd": 1762416000000,
+            "rawSignals": 0,
+            "eligibleSignals": 0,
+            "rawPlannedEntries": 0,
+            "plannedEntries": 0,
+            "completeTrades": 0,
+            "degradedTrades": 0,
+            "noEntries": 0,
+            "missedEntries": 0,
+            "purgedBoundary": 0,
+            "purgedBoundaryPlannedEntries": 0,
+            "winRate": null,
+            "avgWinR": 0,
+            "avgLossR": 0,
+            "payoffRatio": null,
+            "profitFactor": null,
+            "expectancyR": null,
+            "avgNetReturn": null,
+            "totalNetReturn": 0,
+            "maxDrawdown": 0,
+            "feeDrag": 0,
+            "spreadDrag": 0,
+            "slippageDrag": 0,
+            "fundingDrag": 0,
+            "longTrades": 0,
+            "shortTrades": 0,
+            "assetCount": 0,
+            "dataQuality": "COMPLETE"
+          },
+          {
+            "foldId": "fold-2",
+            "testStart": 1762416000000,
+            "testEnd": 1766620800000,
+            "rawSignals": 0,
+            "eligibleSignals": 0,
+            "rawPlannedEntries": 0,
+            "plannedEntries": 0,
+            "completeTrades": 0,
+            "degradedTrades": 0,
+            "noEntries": 0,
+            "missedEntries": 0,
+            "purgedBoundary": 0,
+            "purgedBoundaryPlannedEntries": 0,
+            "winRate": null,
+            "avgWinR": 0,
+            "avgLossR": 0,
+            "payoffRatio": null,
+            "profitFactor": null,
+            "expectancyR": null,
+            "avgNetReturn": null,
+            "totalNetReturn": 0,
+            "maxDrawdown": 0,
+            "feeDrag": 0,
+            "spreadDrag": 0,
+            "slippageDrag": 0,
+            "fundingDrag": 0,
+            "longTrades": 0,
+            "shortTrades": 0,
+            "assetCount": 0,
+            "dataQuality": "COMPLETE"
+          },
+          {
+            "foldId": "fold-3",
+            "testStart": 1766620800000,
+            "testEnd": 1770825600000,
+            "rawSignals": 0,
+            "eligibleSignals": 0,
+            "rawPlannedEntries": 0,
+            "plannedEntries": 0,
+            "completeTrades": 0,
+            "degradedTrades": 0,
+            "noEntries": 0,
+            "missedEntries": 0,
+            "purgedBoundary": 0,
+            "purgedBoundaryPlannedEntries": 0,
+            "winRate": null,
+            "avgWinR": 0,
+            "avgLossR": 0,
+            "payoffRatio": null,
+            "profitFactor": null,
+            "expectancyR": null,
+            "avgNetReturn": null,
+            "totalNetReturn": 0,
+            "maxDrawdown": 0,
+            "feeDrag": 0,
+            "spreadDrag": 0,
+            "slippageDrag": 0,
+            "fundingDrag": 0,
+            "longTrades": 0,
+            "shortTrades": 0,
+            "assetCount": 0,
+            "dataQuality": "COMPLETE"
+          },
+          {
+            "foldId": "fold-4",
+            "testStart": 1770825600000,
+            "testEnd": 1775030400000,
+            "rawSignals": 0,
+            "eligibleSignals": 0,
+            "rawPlannedEntries": 0,
+            "plannedEntries": 0,
+            "completeTrades": 0,
+            "degradedTrades": 0,
+            "noEntries": 0,
+            "missedEntries": 0,
+            "purgedBoundary": 0,
+            "purgedBoundaryPlannedEntries": 0,
+            "winRate": null,
+            "avgWinR": 0,
+            "avgLossR": 0,
+            "payoffRatio": null,
+            "profitFactor": null,
+            "expectancyR": null,
+            "avgNetReturn": null,
+            "totalNetReturn": 0,
+            "maxDrawdown": 0,
+            "feeDrag": 0,
+            "spreadDrag": 0,
+            "slippageDrag": 0,
+            "fundingDrag": 0,
+            "longTrades": 0,
+            "shortTrades": 0,
+            "assetCount": 0,
+            "dataQuality": "COMPLETE"
+          },
+          {
+            "foldId": "fold-5",
+            "testStart": 1775030400000,
+            "testEnd": 1779235200000,
+            "rawSignals": 0,
+            "eligibleSignals": 0,
+            "rawPlannedEntries": 0,
+            "plannedEntries": 0,
+            "completeTrades": 0,
+            "degradedTrades": 0,
+            "noEntries": 0,
+            "missedEntries": 0,
+            "purgedBoundary": 0,
+            "purgedBoundaryPlannedEntries": 0,
+            "winRate": null,
+            "avgWinR": 0,
+            "avgLossR": 0,
+            "payoffRatio": null,
+            "profitFactor": null,
+            "expectancyR": null,
+            "avgNetReturn": null,
+            "totalNetReturn": 0,
+            "maxDrawdown": 0,
+            "feeDrag": 0,
+            "spreadDrag": 0,
+            "slippageDrag": 0,
+            "fundingDrag": 0,
+            "longTrades": 0,
+            "shortTrades": 0,
+            "assetCount": 0,
+            "dataQuality": "COMPLETE"
+          }
+        ]
+      },
+      "aggregateOOS": {
+        "completeTrades": 0,
+        "positiveFolds": 0,
+        "negativeFolds": 0,
+        "winRate": null,
+        "avgWinR": 0,
+        "avgLossR": 0,
+        "payoffRatio": null,
+        "profitFactor": null,
+        "expectancyR": null,
+        "totalNetReturn": 0,
+        "maxDrawdown": 0,
+        "totalFeeDrag": 0,
+        "totalSpreadDrag": 0,
+        "totalSlippageDrag": 0,
+        "totalFundingDrag": 0
+      },
+      "holdout": {
+        "completeTrades": 0,
+        "winRate": null,
+        "profitFactor": null,
+        "expectancyR": null,
+        "totalNetReturn": 0,
+        "maxDrawdown": 0
+      },
+      "stability": {
+        "byAsset": [],
+        "bySide": [],
+        "byFold": [],
+        "assetUniverseSize": 383,
+        "assetConcentrationApplicable": true,
+        "assetConcentration": "DIVERSIFIED",
+        "singleAssetDominance": false,
+        "singleFoldDominance": false,
+        "sideDominance": false,
+        "concentrationRisk": false,
+        "foldCounts": {
+          "positive": 0,
+          "negative": 0,
+          "total": 5
+        }
+      },
+      "productionPolicy": "CORE_SIGNAL_POLICY",
+      "productionPolicyComplete": true,
+      "statisticalVerdict": "INSUFFICIENT_DATA",
+      "validationVerdict": "PROVISIONAL",
+      "promotableToM4": false,
+      "orderBookAvailabilitySensitive": true,
+      "flags": {
+        "holdoutUsedForOptimization": false,
+        "strategyParametersChanged": false,
+        "parameterSearchPerformed": false
+      },
+      "replayDiagnostics": {
+        "replaySignalsTotal": 8,
+        "replaySignalsPrimaryEligible": 0,
+        "replaySignalsExcluded": 8,
+        "excludedByReason": {
+          "incomplete_candle_history": 0,
+          "incomplete_ticker_window": 0,
+          "incomplete_benchmark": 0,
+          "incomplete_universe": 0,
+          "survivorship_bias": 8,
+          "stale_data": 0,
+          "gap_detected": 0
+        },
+        "inputExcludedByReason": {
+          "incomplete_candle_history": 9192,
+          "incomplete_ticker_window": 9192,
+          "incomplete_benchmark": 54,
+          "incomplete_universe": 0,
+          "survivorship_bias": 0,
+          "stale_data": 0,
+          "gap_detected": 27
+        },
+        "tickerDiagnostics": {
+          "count": 9192,
+          "sample": [
+            {
+              "asset": "1000000BOBUSDT",
+              "signalAvailableAt": 1754010000000,
+              "quality": "INCOMPLETE",
+              "reasons": [
+                "incomplete_candle_history",
+                "incomplete_ticker_window"
+              ]
+            },
+            {
+              "asset": "1000000MOGUSDT",
+              "signalAvailableAt": 1754010000000,
+              "quality": "INCOMPLETE",
+              "reasons": [
+                "incomplete_candle_history",
+                "incomplete_ticker_window"
+              ]
+            },
+            {
+              "asset": "1000BONKUSDT",
+              "signalAvailableAt": 1754010000000,
+              "quality": "INCOMPLETE",
+              "reasons": [
+                "incomplete_candle_history",
+                "incomplete_ticker_window"
+              ]
+            },
+            {
+              "asset": "1000CATUSDT",
+              "signalAvailableAt": 1754010000000,
+              "quality": "INCOMPLETE",
+              "reasons": [
+                "incomplete_candle_history",
+                "incomplete_ticker_window"
+              ]
+            },
+            {
+              "asset": "1000CHEEMSUSDT",
+              "signalAvailableAt": 1754010000000,
+              "quality": "INCOMPLETE",
+              "reasons": [
+                "incomplete_candle_history",
+                "incomplete_ticker_window"
+              ]
+            }
+          ],
+          "last": {
+            "asset": "ZRXUSDT",
+            "signalAvailableAt": 1754092800000,
+            "quality": "INCOMPLETE",
+            "reasons": [
+              "incomplete_candle_history",
+              "incomplete_ticker_window"
+            ]
+          }
+        },
+        "benchmarkDiagnostics": {
+          "count": 8760,
+          "sample": [
+            {
+              "signalAvailableAt": 1754010000000,
+              "value": null,
+              "complete": false,
+              "reason": "future_candle_not_allowed",
+              "reasons": [
+                "future_candle_not_allowed",
+                "incomplete_benchmark",
+                "gap_detected"
+              ],
+              "latestCloseTime": null,
+              "lookbackStartTime": null,
+              "interval": "4h"
+            },
+            {
+              "signalAvailableAt": 1754013600000,
+              "value": null,
+              "complete": false,
+              "reason": "future_candle_not_allowed",
+              "reasons": [
+                "future_candle_not_allowed",
+                "incomplete_benchmark",
+                "gap_detected"
+              ],
+              "latestCloseTime": null,
+              "lookbackStartTime": null,
+              "interval": "4h"
+            },
+            {
+              "signalAvailableAt": 1754017200000,
+              "value": null,
+              "complete": false,
+              "reason": "future_candle_not_allowed",
+              "reasons": [
+                "future_candle_not_allowed",
+                "incomplete_benchmark",
+                "gap_detected"
+              ],
+              "latestCloseTime": null,
+              "lookbackStartTime": null,
+              "interval": "4h"
+            },
+            {
+              "signalAvailableAt": 1754020800000,
+              "value": null,
+              "complete": false,
+              "reason": "incomplete_benchmark",
+              "reasons": [
+                "incomplete_benchmark",
+                "gap_detected"
+              ],
+              "latestCloseTime": 1754020800000,
+              "lookbackStartTime": 1753934400000,
+              "interval": "4h"
+            },
+            {
+              "signalAvailableAt": 1754024400000,
+              "value": null,
+              "complete": false,
+              "reason": "incomplete_benchmark",
+              "reasons": [
+                "incomplete_benchmark",
+                "gap_detected"
+              ],
+              "latestCloseTime": 1754020800000,
+              "lookbackStartTime": 1753934400000,
+              "interval": "4h"
+            }
+          ],
+          "last": {
+            "signalAvailableAt": 1785542400000,
+            "value": -0.029208697373047987,
+            "complete": true,
+            "reason": null,
+            "reasons": [],
+            "latestCloseTime": 1785542400000,
+            "lookbackStartTime": 1785456000000,
+            "interval": "4h"
+          }
+        }
+      }
+    },
+    "dynamic_relative_weakness_breakdown": {
+      "strategyId": "dynamic_relative_weakness_breakdown",
+      "developmentStart": 1754006400000,
+      "developmentEnd": 1779235200000,
+      "holdoutStart": 1779235200000,
+      "holdoutEnd": 1785542400000,
+      "walkForward": {
+        "folds": [
+          {
+            "foldId": "fold-1",
+            "testStart": 1758211200000,
+            "testEnd": 1762416000000,
+            "rawSignals": 0,
+            "eligibleSignals": 0,
+            "rawPlannedEntries": 0,
+            "plannedEntries": 0,
+            "completeTrades": 0,
+            "degradedTrades": 0,
+            "noEntries": 0,
+            "missedEntries": 0,
+            "purgedBoundary": 0,
+            "purgedBoundaryPlannedEntries": 0,
+            "winRate": null,
+            "avgWinR": 0,
+            "avgLossR": 0,
+            "payoffRatio": null,
+            "profitFactor": null,
+            "expectancyR": null,
+            "avgNetReturn": null,
+            "totalNetReturn": 0,
+            "maxDrawdown": 0,
+            "feeDrag": 0,
+            "spreadDrag": 0,
+            "slippageDrag": 0,
+            "fundingDrag": 0,
+            "longTrades": 0,
+            "shortTrades": 0,
+            "assetCount": 0,
+            "dataQuality": "COMPLETE"
+          },
+          {
+            "foldId": "fold-2",
+            "testStart": 1762416000000,
+            "testEnd": 1766620800000,
+            "rawSignals": 0,
+            "eligibleSignals": 0,
+            "rawPlannedEntries": 0,
+            "plannedEntries": 0,
+            "completeTrades": 0,
+            "degradedTrades": 0,
+            "noEntries": 0,
+            "missedEntries": 0,
+            "purgedBoundary": 0,
+            "purgedBoundaryPlannedEntries": 0,
+            "winRate": null,
+            "avgWinR": 0,
+            "avgLossR": 0,
+            "payoffRatio": null,
+            "profitFactor": null,
+            "expectancyR": null,
+            "avgNetReturn": null,
+            "totalNetReturn": 0,
+            "maxDrawdown": 0,
+            "feeDrag": 0,
+            "spreadDrag": 0,
+            "slippageDrag": 0,
+            "fundingDrag": 0,
+            "longTrades": 0,
+            "shortTrades": 0,
+            "assetCount": 0,
+            "dataQuality": "COMPLETE"
+          },
+          {
+            "foldId": "fold-3",
+            "testStart": 1766620800000,
+            "testEnd": 1770825600000,
+            "rawSignals": 0,
+            "eligibleSignals": 0,
+            "rawPlannedEntries": 0,
+            "plannedEntries": 0,
+            "completeTrades": 0,
+            "degradedTrades": 0,
+            "noEntries": 0,
+            "missedEntries": 0,
+            "purgedBoundary": 0,
+            "purgedBoundaryPlannedEntries": 0,
+            "winRate": null,
+            "avgWinR": 0,
+            "avgLossR": 0,
+            "payoffRatio": null,
+            "profitFactor": null,
+            "expectancyR": null,
+            "avgNetReturn": null,
+            "totalNetReturn": 0,
+            "maxDrawdown": 0,
+            "feeDrag": 0,
+            "spreadDrag": 0,
+            "slippageDrag": 0,
+            "fundingDrag": 0,
+            "longTrades": 0,
+            "shortTrades": 0,
+            "assetCount": 0,
+            "dataQuality": "COMPLETE"
+          },
+          {
+            "foldId": "fold-4",
+            "testStart": 1770825600000,
+            "testEnd": 1775030400000,
+            "rawSignals": 0,
+            "eligibleSignals": 0,
+            "rawPlannedEntries": 0,
+            "plannedEntries": 0,
+            "completeTrades": 0,
+            "degradedTrades": 0,
+            "noEntries": 0,
+            "missedEntries": 0,
+            "purgedBoundary": 0,
+            "purgedBoundaryPlannedEntries": 0,
+            "winRate": null,
+            "avgWinR": 0,
+            "avgLossR": 0,
+            "payoffRatio": null,
+            "profitFactor": null,
+            "expectancyR": null,
+            "avgNetReturn": null,
+            "totalNetReturn": 0,
+            "maxDrawdown": 0,
+            "feeDrag": 0,
+            "spreadDrag": 0,
+            "slippageDrag": 0,
+            "fundingDrag": 0,
+            "longTrades": 0,
+            "shortTrades": 0,
+            "assetCount": 0,
+            "dataQuality": "COMPLETE"
+          },
+          {
+            "foldId": "fold-5",
+            "testStart": 1775030400000,
+            "testEnd": 1779235200000,
+            "rawSignals": 0,
+            "eligibleSignals": 0,
+            "rawPlannedEntries": 0,
+            "plannedEntries": 0,
+            "completeTrades": 0,
+            "degradedTrades": 0,
+            "noEntries": 0,
+            "missedEntries": 0,
+            "purgedBoundary": 0,
+            "purgedBoundaryPlannedEntries": 0,
+            "winRate": null,
+            "avgWinR": 0,
+            "avgLossR": 0,
+            "payoffRatio": null,
+            "profitFactor": null,
+            "expectancyR": null,
+            "avgNetReturn": null,
+            "totalNetReturn": 0,
+            "maxDrawdown": 0,
+            "feeDrag": 0,
+            "spreadDrag": 0,
+            "slippageDrag": 0,
+            "fundingDrag": 0,
+            "longTrades": 0,
+            "shortTrades": 0,
+            "assetCount": 0,
+            "dataQuality": "COMPLETE"
+          }
+        ]
+      },
+      "aggregateOOS": {
+        "completeTrades": 0,
+        "positiveFolds": 0,
+        "negativeFolds": 0,
+        "winRate": null,
+        "avgWinR": 0,
+        "avgLossR": 0,
+        "payoffRatio": null,
+        "profitFactor": null,
+        "expectancyR": null,
+        "totalNetReturn": 0,
+        "maxDrawdown": 0,
+        "totalFeeDrag": 0,
+        "totalSpreadDrag": 0,
+        "totalSlippageDrag": 0,
+        "totalFundingDrag": 0
+      },
+      "holdout": {
+        "completeTrades": 0,
+        "winRate": null,
+        "profitFactor": null,
+        "expectancyR": null,
+        "totalNetReturn": 0,
+        "maxDrawdown": 0
+      },
+      "stability": {
+        "byAsset": [],
+        "bySide": [],
+        "byFold": [],
+        "assetUniverseSize": 383,
+        "assetConcentrationApplicable": true,
+        "assetConcentration": "DIVERSIFIED",
+        "singleAssetDominance": false,
+        "singleFoldDominance": false,
+        "sideDominance": false,
+        "concentrationRisk": false,
+        "foldCounts": {
+          "positive": 0,
+          "negative": 0,
+          "total": 5
+        }
+      },
+      "productionPolicy": "CORE_SIGNAL_POLICY",
+      "productionPolicyComplete": true,
+      "statisticalVerdict": "INSUFFICIENT_DATA",
+      "validationVerdict": "PROVISIONAL",
+      "promotableToM4": false,
+      "orderBookAvailabilitySensitive": true,
+      "flags": {
+        "holdoutUsedForOptimization": false,
+        "strategyParametersChanged": false,
+        "parameterSearchPerformed": false
+      },
+      "replayDiagnostics": {
+        "replaySignalsTotal": 76,
+        "replaySignalsPrimaryEligible": 0,
+        "replaySignalsExcluded": 76,
+        "excludedByReason": {
+          "incomplete_candle_history": 0,
+          "incomplete_ticker_window": 0,
+          "incomplete_benchmark": 0,
+          "incomplete_universe": 0,
+          "survivorship_bias": 76,
+          "stale_data": 0,
+          "gap_detected": 0
+        },
+        "inputExcludedByReason": {
+          "incomplete_candle_history": 9192,
+          "incomplete_ticker_window": 9192,
+          "incomplete_benchmark": 54,
+          "incomplete_universe": 0,
+          "survivorship_bias": 0,
+          "stale_data": 0,
+          "gap_detected": 27
+        },
+        "tickerDiagnostics": {
+          "count": 9192,
+          "sample": [
+            {
+              "asset": "1000000BOBUSDT",
+              "signalAvailableAt": 1754010000000,
+              "quality": "INCOMPLETE",
+              "reasons": [
+                "incomplete_candle_history",
+                "incomplete_ticker_window"
+              ]
+            },
+            {
+              "asset": "1000000MOGUSDT",
+              "signalAvailableAt": 1754010000000,
+              "quality": "INCOMPLETE",
+              "reasons": [
+                "incomplete_candle_history",
+                "incomplete_ticker_window"
+              ]
+            },
+            {
+              "asset": "1000BONKUSDT",
+              "signalAvailableAt": 1754010000000,
+              "quality": "INCOMPLETE",
+              "reasons": [
+                "incomplete_candle_history",
+                "incomplete_ticker_window"
+              ]
+            },
+            {
+              "asset": "1000CATUSDT",
+              "signalAvailableAt": 1754010000000,
+              "quality": "INCOMPLETE",
+              "reasons": [
+                "incomplete_candle_history",
+                "incomplete_ticker_window"
+              ]
+            },
+            {
+              "asset": "1000CHEEMSUSDT",
+              "signalAvailableAt": 1754010000000,
+              "quality": "INCOMPLETE",
+              "reasons": [
+                "incomplete_candle_history",
+                "incomplete_ticker_window"
+              ]
+            }
+          ],
+          "last": {
+            "asset": "ZRXUSDT",
+            "signalAvailableAt": 1754092800000,
+            "quality": "INCOMPLETE",
+            "reasons": [
+              "incomplete_candle_history",
+              "incomplete_ticker_window"
+            ]
+          }
+        },
+        "benchmarkDiagnostics": {
+          "count": 8760,
+          "sample": [
+            {
+              "signalAvailableAt": 1754010000000,
+              "value": null,
+              "complete": false,
+              "reason": "future_candle_not_allowed",
+              "reasons": [
+                "future_candle_not_allowed",
+                "incomplete_benchmark",
+                "gap_detected"
+              ],
+              "latestCloseTime": null,
+              "lookbackStartTime": null,
+              "interval": "4h"
+            },
+            {
+              "signalAvailableAt": 1754013600000,
+              "value": null,
+              "complete": false,
+              "reason": "future_candle_not_allowed",
+              "reasons": [
+                "future_candle_not_allowed",
+                "incomplete_benchmark",
+                "gap_detected"
+              ],
+              "latestCloseTime": null,
+              "lookbackStartTime": null,
+              "interval": "4h"
+            },
+            {
+              "signalAvailableAt": 1754017200000,
+              "value": null,
+              "complete": false,
+              "reason": "future_candle_not_allowed",
+              "reasons": [
+                "future_candle_not_allowed",
+                "incomplete_benchmark",
+                "gap_detected"
+              ],
+              "latestCloseTime": null,
+              "lookbackStartTime": null,
+              "interval": "4h"
+            },
+            {
+              "signalAvailableAt": 1754020800000,
+              "value": null,
+              "complete": false,
+              "reason": "incomplete_benchmark",
+              "reasons": [
+                "incomplete_benchmark",
+                "gap_detected"
+              ],
+              "latestCloseTime": 1754020800000,
+              "lookbackStartTime": 1753934400000,
+              "interval": "4h"
+            },
+            {
+              "signalAvailableAt": 1754024400000,
+              "value": null,
+              "complete": false,
+              "reason": "incomplete_benchmark",
+              "reasons": [
+                "incomplete_benchmark",
+                "gap_detected"
+              ],
+              "latestCloseTime": 1754020800000,
+              "lookbackStartTime": 1753934400000,
+              "interval": "4h"
+            }
+          ],
+          "last": {
+            "signalAvailableAt": 1785542400000,
+            "value": -0.029208697373047987,
+            "complete": true,
+            "reason": null,
+            "reasons": [],
+            "latestCloseTime": 1785542400000,
+            "lookbackStartTime": 1785456000000,
+            "interval": "4h"
+          }
+        }
+      }
+    }
+  },
+  "policyScope": "CORE_SIGNAL_POLICY",
+  "fullProductionPolicyValidated": false
+}
