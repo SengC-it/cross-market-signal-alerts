@@ -277,7 +277,15 @@ assert.equal(committedReport.providerChecksum.mismatchedFiles, 0);
 for (const strategyId of DYNAMIC_STRATEGY_IDS) {
   const report = committedReport.strategies[strategyId];
   assert.equal(report.validationVerdict, "PROVISIONAL");
-  assert.equal(report.statisticalVerdict, "INSUFFICIENT_DATA");
+  const expectedStatisticalVerdict = strategyId === "dynamic_relative_weakness_breakdown"
+    ? "NEGATIVE_EDGE"
+    : "INSUFFICIENT_DATA";
+  assert.equal(report.statisticalVerdict, expectedStatisticalVerdict);
+  if (strategyId === "dynamic_relative_weakness_breakdown") {
+    assert.ok(report.aggregateOOS.completeTrades >= 60);
+    assert.ok(report.aggregateOOS.expectancyR <= 0);
+    assert.ok(report.holdout.expectancyR <= 0);
+  }
   assert.equal(report.promotableToM4, false);
   assert.equal(report.orderBookAvailabilitySensitive, true);
   assert.equal(report.flags.strategyParametersChanged, false);

@@ -1,6 +1,6 @@
 {
   "version": "V4-M3.5",
-  "frozenBaseSha": "4e74aa8bd37025195f46c5c2adc9bc0ca130646e",
+  "frozenBaseSha": "f8a6f5c4f1b8b129dd866cd29638db8b57d228f0",
   "manifestSha256": "6431787daf657f0d861b367fa549d7d71582e37b381448f995a746b13dd1e08c",
   "frozenWindow": {
     "start": "2025-08-01T00:00:00.000Z",
@@ -71,8 +71,8 @@
     "strategyId": "dynamic_relative_strength_breakout",
     "replaySignals": 8,
     "primaryEligible": 8,
-    "completeTrades": 3,
-    "degradedTrades": 5,
+    "completeTrades": 8,
+    "degradedTrades": 0,
     "noEntry": 0,
     "missedEntry": 0,
     "purged": 0,
@@ -151,6 +151,34 @@
           "exclusionReasons": {}
         },
         {
+          "stage": "initial_training_context_not_oos",
+          "count": 0,
+          "denominator": 8,
+          "denominatorStage": "replay_signals",
+          "percentage": 0,
+          "exclusionReasons": {
+            "not_attributed_to_oos": 0
+          }
+        },
+        {
+          "stage": "development_oos",
+          "count": 8,
+          "denominator": 8,
+          "denominatorStage": "replay_signals",
+          "percentage": 100,
+          "exclusionReasons": {}
+        },
+        {
+          "stage": "holdout",
+          "count": 0,
+          "denominator": 8,
+          "denominatorStage": "replay_signals",
+          "percentage": 0,
+          "exclusionReasons": {
+            "not_attributed_to_development": 0
+          }
+        },
+        {
           "stage": "development_oos_selected",
           "count": 8,
           "denominator": 8,
@@ -204,23 +232,21 @@
         },
         {
           "stage": "complete_trades",
-          "count": 3,
+          "count": 8,
           "denominator": 8,
           "denominatorStage": "entry_accepted",
-          "percentage": 37.5,
+          "percentage": 100,
           "exclusionReasons": {
-            "degraded": 5
+            "degraded": 0
           }
         },
         {
           "stage": "degraded_trades",
-          "count": 5,
+          "count": 0,
           "denominator": 8,
           "denominatorStage": "entry_accepted",
-          "percentage": 62.5,
-          "exclusionReasons": {
-            "INCOMPLETE_FUNDING": 5
-          }
+          "percentage": 0,
+          "exclusionReasons": {}
         },
         {
           "stage": "NO_ENTRY",
@@ -239,6 +265,14 @@
           "exclusionReasons": {}
         }
       ],
+      "conservation": {
+        "replaySignals": 8,
+        "initialTrainingContextSignals": 0,
+        "developmentOosSignals": 8,
+        "holdoutSignals": 0,
+        "sum": 8,
+        "valid": true
+      },
       "counts": {
         "poolCandidates": 9163,
         "strategyEvaluated": 9038,
@@ -247,11 +281,13 @@
         "primaryEligible": 8,
         "tradePlanCreated": 8,
         "entryAccepted": 8,
-        "completeTrades": 3,
-        "degradedTrades": 5,
+        "completeTrades": 8,
+        "degradedTrades": 0,
         "noEntry": 0,
         "missedEntry": 0,
         "purged": 0,
+        "initialTrainingContextSignals": 0,
+        "developmentOosSignals": 8,
         "holdoutRawSignals": 0,
         "holdoutTrades": 0,
         "holdoutCompleteTrades": 0,
@@ -287,75 +323,79 @@
       }
     },
     "costDecomposition": {
-      "trades": 3,
+      "trades": 8,
       "grossDirectionalPnl": {
-        "sumReturnPct": 0.03714156234345056,
-        "averageReturnPct": 0.012380520781150187,
-        "sumR": 0.5247709965787488,
-        "averageR": 0.1749236655262496
+        "sumReturnPct": 0.2896768581289487,
+        "averageReturnPct": 0.03620960726611859,
+        "sumR": 4.144858262490576,
+        "averageR": 0.518107282811322
       },
-      "grossExpectancyR": 0.1749236655262496,
-      "feeDragPct": 0.0036222849374060702,
-      "feeDrag": 0.0036222849374060702,
+      "grossExpectancyR": 0.518107282811322,
+      "feeDragPct": 0.00977380611487737,
+      "feeDrag": 0.00977380611487737,
       "spreadDragPct": 0,
       "spreadDrag": 0,
       "slippageDragPct": 0,
       "slippageDrag": 0,
-      "fundingPctTotal": -0.00011545,
-      "fundingDragPct": 0.00011545,
-      "fundingDrag": 0.00011545,
+      "fundingPctTotal": 0.020322100000000003,
+      "fundingDragPct": -0.020322100000000003,
+      "fundingDrag": -0.020322100000000003,
       "netPnl": {
-        "sumReturnPct": 0.033403827406044494,
-        "averageReturnPct": 0.011134609135348165,
-        "sumR": 0.4647552167832883,
-        "averageR": 0.15491840559442943,
-        "compoundedReturnPct": 0.027688238672729737,
-        "profitFactor": 1.5480250183170035
+        "sumReturnPct": 0.30022515201407135,
+        "averageReturnPct": 0.03752814400175892,
+        "sumR": 4.321117923931797,
+        "averageR": 0.5401397404914746,
+        "compoundedReturnPct": 0.32519471972438874,
+        "profitFactor": 3.9220048046653218
       },
-      "netExpectancyR": 0.15491840559442943,
-      "costImpactR": 0.020005259931820174,
-      "reconciliationErrorPct": -6.938893903907228e-18,
+      "netExpectancyR": 0.5401397404914746,
+      "costImpactR": -0.022032457680152606,
+      "reconciliationErrorPct": 0,
       "reconciles": true,
       "rawEdgeClassification": "RAW_SIGNAL_POSITIVE_AFTER_COST"
     },
     "exitDecomposition": [
       {
+        "key": "take_profit",
         "exitReason": "take_profit",
-        "trades": 1,
+        "trades": 3,
         "winRate": 1,
-        "expectancyR": 1.4778305486083256,
+        "expectancyR": 1.4855778100326906,
         "PF": null,
-        "avgNetReturn": 0.0939516119139699,
-        "totalNetReturn": 0.09395161191396983,
-        "MFE_R": 1.4978479196556715,
-        "MAE_R": -0.458536585365852,
-        "averageHoldingHours": 5.333333333333333
+        "avgNetReturn": 0.09185634540401738,
+        "totalNetReturn": 0.30165221779272877,
+        "MFE_R": 1.5065158132332617,
+        "MAE_R": -0.20458385433238338,
+        "averageHoldingHours": 3.6666666666666665
       },
       {
+        "key": "stop_loss",
         "exitReason": "stop_loss",
-        "trades": 1,
+        "trades": 2,
         "winRate": 0,
-        "expectancyR": -1.0194705882352941,
+        "expectancyR": -1.0247642169624744,
         "PF": 0,
-        "avgNetReturn": -0.060953106682297746,
-        "totalNetReturn": -0.0609531066822977,
-        "MFE_R": 0.1830065359477095,
-        "MAE_R": -1,
-        "averageHoldingHours": 2.6666666666666665
+        "avgNetReturn": -0.051373144824184896,
+        "totalNetReturn": -0.10019886530844602,
+        "MFE_R": 0.3156411990083391,
+        "MAE_R": -0.9999999999999999,
+        "averageHoldingHours": 2.875
       },
       {
+        "key": "time_stop",
         "exitReason": "time_stop",
-        "trades": 1,
+        "trades": 3,
         "winRate": 1,
-        "expectancyR": 0.006395256410256804,
+        "expectancyR": 0.6379709759195583,
         "PF": null,
-        "avgNetReturn": 0.0004053221743723333,
-        "totalNetReturn": 0.00040532217437228013,
-        "MFE_R": 0.5576923076923099,
-        "MAE_R": -0.5371794871794877,
+        "avgNetReturn": 0.04246746848346301,
+        "totalNetReturn": 0.13145737503056298,
+        "MFE_R": 0.9096032572080217,
+        "MAE_R": -0.3262687235647781,
         "averageHoldingHours": 8
       },
       {
+        "key": "end_of_data",
         "exitReason": "end_of_data",
         "trades": 0,
         "winRate": null,
@@ -368,6 +408,7 @@
         "averageHoldingHours": null
       },
       {
+        "key": "other",
         "exitReason": "other",
         "trades": 0,
         "winRate": null,
@@ -381,31 +422,31 @@
       }
     ],
     "mfeMae": {
-      "trades": 3,
-      "averageMfeR": 0.746182254431897,
-      "averageMaeR": -0.6652386908484466,
+      "trades": 8,
+      "averageMfeR": 0.984954951167566,
+      "averageMaeR": -0.4490697167114356,
       "mfeAtLeast": {
         "0.5R": {
-          "count": 2,
-          "percentage": 66.66666666666666
+          "count": 6,
+          "percentage": 75
         },
         "1R": {
-          "count": 1,
-          "percentage": 33.33333333333333
+          "count": 4,
+          "percentage": 50
         },
         "1.5R": {
-          "count": 0,
-          "percentage": 0
+          "count": 2,
+          "percentage": 25
         }
       },
       "maeAtMost": {
         "-0.5R": {
-          "count": 2,
-          "percentage": 66.66666666666666
+          "count": 3,
+          "percentage": 37.5
         },
         "-1R": {
           "count": 1,
-          "percentage": 33.33333333333333
+          "percentage": 12.5
         }
       }
     },
@@ -414,28 +455,28 @@
         {
           "bucket": "85",
           "signals": 3,
-          "completeTrades": 1,
-          "trades": 1,
-          "winRate": 0,
-          "expectancyR": -1.0194705882352941,
-          "PF": 0,
-          "avgNetReturn": -0.060953106682297746,
-          "totalNetReturn": -0.0609531066822977,
-          "MFE_R": 0.1830065359477095,
-          "MAE_R": -1
+          "completeTrades": 3,
+          "trades": 3,
+          "winRate": 0.6666666666666666,
+          "expectancyR": 0.6531440977514839,
+          "PF": 2.9796253904614893,
+          "avgNetReturn": 0.04022143920526149,
+          "totalNetReturn": 0.11733687119836134,
+          "MFE_R": 1.0682353519972745,
+          "MAE_R": -0.3850716592104327
         },
         {
           "bucket": "86",
           "signals": 1,
-          "completeTrades": 0,
-          "trades": 0,
-          "winRate": null,
-          "expectancyR": null,
+          "completeTrades": 1,
+          "trades": 1,
+          "winRate": 1,
+          "expectancyR": 0.8682994470975455,
           "PF": null,
-          "avgNetReturn": null,
-          "totalNetReturn": 0,
-          "MFE_R": null,
-          "MAE_R": null
+          "avgNetReturn": 0.06899326562529708,
+          "totalNetReturn": 0.06899326562529717,
+          "MFE_R": 0.993417115499699,
+          "MAE_R": -0.3231597845601433
         },
         {
           "bucket": "87",
@@ -453,15 +494,15 @@
         {
           "bucket": "88",
           "signals": 2,
-          "completeTrades": 0,
-          "trades": 0,
-          "winRate": null,
-          "expectancyR": null,
-          "PF": null,
-          "avgNetReturn": null,
-          "totalNetReturn": 0,
-          "MFE_R": null,
-          "MAE_R": null
+          "completeTrades": 2,
+          "trades": 2,
+          "winRate": 0.5,
+          "expectancyR": 0.004580189280608882,
+          "PF": 1.3878774846559894,
+          "avgNetReturn": 0.008105317342323781,
+          "totalNetReturn": 0.013786470520840366,
+          "MFE_R": 0.8129881052505126,
+          "MAE_R": -0.5592334494773515
         },
         {
           "bucket": "89+",
@@ -477,13 +518,46 @@
           "MAE_R": null
         }
       ],
-      "spearmanCorrelation": 0.8660254037844387,
-      "sampleSize": 3,
-      "distinctBuckets": 2,
+      "spearmanCorrelation": -0.21002063972064536,
+      "sampleSize": 8,
+      "distinctBuckets": 4,
       "status": "INSUFFICIENT_FOR_CALIBRATION"
     },
     "breakdowns": {
       "byAsset": [
+        {
+          "key": "GUNUSDT",
+          "trades": 1,
+          "winRate": 1,
+          "expectancyR": 1.5002443890274315,
+          "PF": null,
+          "avgNetReturn": 0.08983544051767044,
+          "totalNetReturn": 0.08983544051767045,
+          "MFE_R": 1.5211970074812968,
+          "MAE_R": -0.07481296758104787
+        },
+        {
+          "key": "ONDOUSDT",
+          "trades": 1,
+          "winRate": 0,
+          "expectancyR": -1.030057845689655,
+          "PF": 0,
+          "avgNetReturn": -0.04179318296607205,
+          "totalNetReturn": -0.04179318296607204,
+          "MFE_R": 0.44827586206896874,
+          "MAE_R": -0.9999999999999998
+        },
+        {
+          "key": "POPCATUSDT",
+          "trades": 1,
+          "winRate": 1,
+          "expectancyR": 1.4786584924623145,
+          "PF": null,
+          "avgNetReturn": 0.09178198378041179,
+          "totalNetReturn": 0.09178198378041169,
+          "MFE_R": 1.500502512562817,
+          "MAE_R": -0.08040201005025027
+        },
         {
           "key": "PUMPUSDT",
           "trades": 1,
@@ -494,6 +568,28 @@
           "totalNetReturn": -0.0609531066822977,
           "MFE_R": 0.1830065359477095,
           "MAE_R": -1
+        },
+        {
+          "key": "ROSEUSDT",
+          "trades": 1,
+          "winRate": 1,
+          "expectancyR": 0.8682994470975455,
+          "PF": null,
+          "avgNetReturn": 0.06899326562529708,
+          "totalNetReturn": 0.06899326562529717,
+          "MFE_R": 0.993417115499699,
+          "MAE_R": -0.3231597845601433
+        },
+        {
+          "key": "SAHARAUSDT",
+          "trades": 1,
+          "winRate": 1,
+          "expectancyR": 1.0392182242508727,
+          "PF": null,
+          "avgNetReturn": 0.05800381765071961,
+          "totalNetReturn": 0.0580038176507196,
+          "MFE_R": 1.1777003484320563,
+          "MAE_R": -0.1184668989547033
         },
         {
           "key": "ZECUSDT",
@@ -510,38 +606,71 @@
       "byFold": [
         {
           "key": "fold-2",
-          "trades": 1,
+          "trades": 3,
           "winRate": 1,
-          "expectancyR": 1.4778305486083256,
+          "expectancyR": 1.4855778100326906,
           "PF": null,
-          "avgNetReturn": 0.0939516119139699,
-          "totalNetReturn": 0.09395161191396983,
-          "MFE_R": 1.4978479196556715,
-          "MAE_R": -0.458536585365852
+          "avgNetReturn": 0.09185634540401738,
+          "totalNetReturn": 0.30165221779272877,
+          "MFE_R": 1.5065158132332617,
+          "MAE_R": -0.20458385433238338
         },
         {
           "key": "fold-3",
+          "trades": 3,
+          "winRate": 0.6666666666666666,
+          "expectancyR": -0.04825862824249728,
+          "PF": 1.1385570248517691,
+          "avgNetReturn": 0.0028151603724572215,
+          "totalNetReturn": 0.004241681568879274,
+          "MFE_R": 0.5780386530465728,
+          "MAE_R": -0.620113090579877
+        },
+        {
+          "key": "fold-4",
           "trades": 2,
           "winRate": 0.5,
-          "expectancyR": -0.5065376659125187,
-          "PF": 0.006649737748150721,
-          "avgNetReturn": -0.030273892253962705,
-          "totalNetReturn": -0.06057249015366062,
-          "MFE_R": 0.37034942182000974,
-          "MAE_R": -0.7685897435897439
+          "expectancyR": 0.004580189280608882,
+          "PF": 1.3878774846559894,
+          "avgNetReturn": 0.008105317342323781,
+          "totalNetReturn": 0.013786470520840366,
+          "MFE_R": 0.8129881052505126,
+          "MAE_R": -0.5592334494773515
         }
       ],
       "byMonth": [
         {
           "key": "2025-11",
+          "trades": 2,
+          "winRate": 1,
+          "expectancyR": 1.47824452053532,
+          "PF": null,
+          "avgNetReturn": 0.09286679784719085,
+          "totalNetReturn": 0.19435666101521298,
+          "MFE_R": 1.4991752161092444,
+          "MAE_R": -0.26946929770805117
+        },
+        {
+          "key": "2025-12",
           "trades": 1,
           "winRate": 1,
-          "expectancyR": 1.4778305486083256,
+          "expectancyR": 1.5002443890274315,
           "PF": null,
-          "avgNetReturn": 0.0939516119139699,
-          "totalNetReturn": 0.09395161191396983,
-          "MFE_R": 1.4978479196556715,
-          "MAE_R": -0.458536585365852
+          "avgNetReturn": 0.08983544051767044,
+          "totalNetReturn": 0.08983544051767045,
+          "MFE_R": 1.5211970074812968,
+          "MAE_R": -0.07481296758104787
+        },
+        {
+          "key": "2026-01",
+          "trades": 1,
+          "winRate": 1,
+          "expectancyR": 0.8682994470975455,
+          "PF": null,
+          "avgNetReturn": 0.06899326562529708,
+          "totalNetReturn": 0.06899326562529717,
+          "MFE_R": 0.993417115499699,
+          "MAE_R": -0.3231597845601433
         },
         {
           "key": "2026-02",
@@ -553,19 +682,41 @@
           "totalNetReturn": -0.06057249015366062,
           "MFE_R": 0.37034942182000974,
           "MAE_R": -0.7685897435897439
+        },
+        {
+          "key": "2026-03",
+          "trades": 2,
+          "winRate": 0.5,
+          "expectancyR": 0.004580189280608882,
+          "PF": 1.3878774846559894,
+          "avgNetReturn": 0.008105317342323781,
+          "totalNetReturn": 0.013786470520840366,
+          "MFE_R": 0.8129881052505126,
+          "MAE_R": -0.5592334494773515
         }
       ],
       "byScore": [
         {
           "key": "85",
+          "trades": 3,
+          "winRate": 0.6666666666666666,
+          "expectancyR": 0.6531440977514839,
+          "PF": 2.9796253904614893,
+          "avgNetReturn": 0.04022143920526149,
+          "totalNetReturn": 0.11733687119836134,
+          "MFE_R": 1.0682353519972745,
+          "MAE_R": -0.3850716592104327
+        },
+        {
+          "key": "86",
           "trades": 1,
-          "winRate": 0,
-          "expectancyR": -1.0194705882352941,
-          "PF": 0,
-          "avgNetReturn": -0.060953106682297746,
-          "totalNetReturn": -0.0609531066822977,
-          "MFE_R": 0.1830065359477095,
-          "MAE_R": -1
+          "winRate": 1,
+          "expectancyR": 0.8682994470975455,
+          "PF": null,
+          "avgNetReturn": 0.06899326562529708,
+          "totalNetReturn": 0.06899326562529717,
+          "MFE_R": 0.993417115499699,
+          "MAE_R": -0.3231597845601433
         },
         {
           "key": "87",
@@ -577,191 +728,235 @@
           "totalNetReturn": 0.09439501475996881,
           "MFE_R": 1.0277701136739907,
           "MAE_R": -0.4978580362726699
+        },
+        {
+          "key": "88",
+          "trades": 2,
+          "winRate": 0.5,
+          "expectancyR": 0.004580189280608882,
+          "PF": 1.3878774846559894,
+          "avgNetReturn": 0.008105317342323781,
+          "totalNetReturn": 0.013786470520840366,
+          "MFE_R": 0.8129881052505126,
+          "MAE_R": -0.5592334494773515
         }
       ],
       "byPoolRank": [
         {
           "key": "rank_1",
-          "trades": 2,
-          "winRate": 1,
-          "expectancyR": 0.7421129025092912,
-          "PF": null,
-          "avgNetReturn": 0.04717846704417112,
-          "totalNetReturn": 0.09439501475996881,
-          "MFE_R": 1.0277701136739907,
-          "MAE_R": -0.4978580362726699
+          "trades": 6,
+          "winRate": 0.8333333333333334,
+          "expectancyR": 0.6436550032841296,
+          "PF": 7.4459382080243754,
+          "avgNetReturn": 0.04489937915265955,
+          "totalNetReturn": 0.2925772060073031,
+          "MFE_R": 1.0326884268050003,
+          "MAE_R": -0.41869262060687235
         },
         {
           "key": "rank_2",
-          "trades": 1,
-          "winRate": 0,
-          "expectancyR": -1.0194705882352941,
-          "PF": 0,
-          "avgNetReturn": -0.060953106682297746,
-          "totalNetReturn": -0.0609531066822977,
-          "MFE_R": 0.1830065359477095,
-          "MAE_R": -1
+          "trades": 2,
+          "winRate": 0.5,
+          "expectancyR": 0.2295939521135102,
+          "PF": 1.5057802428152114,
+          "avgNetReturn": 0.015414438549057021,
+          "totalNetReturn": 0.025234480049233676,
+          "MFE_R": 0.8417545242552633,
+          "MAE_R": -0.5402010050251251
         }
       ],
       "byMomentum24h": [
         {
           "key": "(8%,10%]",
-          "trades": 3,
-          "winRate": 0.6666666666666666,
-          "expectancyR": 0.15491840559442943,
-          "PF": 1.5480250183170035,
-          "avgNetReturn": 0.011134609135348165,
-          "totalNetReturn": 0.027688238672729737,
-          "MFE_R": 0.746182254431897,
-          "MAE_R": -0.6652386908484466
+          "trades": 8,
+          "winRate": 0.75,
+          "expectancyR": 0.5401397404914746,
+          "PF": 3.9220048046653218,
+          "avgNetReturn": 0.03752814400175892,
+          "totalNetReturn": 0.32519471972438874,
+          "MFE_R": 0.984954951167566,
+          "MAE_R": -0.4490697167114356
         }
       ],
       "byRelativeMetric": [
         {
           "key": ">10%",
-          "trades": 3,
-          "winRate": 0.6666666666666666,
-          "expectancyR": 0.15491840559442943,
-          "PF": 1.5480250183170035,
-          "avgNetReturn": 0.011134609135348165,
-          "totalNetReturn": 0.027688238672729737,
-          "MFE_R": 0.746182254431897,
-          "MAE_R": -0.6652386908484466
+          "trades": 8,
+          "winRate": 0.75,
+          "expectancyR": 0.5401397404914746,
+          "PF": 3.9220048046653218,
+          "avgNetReturn": 0.03752814400175892,
+          "totalNetReturn": 0.32519471972438874,
+          "MFE_R": 0.984954951167566,
+          "MAE_R": -0.4490697167114356
         }
       ],
       "byVolumeMultiple": [
         {
           "key": "(1,2]",
-          "trades": 3,
-          "winRate": 0.6666666666666666,
-          "expectancyR": 0.15491840559442943,
-          "PF": 1.5480250183170035,
-          "avgNetReturn": 0.011134609135348165,
-          "totalNetReturn": 0.027688238672729737,
-          "MFE_R": 0.746182254431897,
-          "MAE_R": -0.6652386908484466
+          "trades": 8,
+          "winRate": 0.75,
+          "expectancyR": 0.5401397404914746,
+          "PF": 3.9220048046653218,
+          "avgNetReturn": 0.03752814400175892,
+          "totalNetReturn": 0.32519471972438874,
+          "MFE_R": 0.984954951167566,
+          "MAE_R": -0.4490697167114356
         }
       ],
       "byBtcBenchmarkRegime": [
         {
           "key": "down",
-          "trades": 3,
-          "winRate": 0.6666666666666666,
-          "expectancyR": 0.15491840559442943,
-          "PF": 1.5480250183170035,
-          "avgNetReturn": 0.011134609135348165,
-          "totalNetReturn": 0.027688238672729737,
-          "MFE_R": 0.746182254431897,
-          "MAE_R": -0.6652386908484466
+          "trades": 8,
+          "winRate": 0.75,
+          "expectancyR": 0.5401397404914746,
+          "PF": 3.9220048046653218,
+          "avgNetReturn": 0.03752814400175892,
+          "totalNetReturn": 0.32519471972438874,
+          "MFE_R": 0.984954951167566,
+          "MAE_R": -0.4490697167114356
         }
       ],
       "byVolatilityRegime": [
         {
           "key": "high",
+          "trades": 5,
+          "winRate": 0.8,
+          "expectancyR": 0.4744545776263413,
+          "PF": 3.6315461083568605,
+          "avgNetReturn": 0.032080182136412234,
+          "totalNetReturn": 0.16231432510887256,
+          "MFE_R": 0.8819328454454892,
+          "MAE_R": -0.48746855121203725
+        },
+        {
+          "key": "medium",
           "trades": 3,
           "winRate": 0.6666666666666666,
-          "expectancyR": 0.15491840559442943,
-          "PF": 1.5480250183170035,
-          "avgNetReturn": 0.011134609135348165,
-          "totalNetReturn": 0.027688238672729737,
-          "MFE_R": 0.746182254431897,
-          "MAE_R": -0.6652386908484466
+          "expectancyR": 0.6496150119333636,
+          "PF": 4.345623171260258,
+          "avgNetReturn": 0.04660808044400339,
+          "totalNetReturn": 0.1401345497486317,
+          "MFE_R": 1.1566584607043608,
+          "MAE_R": -0.3850716592104326
         }
       ],
       "byFundingSign": [
         {
           "key": "negative",
+          "trades": 4,
+          "winRate": 0.75,
+          "expectancyR": 0.48320661294781053,
+          "PF": 4.453810517850787,
+          "avgNetReturn": 0.0360864337256705,
+          "totalNetReturn": 0.14490456174541433,
+          "MFE_R": 1.001079650494942,
+          "MAE_R": -0.5190295206488975
+        },
+        {
+          "key": "positive",
           "trades": 2,
           "winRate": 1,
-          "expectancyR": 0.7421129025092912,
+          "expectancyR": 0.953758835674209,
           "PF": null,
-          "avgNetReturn": 0.04717846704417112,
-          "totalNetReturn": 0.09439501475996881,
-          "MFE_R": 1.0277701136739907,
-          "MAE_R": -0.4978580362726699
+          "avgNetReturn": 0.06349854163800835,
+          "totalNetReturn": 0.1309989560744742,
+          "MFE_R": 1.0855587319658777,
+          "MAE_R": -0.22081334175742331
         },
         {
           "key": "zero",
-          "trades": 1,
-          "winRate": 0,
-          "expectancyR": -1.0194705882352941,
-          "PF": 0,
-          "avgNetReturn": -0.060953106682297746,
-          "totalNetReturn": -0.0609531066822977,
-          "MFE_R": 0.1830065359477095,
-          "MAE_R": -1
+          "trades": 2,
+          "winRate": 0.5,
+          "expectancyR": 0.2403869003960687,
+          "PF": 1.4738451476462777,
+          "avgNetReturn": 0.014441166917686345,
+          "totalNetReturn": 0.023406584645647932,
+          "MFE_R": 0.8521017717145032,
+          "MAE_R": -0.5374064837905239
         }
       ],
       "byExitReason": [
         {
           "key": "stop_loss",
-          "trades": 1,
+          "trades": 2,
           "winRate": 0,
-          "expectancyR": -1.0194705882352941,
+          "expectancyR": -1.0247642169624744,
           "PF": 0,
-          "avgNetReturn": -0.060953106682297746,
-          "totalNetReturn": -0.0609531066822977,
-          "MFE_R": 0.1830065359477095,
-          "MAE_R": -1
+          "avgNetReturn": -0.051373144824184896,
+          "totalNetReturn": -0.10019886530844602,
+          "MFE_R": 0.3156411990083391,
+          "MAE_R": -0.9999999999999999
         },
         {
           "key": "take_profit",
-          "trades": 1,
+          "trades": 3,
           "winRate": 1,
-          "expectancyR": 1.4778305486083256,
+          "expectancyR": 1.4855778100326906,
           "PF": null,
-          "avgNetReturn": 0.0939516119139699,
-          "totalNetReturn": 0.09395161191396983,
-          "MFE_R": 1.4978479196556715,
-          "MAE_R": -0.458536585365852
+          "avgNetReturn": 0.09185634540401738,
+          "totalNetReturn": 0.30165221779272877,
+          "MFE_R": 1.5065158132332617,
+          "MAE_R": -0.20458385433238338
         },
         {
           "key": "time_stop",
-          "trades": 1,
+          "trades": 3,
           "winRate": 1,
-          "expectancyR": 0.006395256410256804,
+          "expectancyR": 0.6379709759195583,
           "PF": null,
-          "avgNetReturn": 0.0004053221743723333,
-          "totalNetReturn": 0.00040532217437228013,
-          "MFE_R": 0.5576923076923099,
-          "MAE_R": -0.5371794871794877
+          "avgNetReturn": 0.04246746848346301,
+          "totalNetReturn": 0.13145737503056298,
+          "MFE_R": 0.9096032572080217,
+          "MAE_R": -0.3262687235647781
         }
       ],
       "byHoldingHours": [
         {
-          "key": "2-4h",
+          "key": "<2h",
           "trades": 1,
+          "winRate": 1,
+          "expectancyR": 1.5002443890274315,
+          "PF": null,
+          "avgNetReturn": 0.08983544051767044,
+          "totalNetReturn": 0.08983544051767045,
+          "MFE_R": 1.5211970074812968,
+          "MAE_R": -0.07481296758104787
+        },
+        {
+          "key": "2-4h",
+          "trades": 2,
           "winRate": 0,
-          "expectancyR": -1.0194705882352941,
+          "expectancyR": -1.0247642169624744,
           "PF": 0,
-          "avgNetReturn": -0.060953106682297746,
-          "totalNetReturn": -0.0609531066822977,
-          "MFE_R": 0.1830065359477095,
-          "MAE_R": -1
+          "avgNetReturn": -0.051373144824184896,
+          "totalNetReturn": -0.10019886530844602,
+          "MFE_R": 0.3156411990083391,
+          "MAE_R": -0.9999999999999999
         },
         {
           "key": "4-8h",
-          "trades": 2,
+          "trades": 5,
           "winRate": 1,
-          "expectancyR": 0.7421129025092912,
+          "expectancyR": 0.9740803937658631,
           "PF": null,
-          "avgNetReturn": 0.04717846704417112,
-          "totalNetReturn": 0.09439501475996881,
-          "MFE_R": 1.0277701136739907,
-          "MAE_R": -0.4978580362726699
+          "avgNetReturn": 0.06262720022895414,
+          "totalNetReturn": 0.351363652522541,
+          "MFE_R": 1.1454320407685108,
+          "MAE_R": -0.3035489532220873
         }
       ],
       "byRegime": [
         {
           "key": "down|high|negative",
-          "trades": 2,
+          "trades": 4,
           "winRate": 1,
-          "expectancyR": 0.7421129025092912,
+          "expectancyR": 0.8479358690917502,
           "PF": null,
-          "avgNetReturn": 0.04717846704417112,
-          "totalNetReturn": 0.09439501475996881,
-          "MFE_R": 1.0277701136739907,
-          "MAE_R": -0.4978580362726699
+          "avgNetReturn": 0.05533850434108973,
+          "totalNetReturn": 0.23775961922663358,
+          "MFE_R": 1.0566644228199342,
+          "MAE_R": -0.3593356890150466
         },
         {
           "key": "down|high|positive",
@@ -773,20 +968,31 @@
           "totalNetReturn": -0.0609531066822977,
           "MFE_R": 0.1830065359477095,
           "MAE_R": -1
+        },
+        {
+          "key": "down|medium|negative",
+          "trades": 3,
+          "winRate": 0.6666666666666666,
+          "expectancyR": 0.6496150119333636,
+          "PF": 4.345623171260258,
+          "avgNetReturn": 0.04660808044400339,
+          "totalNetReturn": 0.1401345497486317,
+          "MFE_R": 1.1566584607043608,
+          "MAE_R": -0.3850716592104326
         }
       ]
     },
     "regimeBreakdown": [
       {
         "key": "down|high|negative",
-        "trades": 2,
+        "trades": 4,
         "winRate": 1,
-        "expectancyR": 0.7421129025092912,
+        "expectancyR": 0.8479358690917502,
         "PF": null,
-        "avgNetReturn": 0.04717846704417112,
-        "totalNetReturn": 0.09439501475996881,
-        "MFE_R": 1.0277701136739907,
-        "MAE_R": -0.4978580362726699
+        "avgNetReturn": 0.05533850434108973,
+        "totalNetReturn": 0.23775961922663358,
+        "MFE_R": 1.0566644228199342,
+        "MAE_R": -0.3593356890150466
       },
       {
         "key": "down|high|positive",
@@ -798,29 +1004,41 @@
         "totalNetReturn": -0.0609531066822977,
         "MFE_R": 0.1830065359477095,
         "MAE_R": -1
+      },
+      {
+        "key": "down|medium|negative",
+        "trades": 3,
+        "winRate": 0.6666666666666666,
+        "expectancyR": 0.6496150119333636,
+        "PF": 4.345623171260258,
+        "avgNetReturn": 0.04660808044400339,
+        "totalNetReturn": 0.1401345497486317,
+        "MFE_R": 1.1566584607043608,
+        "MAE_R": -0.3850716592104326
       }
     ],
     "lossDrivers": {
       "interpretation": "Overlapping diagnostic slices ranked by totalNetReturn; they are not independent causal effects.",
       "top3": [
         {
+          "dimension": "exitReason",
+          "key": "stop_loss",
+          "trades": 2,
+          "totalNetReturn": -0.10019886530844602,
+          "expectancyR": -1.0247642169624744,
+          "PF": 0
+        },
+        {
+          "dimension": "holdingHours",
+          "key": "2-4h",
+          "trades": 2,
+          "totalNetReturn": -0.10019886530844602,
+          "expectancyR": -1.0247642169624744,
+          "PF": 0
+        },
+        {
           "dimension": "asset",
           "key": "PUMPUSDT",
-          "trades": 1,
-          "totalNetReturn": -0.0609531066822977,
-          "expectancyR": -1.0194705882352941,
-          "PF": 0
-        },
-        {
-          "dimension": "exitReason",
-          "trades": 1,
-          "totalNetReturn": -0.0609531066822977,
-          "expectancyR": -1.0194705882352941,
-          "PF": 0
-        },
-        {
-          "dimension": "fundingSign",
-          "key": "zero",
           "trades": 1,
           "totalNetReturn": -0.0609531066822977,
           "expectancyR": -1.0194705882352941,
@@ -833,6 +1051,54 @@
       "reason": "The frozen sample is too small for a strong conclusion and does not show a clearly negative raw edge."
     },
     "tradeDetails": [
+      {
+        "asset": "GUNUSDT",
+        "foldId": "fold-2",
+        "signalCandleOpenTime": 1765760400000,
+        "signalAvailableAt": 1765764000000,
+        "score": 85,
+        "poolRank": 1,
+        "momentum24h": 0.0977607864554888,
+        "relativeMetric": 0.12067567753318253,
+        "volumeMultiple": 1.505235673078845,
+        "entry": 0.02009,
+        "exit": 0.02192,
+        "exitReason": "take_profit",
+        "netR": 1.5002443890274315,
+        "MFE_R": 1.5211970074812968,
+        "MAE_R": -0.07481296758104787,
+        "holdingHours": 0.25,
+        "grossReturnPct": 0.09109009457441508,
+        "netReturnPct": 0.08983544051767044,
+        "feeDragPct": 0.001254654056744649,
+        "spreadDragPct": 0,
+        "slippageDragPct": 0,
+        "fundingPct": 0
+      },
+      {
+        "asset": "POPCATUSDT",
+        "foldId": "fold-2",
+        "signalCandleOpenTime": 1762927200000,
+        "signalAvailableAt": 1762930800000,
+        "score": 85,
+        "poolRank": 2,
+        "momentum24h": 0.0964432284541723,
+        "relativeMetric": 0.1259953438821425,
+        "volumeMultiple": 1.5194979976127205,
+        "entry": 0.1603,
+        "exit": 0.17523,
+        "exitReason": "take_profit",
+        "netR": 1.4786584924623145,
+        "MFE_R": 1.500502512562817,
+        "MAE_R": -0.08040201005025027,
+        "holdingHours": 5.416666666666667,
+        "grossReturnPct": 0.09313786650031197,
+        "netReturnPct": 0.09178198378041179,
+        "feeDragPct": 0.001255882719900187,
+        "spreadDragPct": 0,
+        "slippageDragPct": 0,
+        "fundingPct": -0.0001
+      },
       {
         "asset": "ZECUSDT",
         "foldId": "fold-2",
@@ -882,6 +1148,30 @@
         "fundingPct": 0
       },
       {
+        "asset": "ROSEUSDT",
+        "foldId": "fold-3",
+        "signalCandleOpenTime": 1769727600000,
+        "signalAvailableAt": 1769731200000,
+        "score": 86,
+        "poolRank": 1,
+        "momentum24h": 0.08457968024755025,
+        "relativeMetric": 0.13664945091605762,
+        "volumeMultiple": 1.8645351246950899,
+        "entry": 0.02103,
+        "exit": 0.02242,
+        "exitReason": "time_stop",
+        "netR": 0.8682994470975455,
+        "MFE_R": 0.993417115499699,
+        "MAE_R": -0.3231597845601433,
+        "holdingHours": 8,
+        "grossReturnPct": 0.06609605325725143,
+        "netReturnPct": 0.06899326562529708,
+        "feeDragPct": 0.0012396576319543507,
+        "spreadDragPct": 0,
+        "slippageDragPct": 0,
+        "fundingPct": 0.004136870000000001
+      },
+      {
         "asset": "ZECUSDT",
         "foldId": "fold-3",
         "signalCandleOpenTime": 1770386400000,
@@ -904,30 +1194,76 @@
         "spreadDragPct": 0,
         "slippageDragPct": 0,
         "fundingPct": -0.0001
+      },
+      {
+        "asset": "ONDOUSDT",
+        "foldId": "fold-4",
+        "signalCandleOpenTime": 1774587600000,
+        "signalAvailableAt": 1774591200000,
+        "score": 88,
+        "poolRank": 1,
+        "momentum24h": 0.09205500381970966,
+        "relativeMetric": 0.12242606070840645,
+        "volumeMultiple": 1.7229682698299558,
+        "entry": 0.2859,
+        "exit": 0.2743,
+        "exitReason": "stop_loss",
+        "netR": -1.030057845689655,
+        "MFE_R": 0.44827586206896874,
+        "MAE_R": -0.9999999999999998,
+        "holdingHours": 3.0833333333333335,
+        "grossReturnPct": -0.04057362714235746,
+        "netReturnPct": -0.04179318296607205,
+        "feeDragPct": 0.0011756558237145855,
+        "spreadDragPct": 0,
+        "slippageDragPct": 0,
+        "fundingPct": -0.0000439
+      },
+      {
+        "asset": "SAHARAUSDT",
+        "foldId": "fold-4",
+        "signalCandleOpenTime": 1773900000000,
+        "signalAvailableAt": 1773903600000,
+        "score": 88,
+        "poolRank": 1,
+        "momentum24h": 0.09029249682068663,
+        "relativeMetric": 0.1336896427304678,
+        "volumeMultiple": 1.5972073848456048,
+        "entry": 0.02571,
+        "exit": 0.02681,
+        "exitReason": "time_stop",
+        "netR": 1.0392182242508727,
+        "MFE_R": 1.1777003484320563,
+        "MAE_R": -0.1184668989547033,
+        "holdingHours": 8,
+        "grossReturnPct": 0.042784908595877136,
+        "netReturnPct": 0.05800381765071961,
+        "feeDragPct": 0.0012256709451575261,
+        "spreadDragPct": 0,
+        "slippageDragPct": 0,
+        "fundingPct": 0.01644458
       }
     ],
     "quality": {
       "unmatchedTradeSignals": 0,
-      "degradedReasons": {
-        "INCOMPLETE_FUNDING": 5
-      }
+      "degradedReasons": {}
     }
   },
   "weak": {
     "strategyId": "dynamic_relative_weakness_breakdown",
     "replaySignals": 78,
     "primaryEligible": 78,
-    "completeTrades": 24,
-    "degradedTrades": 37,
+    "completeTrades": 61,
+    "degradedTrades": 0,
     "noEntry": 0,
     "missedEntry": 0,
     "purged": 0,
     "holdout": {
-      "completeTrades": 0,
-      "winRate": null,
-      "expectancyR": null,
-      "profitFactor": null,
-      "totalNetReturn": 0,
+      "completeTrades": 13,
+      "winRate": 0.38461538461538464,
+      "expectancyR": -0.13831305506178365,
+      "profitFactor": 0.729351248615061,
+      "totalNetReturn": -0.1261721346681286,
       "usedForOptimization": false,
       "includedInAttribution": false
     },
@@ -995,6 +1331,34 @@
           "exclusionReasons": {}
         },
         {
+          "stage": "initial_training_context_not_oos",
+          "count": 4,
+          "denominator": 78,
+          "denominatorStage": "replay_signals",
+          "percentage": 5.128205128205128,
+          "exclusionReasons": {
+            "not_attributed_to_oos": 4
+          }
+        },
+        {
+          "stage": "development_oos",
+          "count": 61,
+          "denominator": 78,
+          "denominatorStage": "replay_signals",
+          "percentage": 78.2051282051282,
+          "exclusionReasons": {}
+        },
+        {
+          "stage": "holdout",
+          "count": 13,
+          "denominator": 78,
+          "denominatorStage": "replay_signals",
+          "percentage": 16.666666666666664,
+          "exclusionReasons": {
+            "not_attributed_to_development": 13
+          }
+        },
+        {
           "stage": "development_oos_selected",
           "count": 61,
           "denominator": 78,
@@ -1048,23 +1412,21 @@
         },
         {
           "stage": "complete_trades",
-          "count": 24,
+          "count": 61,
           "denominator": 61,
           "denominatorStage": "entry_accepted",
-          "percentage": 39.34426229508197,
+          "percentage": 100,
           "exclusionReasons": {
-            "degraded": 37
+            "degraded": 0
           }
         },
         {
           "stage": "degraded_trades",
-          "count": 37,
+          "count": 0,
           "denominator": 61,
           "denominatorStage": "entry_accepted",
-          "percentage": 60.65573770491803,
-          "exclusionReasons": {
-            "INCOMPLETE_FUNDING": 37
-          }
+          "percentage": 0,
+          "exclusionReasons": {}
         },
         {
           "stage": "NO_ENTRY",
@@ -1083,6 +1445,14 @@
           "exclusionReasons": {}
         }
       ],
+      "conservation": {
+        "replaySignals": 78,
+        "initialTrainingContextSignals": 4,
+        "developmentOosSignals": 61,
+        "holdoutSignals": 13,
+        "sum": 78,
+        "valid": true
+      },
       "counts": {
         "poolCandidates": 13954,
         "strategyEvaluated": 12473,
@@ -1091,15 +1461,17 @@
         "primaryEligible": 78,
         "tradePlanCreated": 61,
         "entryAccepted": 61,
-        "completeTrades": 24,
-        "degradedTrades": 37,
+        "completeTrades": 61,
+        "degradedTrades": 0,
         "noEntry": 0,
         "missedEntry": 0,
         "purged": 0,
+        "initialTrainingContextSignals": 4,
+        "developmentOosSignals": 61,
         "holdoutRawSignals": 13,
         "holdoutTrades": 13,
-        "holdoutCompleteTrades": 0,
-        "holdoutDegradedTrades": 13
+        "holdoutCompleteTrades": 13,
+        "holdoutDegradedTrades": 0
       },
       "exclusionReasons": {
         "poolCandidates": {
@@ -1122,82 +1494,86 @@
       "holdoutExcludedFromAttribution": {
         "rawSignals": 13,
         "tradeResults": 13,
-        "completeTrades": 0,
-        "degradedTrades": 13,
+        "completeTrades": 13,
+        "degradedTrades": 0,
         "usedForOptimization": false,
         "includedInMetrics": false
       }
     },
     "costDecomposition": {
-      "trades": 24,
+      "trades": 61,
       "grossDirectionalPnl": {
-        "sumReturnPct": -0.16935471086059195,
-        "averageReturnPct": -0.007056446285857998,
-        "sumR": -4.068572779290232,
-        "averageR": -0.16952386580375967
+        "sumReturnPct": -0.40883603777245936,
+        "averageReturnPct": -0.006702230127417367,
+        "sumR": -10.453092253166416,
+        "averageR": -0.17136216808469534
       },
-      "grossExpectancyR": -0.16952386580375967,
-      "feeDragPct": 0.02890164495994933,
-      "feeDrag": 0.02890164495994933,
+      "grossExpectancyR": -0.17136216808469534,
+      "feeDragPct": 0.07344543850690619,
+      "feeDrag": 0.07344543850690619,
       "spreadDragPct": 0,
       "spreadDrag": 0,
-      "slippageDragPct": 0.000053555721622577934,
-      "slippageDrag": 0.000053555721622577934,
-      "fundingPctTotal": -0.00117063,
-      "fundingDragPct": 0.00117063,
-      "fundingDrag": 0.00117063,
+      "slippageDragPct": 0.00022814040450191975,
+      "slippageDrag": 0.00022814040450191975,
+      "fundingPctTotal": -0.011955100000000005,
+      "fundingDragPct": 0.011955100000000005,
+      "fundingDrag": 0.011955100000000005,
       "netPnl": {
-        "sumReturnPct": -0.19948054154216388,
-        "averageReturnPct": -0.008311689230923494,
-        "sumR": -4.817498327939045,
-        "averageR": -0.20072909699746022,
-        "compoundedReturnPct": -0.19275217394273847,
-        "profitFactor": 0.5428028614635102
+        "sumReturnPct": -0.4944647166838675,
+        "averageReturnPct": -0.008105978962030615,
+        "sumR": -12.343825419067542,
+        "averageR": -0.2023577937552056,
+        "compoundedReturnPct": -0.41469834147207174,
+        "profitFactor": 0.5699430218673189
       },
-      "netExpectancyR": -0.20072909699746022,
-      "costImpactR": 0.031205231193700556,
-      "reconciliationErrorPct": 2.7755575615628914e-17,
+      "netExpectancyR": -0.2023577937552056,
+      "costImpactR": 0.030995625670510257,
+      "reconciliationErrorPct": 0,
       "reconciles": true,
       "rawEdgeClassification": "RAW_SIGNAL_NEGATIVE"
     },
     "exitDecomposition": [
       {
+        "key": "take_profit",
         "exitReason": "take_profit",
-        "trades": 3,
-        "winRate": 1,
-        "expectancyR": 1.4667434214021409,
-        "PF": null,
-        "avgNetReturn": 0.06533954238511185,
-        "totalNetReturn": 0.20897709668670794,
-        "MFE_R": 1.495579451416962,
-        "MAE_R": -0.2965179376871336,
-        "averageHoldingHours": 5.583333333333333
-      },
-      {
-        "exitReason": "stop_loss",
         "trades": 6,
-        "winRate": 0,
-        "expectancyR": -1.0322805544618896,
-        "PF": 0,
-        "avgNetReturn": -0.04101095286310812,
-        "totalNetReturn": -0.2224040007702025,
-        "MFE_R": 0.33755072309225614,
-        "MAE_R": -1.0000000000000007,
-        "averageHoldingHours": 3.2638888888888893
+        "winRate": 1,
+        "expectancyR": 1.468825902684535,
+        "PF": null,
+        "avgNetReturn": 0.07067849738677655,
+        "totalNetReturn": 0.5044149714399979,
+        "MFE_R": 1.495826850327883,
+        "MAE_R": -0.2268912537752209,
+        "averageHoldingHours": 3.4166666666666674
       },
       {
+        "key": "stop_loss",
+        "exitReason": "stop_loss",
+        "trades": 16,
+        "winRate": 0,
+        "expectancyR": -1.034576055327282,
+        "PF": 0,
+        "avgNetReturn": -0.044110933942501034,
+        "totalNetReturn": -0.5146142009424144,
+        "MFE_R": 0.3046334791532601,
+        "MAE_R": -0.9999999999999997,
+        "averageHoldingHours": 2.328125
+      },
+      {
+        "key": "time_stop",
         "exitReason": "time_stop",
-        "trades": 15,
-        "winRate": 0.26666666666666666,
-        "expectancyR": -0.2016030176916087,
-        "PF": 0.21452579181900913,
-        "avgNetReturn": -0.009962230101256712,
-        "totalNetReturn": -0.14131318749814492,
-        "MFE_R": 0.5108081001790494,
-        "MAE_R": -0.6731404178570204,
+        "trades": 39,
+        "winRate": 0.3333333333333333,
+        "expectancyR": -0.11804010128046769,
+        "PF": 0.5207990129005104,
+        "avgNetReturn": -0.005455404049346416,
+        "totalNetReturn": -0.19846029204065263,
+        "MFE_R": 0.48343228891219936,
+        "MAE_R": -0.5742357394483808,
         "averageHoldingHours": 8
       },
       {
+        "key": "end_of_data",
         "exitReason": "end_of_data",
         "trades": 0,
         "winRate": null,
@@ -1210,6 +1586,7 @@
         "averageHoldingHours": null
       },
       {
+        "key": "other",
         "exitReason": "other",
         "trades": 0,
         "winRate": null,
@@ -1223,31 +1600,31 @@
       }
     ],
     "mfeMae": {
-      "trades": 24,
-      "averageMfeR": 0.5905901748120901,
-      "averageMaeR": -0.7077775033715296,
+      "trades": 61,
+      "averageMfeR": 0.5361140333769712,
+      "averageMaeR": -0.65174657969079,
       "mfeAtLeast": {
         "0.5R": {
-          "count": 9,
-          "percentage": 37.5
+          "count": 23,
+          "percentage": 37.704918032786885
         },
         "1R": {
-          "count": 6,
-          "percentage": 25
+          "count": 10,
+          "percentage": 16.39344262295082
         },
         "1.5R": {
-          "count": 1,
-          "percentage": 4.166666666666666
+          "count": 2,
+          "percentage": 3.278688524590164
         }
       },
       "maeAtMost": {
         "-0.5R": {
-          "count": 16,
-          "percentage": 66.66666666666666
+          "count": 37,
+          "percentage": 60.65573770491803
         },
         "-1R": {
-          "count": 4,
-          "percentage": 16.666666666666664
+          "count": 7,
+          "percentage": 11.475409836065573
         }
       }
     },
@@ -1256,86 +1633,141 @@
         {
           "bucket": "85",
           "signals": 11,
-          "completeTrades": 5,
-          "trades": 5,
-          "winRate": 0.2,
-          "expectancyR": -0.3576267741772167,
-          "PF": 0.4961763772376604,
-          "avgNetReturn": -0.011467325473086808,
-          "totalNetReturn": -0.05918800680223035,
-          "MFE_R": 0.5304764987794628,
-          "MAE_R": -0.7220649696048635
+          "completeTrades": 9,
+          "trades": 9,
+          "winRate": 0.2222222222222222,
+          "expectancyR": -0.29688509983080585,
+          "PF": 0.4932964227390342,
+          "avgNetReturn": -0.00958881358802504,
+          "totalNetReturn": -0.08733857227638886,
+          "MFE_R": 0.559859100290866,
+          "MAE_R": -0.6259299284021127
         },
         {
           "bucket": "86",
           "signals": 20,
-          "completeTrades": 8,
-          "trades": 8,
-          "winRate": 0.375,
-          "expectancyR": -0.2037562212420821,
-          "PF": 0.25025945315396836,
-          "avgNetReturn": -0.01265194726351411,
-          "totalNetReturn": -0.0991815800167809,
-          "MFE_R": 0.7109965623436073,
-          "MAE_R": -0.7103872058142378
+          "completeTrades": 17,
+          "trades": 17,
+          "winRate": 0.29411764705882354,
+          "expectancyR": -0.23396787207853634,
+          "PF": 0.3913442163687956,
+          "avgNetReturn": -0.010826034028050257,
+          "totalNetReturn": -0.17471713566352287,
+          "MFE_R": 0.5755988026852711,
+          "MAE_R": -0.6358674862569715
         },
         {
           "bucket": "87",
           "signals": 19,
-          "completeTrades": 7,
-          "trades": 7,
+          "completeTrades": 14,
+          "trades": 14,
           "winRate": 0.14285714285714285,
-          "expectancyR": -0.5751456559338731,
-          "PF": 0.0411985335806077,
-          "avgNetReturn": -0.0233640710343647,
-          "totalNetReturn": -0.15333080947358046,
-          "MFE_R": 0.299005082008521,
-          "MAE_R": -0.8597070384440391
+          "expectancyR": -0.6178977575316802,
+          "PF": 0.04057385833843834,
+          "avgNetReturn": -0.027803870658901383,
+          "totalNetReturn": -0.32782526806716417,
+          "MFE_R": 0.2826255933033094,
+          "MAE_R": -0.8732878437002417
         },
         {
           "bucket": "88",
           "signals": 20,
-          "completeTrades": 4,
-          "trades": 4,
-          "winRate": 0.5,
-          "expectancyR": 0.6566762261052016,
-          "PF": 8.241867898931686,
-          "avgNetReturn": 0.03065504029298399,
-          "totalNetReturn": 0.1250013005684225,
-          "MFE_R": 0.935193407196086,
-          "MAE_R": -0.4188220793175546
+          "completeTrades": 15,
+          "trades": 15,
+          "winRate": 0.4,
+          "expectancyR": 0.1660956178209591,
+          "PF": 1.7502309238227145,
+          "avgNetReturn": 0.01065168482101162,
+          "totalNetReturn": 0.1518214464137997,
+          "MFE_R": 0.6990877754271622,
+          "MAE_R": -0.5633582787465545
         },
         {
           "bucket": "89+",
           "signals": 8,
-          "completeTrades": 0,
-          "trades": 0,
-          "winRate": null,
-          "expectancyR": null,
-          "PF": null,
-          "avgNetReturn": null,
-          "totalNetReturn": 0,
-          "MFE_R": null,
-          "MAE_R": null
+          "completeTrades": 6,
+          "trades": 6,
+          "winRate": 0.6666666666666666,
+          "expectancyR": 0.07745477381232733,
+          "PF": 1.0917279438123584,
+          "avgNetReturn": 0.0008926834991095572,
+          "totalNetReturn": 0.003690671063765194,
+          "MFE_R": 0.5726615916790124,
+          "MAE_R": -0.43950345769149113
         }
       ],
-      "spearmanCorrelation": 0.22318922759065404,
-      "sampleSize": 24,
-      "distinctBuckets": 4,
+      "spearmanCorrelation": 0.14483773806545347,
+      "sampleSize": 61,
+      "distinctBuckets": 5,
       "status": "AVAILABLE"
     },
     "breakdowns": {
       "byAsset": [
         {
           "key": "1000BONKUSDT",
-          "trades": 2,
+          "trades": 3,
+          "winRate": 0.3333333333333333,
+          "expectancyR": 0.19211370743273046,
+          "PF": 1.445432075114784,
+          "avgNetReturn": 0.005721698246453524,
+          "totalNetReturn": 0.015281289267049525,
+          "MFE_R": 0.6610925715907894,
+          "MAE_R": -0.5664384953827437
+        },
+        {
+          "key": "ALPINEUSDT",
+          "trades": 1,
           "winRate": 0,
-          "expectancyR": -0.4509378637593271,
+          "expectancyR": -0.18417585912938383,
           "PF": 0,
-          "avgNetReturn": -0.019267915018173393,
-          "totalNetReturn": -0.03828701345245611,
-          "MFE_R": 0.23706010280743167,
-          "MAE_R": -0.8093647027810736
+          "avgNetReturn": -0.011614567294494468,
+          "totalNetReturn": -0.011614567294494504,
+          "MFE_R": 0.25272067714631125,
+          "MAE_R": -0.3373639661426846
+        },
+        {
+          "key": "AUCTIONUSDT",
+          "trades": 1,
+          "winRate": 0,
+          "expectancyR": -0.4565486155045889,
+          "PF": 0,
+          "avgNetReturn": -0.023806633275394763,
+          "totalNetReturn": -0.023806633275394784,
+          "MFE_R": 0.3058103975535158,
+          "MAE_R": -0.8287461773700305
+        },
+        {
+          "key": "BIOUSDT",
+          "trades": 1,
+          "winRate": 1,
+          "expectancyR": 0.5690669341721841,
+          "PF": null,
+          "avgNetReturn": 0.030976606726748325,
+          "totalNetReturn": 0.03097660672674829,
+          "MFE_R": 0.8543046357615883,
+          "MAE_R": -0.14569536423840745
+        },
+        {
+          "key": "CRVUSDT",
+          "trades": 1,
+          "winRate": 0,
+          "expectancyR": -0.07836125654450216,
+          "PF": 0,
+          "avgNetReturn": -0.0033186252771618442,
+          "totalNetReturn": -0.0033186252771618685,
+          "MFE_R": 0.36649214659685814,
+          "MAE_R": -0.4712041884816766
+        },
+        {
+          "key": "DASHUSDT",
+          "trades": 1,
+          "winRate": 0,
+          "expectancyR": -1.023354929577464,
+          "PF": 0,
+          "avgNetReturn": -0.05396746719485024,
+          "totalNetReturn": -0.05396746719485024,
+          "MFE_R": 0.07511737089201986,
+          "MAE_R": -0.9999999999999993
         },
         {
           "key": "ENAUSDT",
@@ -1350,25 +1782,113 @@
         },
         {
           "key": "FARTCOINUSDT",
-          "trades": 6,
-          "winRate": 0.3333333333333333,
-          "expectancyR": -0.15279443245757876,
-          "PF": 0.5772493352357627,
-          "avgNetReturn": -0.006918341652577767,
-          "totalNetReturn": -0.04388461060698767,
-          "MFE_R": 0.6215658474569253,
-          "MAE_R": -0.6514630793998206
+          "trades": 7,
+          "winRate": 0.2857142857142857,
+          "expectancyR": -0.17642170865701873,
+          "PF": 0.5060297906053681,
+          "avgNetReturn": -0.00790422020584147,
+          "totalNetReturn": -0.05709763912803156,
+          "MFE_R": 0.5629681712232416,
+          "MAE_R": -0.6118231737480458
+        },
+        {
+          "key": "FORMUSDT",
+          "trades": 1,
+          "winRate": 0,
+          "expectancyR": -0.2749281914893596,
+          "PF": 0,
+          "avgNetReturn": -0.01367367724867713,
+          "totalNetReturn": -0.013673677248677185,
+          "MFE_R": 0.40425531914893587,
+          "MAE_R": -0.5638297872340441
+        },
+        {
+          "key": "GALAUSDT",
+          "trades": 1,
+          "winRate": 0,
+          "expectancyR": -0.8106478833333358,
+          "PF": 0,
+          "avgNetReturn": -0.03558941926829271,
+          "totalNetReturn": -0.03558941926829273,
+          "MFE_R": 0.15555555555555606,
+          "MAE_R": -0.8000000000000025
+        },
+        {
+          "key": "HUSDT",
+          "trades": 2,
+          "winRate": 0,
+          "expectancyR": -0.3029319590756147,
+          "PF": 0,
+          "avgNetReturn": -0.02919557973311797,
+          "totalNetReturn": -0.057563564883987506,
+          "MFE_R": 0.23919644404379897,
+          "MAE_R": -0.6158850665375951
         },
         {
           "key": "HYPEUSDT",
-          "trades": 3,
-          "winRate": 0.6666666666666666,
-          "expectancyR": 0.33265755653015383,
-          "PF": 3.0749625600464006,
-          "avgNetReturn": 0.006730173178151112,
-          "totalNetReturn": 0.02005868994101334,
-          "MFE_R": 0.7849904600977049,
-          "MAE_R": -0.6690803520224401
+          "trades": 4,
+          "winRate": 0.5,
+          "expectancyR": -0.01095342479758507,
+          "PF": 0.7411250903677798,
+          "avgNetReturn": -0.0026128562332942973,
+          "totalNetReturn": -0.011197891789883174,
+          "MFE_R": 0.6244108087568068,
+          "MAE_R": -0.7518102640168295
+        },
+        {
+          "key": "ICPUSDT",
+          "trades": 1,
+          "winRate": 0,
+          "expectancyR": -0.33972183052631627,
+          "PF": 0,
+          "avgNetReturn": -0.012460839343629388,
+          "totalNetReturn": -0.012460839343629404,
+          "MFE_R": 0.10526315789473338,
+          "MAE_R": -0.9684210526315773
+        },
+        {
+          "key": "JTOUSDT",
+          "trades": 1,
+          "winRate": 1,
+          "expectancyR": 0.20214760546052332,
+          "PF": null,
+          "avgNetReturn": 0.009433968692047752,
+          "totalNetReturn": 0.009433968692047712,
+          "MFE_R": 0.41447368421052494,
+          "MAE_R": -0.7697368421052647
+        },
+        {
+          "key": "LAUSDT",
+          "trades": 1,
+          "winRate": 1,
+          "expectancyR": 0.028259622238062693,
+          "PF": null,
+          "avgNetReturn": 0.002192994828396909,
+          "totalNetReturn": 0.002192994828396966,
+          "MFE_R": 0.6161796151104796,
+          "MAE_R": -0.0858873841767632
+        },
+        {
+          "key": "LDOUSDT",
+          "trades": 1,
+          "winRate": 0,
+          "expectancyR": -1.0258966791122706,
+          "PF": 0,
+          "avgNetReturn": -0.04788768166971354,
+          "totalNetReturn": -0.04788768166971358,
+          "MFE_R": 0.5039164490861604,
+          "MAE_R": -0.9999999999999991
+        },
+        {
+          "key": "OMUSDT",
+          "trades": 1,
+          "winRate": 0,
+          "expectancyR": -0.4808675869969034,
+          "PF": 0,
+          "avgNetReturn": -0.03160126767039674,
+          "totalNetReturn": -0.03160126767039673,
+          "MFE_R": 0.11455108359133212,
+          "MAE_R": -0.8095975232198129
         },
         {
           "key": "ONDOUSDT",
@@ -1382,15 +1902,48 @@
           "MAE_R": -0.9584905660377353
         },
         {
-          "key": "PENGUUSDT",
+          "key": "ORDIUSDT",
           "trades": 1,
           "winRate": 0,
-          "expectancyR": -0.023869391286030873,
+          "expectancyR": -0.4880571759090936,
           "PF": 0,
-          "avgNetReturn": -0.0010110919010049707,
-          "totalNetReturn": -0.0010110919010050123,
-          "MFE_R": 0.35033259423503343,
-          "MAE_R": -0.3702882483370287
+          "avgNetReturn": -0.017090740740151322,
+          "totalNetReturn": -0.017090740740151267,
+          "MFE_R": 0.193181818181816,
+          "MAE_R": -0.6874999999999999
+        },
+        {
+          "key": "PAXGUSDT",
+          "trades": 1,
+          "winRate": 0,
+          "expectancyR": -0.2312706196424176,
+          "PF": 0,
+          "avgNetReturn": -0.009259395497098767,
+          "totalNetReturn": -0.009259395497098755,
+          "MFE_R": 0.7056599918267302,
+          "MAE_R": -0.44314466693910887
+        },
+        {
+          "key": "PENGUUSDT",
+          "trades": 2,
+          "winRate": 0,
+          "expectancyR": -0.526198865024123,
+          "PF": 0,
+          "avgNetReturn": -0.022601991016982542,
+          "totalNetReturn": -0.045159298960669725,
+          "MFE_R": 0.19633893555399845,
+          "MAE_R": -0.6851441241685144
+        },
+        {
+          "key": "PIPPINUSDT",
+          "trades": 1,
+          "winRate": 0,
+          "expectancyR": -1.0326014820835836,
+          "PF": 0,
+          "avgNetReturn": -0.0484641966887453,
+          "totalNetReturn": -0.048464196688745353,
+          "MFE_R": 0.3313143549364044,
+          "MAE_R": -0.9999999999999979
         },
         {
           "key": "PUMPUSDT",
@@ -1404,6 +1957,72 @@
           "MAE_R": -0.6681547619047623
         },
         {
+          "key": "RESOLVUSDT",
+          "trades": 1,
+          "winRate": 0,
+          "expectancyR": -1.071902163601693,
+          "PF": 0,
+          "avgNetReturn": -0.05802482849071023,
+          "totalNetReturn": -0.05802482849071022,
+          "MFE_R": 0.3488700564971756,
+          "MAE_R": -0.9999999999999982
+        },
+        {
+          "key": "SAGAUSDT",
+          "trades": 1,
+          "winRate": 1,
+          "expectancyR": 0.45836032927536324,
+          "PF": null,
+          "avgNetReturn": 0.027549531986062758,
+          "totalNetReturn": 0.027549531986062803,
+          "MFE_R": 0.7753623188405816,
+          "MAE_R": -0.10869565217391083
+        },
+        {
+          "key": "SEIUSDT",
+          "trades": 1,
+          "winRate": 1,
+          "expectancyR": 0.4653878159239129,
+          "PF": null,
+          "avgNetReturn": 0.01762052742013479,
+          "totalNetReturn": 0.01762052742013487,
+          "MFE_R": 1.2214673913043455,
+          "MAE_R": -0.1372282608695614
+        },
+        {
+          "key": "SIRENUSDT",
+          "trades": 2,
+          "winRate": 0.5,
+          "expectancyR": -0.47552853052217703,
+          "PF": 0.16637221756906634,
+          "avgNetReturn": -0.02418894135187733,
+          "totalNetReturn": -0.048938195008325414,
+          "MFE_R": 0.3242347875633138,
+          "MAE_R": -0.9810559765338543
+        },
+        {
+          "key": "SOONUSDT",
+          "trades": 1,
+          "winRate": 1,
+          "expectancyR": 0.5402485456756774,
+          "PF": null,
+          "avgNetReturn": 0.023433993188745644,
+          "totalNetReturn": 0.023433993188745728,
+          "MFE_R": 0.864864864864865,
+          "MAE_R": -0.3378378378378368
+        },
+        {
+          "key": "SPXUSDT",
+          "trades": 1,
+          "winRate": 1,
+          "expectancyR": 1.4651507302823754,
+          "PF": null,
+          "avgNetReturn": 0.11878037574992105,
+          "totalNetReturn": 0.11878037574992106,
+          "MFE_R": 1.4790652385589091,
+          "MAE_R": -0.37293086660175295
+        },
+        {
           "key": "TAOUSDT",
           "trades": 1,
           "winRate": 0,
@@ -1415,15 +2034,59 @@
           "MAE_R": -0.999999999999999
         },
         {
-          "key": "WIFUSDT",
-          "trades": 2,
+          "key": "TIAUSDT",
+          "trades": 1,
           "winRate": 0,
-          "expectancyR": -0.32901885547384707,
+          "expectancyR": -1.0325604806796127,
           "PF": 0,
-          "avgNetReturn": -0.013127798743856554,
-          "totalNetReturn": -0.026150328862424854,
-          "MFE_R": 0.39781040969899806,
-          "MAE_R": -0.66913147993311
+          "avgNetReturn": -0.04393420613859347,
+          "totalNetReturn": -0.043934206138593446,
+          "MFE_R": 0.5388349514563102,
+          "MAE_R": -1.000000000000001
+        },
+        {
+          "key": "TONUSDT",
+          "trades": 1,
+          "winRate": 0,
+          "expectancyR": -0.1540883102842343,
+          "PF": 0,
+          "avgNetReturn": -0.005703153794950134,
+          "totalNetReturn": -0.005703153794950122,
+          "MFE_R": 0.06847545219638207,
+          "MAE_R": -0.9418604651162796
+        },
+        {
+          "key": "TUTUSDT",
+          "trades": 1,
+          "winRate": 1,
+          "expectancyR": 0.44682709621621536,
+          "PF": null,
+          "avgNetReturn": 0.035275823385490686,
+          "totalNetReturn": 0.03527582338549062,
+          "MFE_R": 0.9099099099099092,
+          "MAE_R": -0.13063063063063102
+        },
+        {
+          "key": "VIRTUALUSDT",
+          "trades": 1,
+          "winRate": 0,
+          "expectancyR": -0.3684142739449572,
+          "PF": 0,
+          "avgNetReturn": -0.014331604518201382,
+          "totalNetReturn": -0.014331604518201368,
+          "MFE_R": 0.3425076452599397,
+          "MAE_R": -0.541284403669722
+        },
+        {
+          "key": "WIFUSDT",
+          "trades": 3,
+          "winRate": 0,
+          "expectancyR": -0.5716687106667742,
+          "PF": 0,
+          "avgNetReturn": -0.016252295334373067,
+          "totalNetReturn": -0.04806320128332475,
+          "MFE_R": 0.37047009769406686,
+          "MAE_R": -0.7794209866220724
         },
         {
           "key": "WLDUSDT",
@@ -1435,330 +2098,440 @@
           "totalNetReturn": -0.06345454150775309,
           "MFE_R": 0.33381900533292164,
           "MAE_R": -0.9829541303765523
+        },
+        {
+          "key": "XMRUSDT",
+          "trades": 2,
+          "winRate": 0.5,
+          "expectancyR": -0.2589662554536667,
+          "PF": 0.658423020489411,
+          "avgNetReturn": -0.00889155084332098,
+          "totalNetReturn": -0.019567709716526438,
+          "MFE_R": 0.5107158100921497,
+          "MAE_R": -0.6100115074798615
+        },
+        {
+          "key": "ZENUSDT",
+          "trades": 1,
+          "winRate": 0,
+          "expectancyR": -0.07563086907928591,
+          "PF": 0,
+          "avgNetReturn": -0.0030839159255397638,
+          "totalNetReturn": -0.003083915925539804,
+          "MFE_R": 0.7109974424552434,
+          "MAE_R": -0.4015345268542216
+        },
+        {
+          "key": "ZROUSDT",
+          "trades": 1,
+          "winRate": 1,
+          "expectancyR": 1.4693575718015652,
+          "PF": null,
+          "avgNetReturn": 0.05357105663969533,
+          "totalNetReturn": 0.053571056639695414,
+          "MFE_R": 1.4999999999999987,
+          "MAE_R": -0.018276762402087934
         }
       ],
       "byFold": [
         {
           "key": "fold-1",
-          "trades": 15,
-          "winRate": 0.4,
-          "expectancyR": -0.08418004294426788,
-          "PF": 0.8072692754616623,
-          "avgNetReturn": -0.0036576199812906906,
-          "totalNetReturn": -0.06441337521912205,
-          "MFE_R": 0.6194660648722454,
-          "MAE_R": -0.7497283308368157
+          "trades": 29,
+          "winRate": 0.3793103448275862,
+          "expectancyR": -0.07790369041719211,
+          "PF": 0.829593982462545,
+          "avgNetReturn": -0.0032386942664662187,
+          "totalNetReturn": -0.11220439188130715,
+          "MFE_R": 0.6128500155032085,
+          "MAE_R": -0.6400753949749931
         },
         {
           "key": "fold-2",
-          "trades": 6,
-          "winRate": 0.16666666666666666,
-          "expectancyR": -0.07502068420299962,
-          "PF": 0.22252298224043046,
-          "avgNetReturn": -0.004092239702046596,
-          "totalNetReturn": -0.024449964027834392,
-          "MFE_R": 0.5807448951737815,
-          "MAE_R": -0.4567891863940789
+          "trades": 10,
+          "winRate": 0.1,
+          "expectancyR": -0.20444326683884356,
+          "PF": 0.06368938712054985,
+          "avgNetReturn": -0.010331241242389278,
+          "totalNetReturn": -0.10001601343304878,
+          "MFE_R": 0.5253336661851906,
+          "MAE_R": -0.5154758237370091
         },
         {
           "key": "fold-3",
-          "trades": 2,
-          "winRate": 0,
-          "expectancyR": -1.027742449655872,
-          "PF": 0,
-          "avgNetReturn": -0.04707543721998701,
-          "totalNetReturn": -0.09202246048055762,
-          "MFE_R": 0.6233802275686877,
-          "MAE_R": -1.0000000000000002
+          "trades": 10,
+          "winRate": 0.2,
+          "expectancyR": -0.4729141296321571,
+          "PF": 0.28482117963009446,
+          "avgNetReturn": -0.022593649238998672,
+          "totalNetReturn": -0.20995568355257954,
+          "MFE_R": 0.5143168692828437,
+          "MAE_R": -0.711773750232231
         },
         {
           "key": "fold-4",
-          "trades": 1,
-          "winRate": 0,
-          "expectancyR": -1.0491886792452851,
-          "PF": 0,
-          "avgNetReturn": -0.025911929170549908,
-          "totalNetReturn": -0.025911929170549852,
-          "MFE_R": 0.15094339622641761,
-          "MAE_R": -1.000000000000002
+          "trades": 7,
+          "winRate": 0.42857142857142855,
+          "expectancyR": -0.4753979986414803,
+          "PF": 0.36520778083362393,
+          "avgNetReturn": -0.012431781348363587,
+          "totalNetReturn": -0.0864462409705915,
+          "MFE_R": 0.36095037424906795,
+          "MAE_R": -0.8396491656301966
+        },
+        {
+          "key": "fold-5",
+          "trades": 5,
+          "winRate": 0.4,
+          "expectancyR": 0.0033483116462793006,
+          "PF": 1.4461469302301762,
+          "avgNetReturn": 0.0031457582592155113,
+          "totalNetReturn": 0.014954137453209615,
+          "MFE_R": 0.4014295223956756,
+          "MAE_R": -0.608863001551921
         }
       ],
       "byMonth": [
         {
           "key": "2025-09",
-          "trades": 5,
-          "winRate": 0.6,
-          "expectancyR": 0.642109324107262,
-          "PF": 5.056361523534111,
-          "avgNetReturn": 0.025188383924509488,
-          "totalNetReturn": 0.12862850979920992,
-          "MFE_R": 0.9837863050975898,
-          "MAE_R": -0.6326710045315503
+          "trades": 7,
+          "winRate": 0.7142857142857143,
+          "expectancyR": 0.6725948306537054,
+          "PF": 6.852420797916084,
+          "avgNetReturn": 0.025957995870091382,
+          "totalNetReturn": 0.19169800057058417,
+          "MFE_R": 1.0050158772283468,
+          "MAE_R": -0.46678845274808606
         },
         {
           "key": "2025-10",
-          "trades": 9,
-          "winRate": 0.2222222222222222,
-          "expectancyR": -0.49747452461004993,
-          "PF": 0.28625464995597893,
-          "avgNetReturn": -0.02011335609963708,
-          "totalNetReturn": -0.17121846784158123,
-          "MFE_R": 0.44748671502778387,
-          "MAE_R": -0.8123294446247642
+          "trades": 19,
+          "winRate": 0.2631578947368421,
+          "expectancyR": -0.3269741218590883,
+          "PF": 0.5174309250855249,
+          "avgNetReturn": -0.011990450594602117,
+          "totalNetReturn": -0.2180756954587454,
+          "MFE_R": 0.5175147031637156,
+          "MAE_R": -0.6818099699720958
         },
         {
           "key": "2025-11",
-          "trades": 3,
-          "winRate": 0.3333333333333333,
-          "expectancyR": -0.15067711132617279,
-          "PF": 0.00887028583349651,
-          "avgNetReturn": -0.007969958945759506,
-          "totalNetReturn": -0.023784413477979882,
-          "MFE_R": 0.3602239324461533,
-          "MAE_R": -0.696771952327509
+          "trades": 7,
+          "winRate": 0.14285714285714285,
+          "expectancyR": -0.33731153318095225,
+          "PF": 0.001602997976740364,
+          "avgNetReturn": -0.01903955138295661,
+          "totalNetReturn": -0.12696695562239124,
+          "MFE_R": 0.3364449909958333,
+          "MAE_R": -0.7328847089658532
         },
         {
           "key": "2025-12",
-          "trades": 4,
-          "winRate": 0.25,
-          "expectancyR": 0.0014826713876605613,
-          "PF": 0.9423933757584085,
-          "avgNetReturn": -0.00010739395504378722,
-          "totalNetReturn": -0.0004679262864198952,
-          "MFE_R": 0.6873691465124769,
-          "MAE_R": -0.35550604991338774
+          "trades": 7,
+          "winRate": 0.14285714285714285,
+          "expectancyR": -0.10804283190389417,
+          "PF": 0.18162586052882904,
+          "avgNetReturn": -0.004523512541334284,
+          "totalNetReturn": -0.03140419527117655,
+          "MFE_R": 0.5734805410837472,
+          "MAE_R": -0.3912609814306988
         },
         {
           "key": "2026-01",
-          "trades": 1,
-          "winRate": 0,
-          "expectancyR": -1.0219988458992821,
-          "PF": 0,
-          "avgNetReturn": -0.056439348263806116,
-          "totalNetReturn": -0.056439348263806144,
-          "MFE_R": 1.2230215827338151,
-          "MAE_R": -1.0000000000000013
+          "trades": 6,
+          "winRate": 0.3333333333333333,
+          "expectancyR": -0.22093110145262854,
+          "PF": 0.5413129746517713,
+          "avgNetReturn": -0.012707519560097464,
+          "totalNetReturn": -0.07930999936897642,
+          "MFE_R": 0.7984308431397923,
+          "MAE_R": -0.6239589604141526
         },
         {
           "key": "2026-02",
-          "trades": 2,
-          "winRate": 0,
-          "expectancyR": -1.0413373663288734,
-          "PF": 0,
-          "avgNetReturn": -0.03181172767335891,
-          "totalNetReturn": -0.06264627695152758,
-          "MFE_R": 0.08734113431498901,
-          "MAE_R": -1.0000000000000004
+          "trades": 7,
+          "winRate": 0.2857142857142857,
+          "expectancyR": -0.6480867596418733,
+          "PF": 0.21115508947369283,
+          "avgNetReturn": -0.021684868453680443,
+          "totalNetReturn": -0.14476413973905577,
+          "MFE_R": 0.24495567537066373,
+          "MAE_R": -0.8725439024723022
+        },
+        {
+          "key": "2026-03",
+          "trades": 3,
+          "winRate": 0.3333333333333333,
+          "expectancyR": -0.6255159982497965,
+          "PF": 0.11714232857995871,
+          "avgNetReturn": -0.023700091255586756,
+          "totalNetReturn": -0.07054189601914618,
+          "MFE_R": 0.3177214707724576,
+          "MAE_R": -0.9232456140350869
+        },
+        {
+          "key": "2026-04",
+          "trades": 1,
+          "winRate": 1,
+          "expectancyR": 0.5402485456756774,
+          "PF": null,
+          "avgNetReturn": 0.023433993188745644,
+          "totalNetReturn": 0.023433993188745728,
+          "MFE_R": 0.864864864864865,
+          "MAE_R": -0.3378378378378368
+        },
+        {
+          "key": "2026-05",
+          "trades": 4,
+          "winRate": 0.25,
+          "expectancyR": -0.1308767468610702,
+          "PF": 0.7814420633787104,
+          "avgNetReturn": -0.0019263004731670222,
+          "totalNetReturn": -0.008285688956954806,
+          "MFE_R": 0.28557068677837827,
+          "MAE_R": -0.676619292480442
         }
       ],
       "byScore": [
         {
           "key": "85",
-          "trades": 5,
-          "winRate": 0.2,
-          "expectancyR": -0.3576267741772167,
-          "PF": 0.4961763772376604,
-          "avgNetReturn": -0.011467325473086808,
-          "totalNetReturn": -0.05918800680223035,
-          "MFE_R": 0.5304764987794628,
-          "MAE_R": -0.7220649696048635
+          "trades": 9,
+          "winRate": 0.2222222222222222,
+          "expectancyR": -0.29688509983080585,
+          "PF": 0.4932964227390342,
+          "avgNetReturn": -0.00958881358802504,
+          "totalNetReturn": -0.08733857227638886,
+          "MFE_R": 0.559859100290866,
+          "MAE_R": -0.6259299284021127
         },
         {
           "key": "86",
-          "trades": 8,
-          "winRate": 0.375,
-          "expectancyR": -0.2037562212420821,
-          "PF": 0.25025945315396836,
-          "avgNetReturn": -0.01265194726351411,
-          "totalNetReturn": -0.0991815800167809,
-          "MFE_R": 0.7109965623436073,
-          "MAE_R": -0.7103872058142378
+          "trades": 17,
+          "winRate": 0.29411764705882354,
+          "expectancyR": -0.23396787207853634,
+          "PF": 0.3913442163687956,
+          "avgNetReturn": -0.010826034028050257,
+          "totalNetReturn": -0.17471713566352287,
+          "MFE_R": 0.5755988026852711,
+          "MAE_R": -0.6358674862569715
         },
         {
           "key": "87",
-          "trades": 7,
+          "trades": 14,
           "winRate": 0.14285714285714285,
-          "expectancyR": -0.5751456559338731,
-          "PF": 0.0411985335806077,
-          "avgNetReturn": -0.0233640710343647,
-          "totalNetReturn": -0.15333080947358046,
-          "MFE_R": 0.299005082008521,
-          "MAE_R": -0.8597070384440391
+          "expectancyR": -0.6178977575316802,
+          "PF": 0.04057385833843834,
+          "avgNetReturn": -0.027803870658901383,
+          "totalNetReturn": -0.32782526806716417,
+          "MFE_R": 0.2826255933033094,
+          "MAE_R": -0.8732878437002417
         },
         {
           "key": "88",
-          "trades": 4,
-          "winRate": 0.5,
-          "expectancyR": 0.6566762261052016,
-          "PF": 8.241867898931686,
-          "avgNetReturn": 0.03065504029298399,
-          "totalNetReturn": 0.1250013005684225,
-          "MFE_R": 0.935193407196086,
-          "MAE_R": -0.4188220793175546
+          "trades": 15,
+          "winRate": 0.4,
+          "expectancyR": 0.1660956178209591,
+          "PF": 1.7502309238227145,
+          "avgNetReturn": 0.01065168482101162,
+          "totalNetReturn": 0.1518214464137997,
+          "MFE_R": 0.6990877754271622,
+          "MAE_R": -0.5633582787465545
+        },
+        {
+          "key": "89+",
+          "trades": 6,
+          "winRate": 0.6666666666666666,
+          "expectancyR": 0.07745477381232733,
+          "PF": 1.0917279438123584,
+          "avgNetReturn": 0.0008926834991095572,
+          "totalNetReturn": 0.003690671063765194,
+          "MFE_R": 0.5726615916790124,
+          "MAE_R": -0.43950345769149113
         }
       ],
       "byPoolRank": [
         {
           "key": "rank_1",
-          "trades": 7,
-          "winRate": 0.42857142857142855,
-          "expectancyR": 0.16807781763899032,
-          "PF": 1.8563208849159658,
-          "avgNetReturn": 0.00965960681712115,
-          "totalNetReturn": 0.06371208322976152,
-          "MFE_R": 0.7852921202081008,
-          "MAE_R": -0.5608950045301474
+          "trades": 24,
+          "winRate": 0.375,
+          "expectancyR": -0.06729985897586704,
+          "PF": 0.834660292148408,
+          "avgNetReturn": -0.002577083500027996,
+          "totalNetReturn": -0.07374165910384378,
+          "MFE_R": 0.5879160588495284,
+          "MAE_R": -0.6077467409127711
+        },
+        {
+          "key": "rank_10",
+          "trades": 1,
+          "winRate": 0,
+          "expectancyR": -1.0325604806796127,
+          "PF": 0,
+          "avgNetReturn": -0.04393420613859347,
+          "totalNetReturn": -0.043934206138593446,
+          "MFE_R": 0.5388349514563102,
+          "MAE_R": -1.000000000000001
         },
         {
           "key": "rank_2",
-          "trades": 3,
-          "winRate": 0.6666666666666666,
-          "expectancyR": 0.017330707880577844,
-          "PF": 1.1193248112848948,
-          "avgNetReturn": 0.00038703187221825544,
-          "totalNetReturn": 0.00105737661925831,
-          "MFE_R": 0.37894714045507705,
-          "MAE_R": -0.5853651492540392
+          "trades": 9,
+          "winRate": 0.4444444444444444,
+          "expectancyR": 0.005655554772670595,
+          "PF": 1.5319688155199354,
+          "avgNetReturn": 0.006198273724466523,
+          "totalNetReturn": 0.04797948569686472,
+          "MFE_R": 0.455166035533401,
+          "MAE_R": -0.5853340774862822
         },
         {
           "key": "rank_3",
-          "trades": 2,
-          "winRate": 0.5,
-          "expectancyR": 0.3102734421512879,
-          "PF": 1.7199242954367415,
-          "avgNetReturn": 0.011817815458109514,
-          "totalNetReturn": 0.021781800213951374,
-          "MFE_R": 1.0575213626197155,
-          "MAE_R": -0.5734702070310262
+          "trades": 5,
+          "winRate": 0.2,
+          "expectancyR": -0.3596245815123762,
+          "PF": 0.3779840778394755,
+          "avgNetReturn": -0.01858436353566888,
+          "totalNetReturn": -0.09323455696131322,
+          "MFE_R": 0.5445593803589955,
+          "MAE_R": -0.7376449635463548
         },
         {
           "key": "rank_4",
-          "trades": 5,
-          "winRate": 0.2,
-          "expectancyR": -0.6067412124239528,
-          "PF": 0.1554163688188313,
-          "avgNetReturn": -0.02488225404006203,
-          "totalNetReturn": -0.11975375940025335,
-          "MFE_R": 0.45374319919704564,
-          "MAE_R": -0.9660157147232225
+          "trades": 7,
+          "winRate": 0.14285714285714285,
+          "expectancyR": -0.6509085739853527,
+          "PF": 0.10925219227226521,
+          "avgNetReturn": -0.026664926048333915,
+          "totalNetReturn": -0.17369074907247517,
+          "MFE_R": 0.360848419187239,
+          "MAE_R": -0.948525156690846
         },
         {
           "key": "rank_5",
-          "trades": 2,
-          "winRate": 0,
-          "expectancyR": -0.27002562607779995,
-          "PF": 0,
-          "avgNetReturn": -0.01116427360243628,
-          "totalNetReturn": -0.02230699329846486,
-          "MFE_R": 0.23703920681651203,
-          "MAE_R": -0.6433381041016248
+          "trades": 5,
+          "winRate": 0.6,
+          "expectancyR": 0.28636260716464423,
+          "PF": 3.3819686668983198,
+          "avgNetReturn": 0.0106371799638733,
+          "totalNetReturn": 0.052641850385142686,
+          "MFE_R": 0.7641765858410707,
+          "MAE_R": -0.3180755867671316
         },
         {
           "key": "rank_6",
-          "trades": 1,
+          "trades": 4,
           "winRate": 0,
-          "expectancyR": -1.0219988458992821,
+          "expectancyR": -0.783367899958562,
           "PF": 0,
-          "avgNetReturn": -0.056439348263806116,
-          "totalNetReturn": -0.056439348263806144,
-          "MFE_R": 1.2230215827338151,
-          "MAE_R": -1.0000000000000013
+          "avgNetReturn": -0.038397531612622375,
+          "totalNetReturn": -0.14544386620150562,
+          "MFE_R": 0.5716872266311168,
+          "MAE_R": -0.8409574468085118
         },
         {
           "key": "rank_7",
-          "trades": 4,
+          "trades": 5,
+          "winRate": 0.2,
+          "expectancyR": -0.3224931139812554,
+          "PF": 0.3105385026037425,
+          "avgNetReturn": -0.012233163627966826,
+          "totalNetReturn": -0.061159286504933186,
+          "MFE_R": 0.44695630678346204,
+          "MAE_R": -0.6298600115472115
+        },
+        {
+          "key": "rank_9",
+          "trades": 1,
           "winRate": 0,
-          "expectancyR": -0.5177064747954101,
+          "expectancyR": -0.07836125654450216,
           "PF": 0,
-          "avgNetReturn": -0.022178837531474222,
-          "totalNetReturn": -0.08633045486336632,
-          "MFE_R": 0.36485480376918217,
-          "MAE_R": -0.7601511013905367
+          "avgNetReturn": -0.0033186252771618442,
+          "totalNetReturn": -0.0033186252771618685,
+          "MFE_R": 0.36649214659685814,
+          "MAE_R": -0.4712041884816766
         }
       ],
       "byMomentum24h": [
         {
           "key": "(-11%,-8%]",
-          "trades": 24,
-          "winRate": 0.2916666666666667,
-          "expectancyR": -0.20072909699746022,
-          "PF": 0.5428028614635102,
-          "avgNetReturn": -0.008311689230923494,
-          "totalNetReturn": -0.19275217394273847,
-          "MFE_R": 0.5905901748120901,
-          "MAE_R": -0.7077775033715296
+          "trades": 61,
+          "winRate": 0.3114754098360656,
+          "expectancyR": -0.2023577937552056,
+          "PF": 0.5699430218673189,
+          "avgNetReturn": -0.008105978962030615,
+          "totalNetReturn": -0.41469834147207174,
+          "MFE_R": 0.5361140333769712,
+          "MAE_R": -0.65174657969079
         }
       ],
       "byRelativeMetric": [
         {
           "key": "(-10%,-5%]",
-          "trades": 22,
-          "winRate": 0.22727272727272727,
-          "expectancyR": -0.29726097580126437,
-          "PF": 0.34040717007889965,
-          "avgNetReturn": -0.013081281158572034,
-          "totalNetReturn": -0.2588185330432101,
-          "MFE_R": 0.5548244083911734,
-          "MAE_R": -0.7514769733750019
+          "trades": 51,
+          "winRate": 0.29411764705882354,
+          "expectancyR": -0.24367299710158952,
+          "PF": 0.5109244273598915,
+          "avgNetReturn": -0.009459528803394205,
+          "totalNetReturn": -0.4029489919413488,
+          "MFE_R": 0.5270109367049054,
+          "MAE_R": -0.6611172307951299
         },
         {
           "key": "<=-10%",
-          "trades": 2,
-          "winRate": 1,
-          "expectancyR": 0.861121569844386,
-          "PF": null,
-          "avgNetReturn": 0.044153821973210446,
-          "totalNetReturn": 0.08913655028603595,
-          "MFE_R": 0.9840136054421743,
-          "MAE_R": -0.22708333333333444
+          "trades": 10,
+          "winRate": 0.4,
+          "expectancyR": 0.008349743311352464,
+          "PF": 0.9263582505129216,
+          "avgNetReturn": -0.001202874771076296,
+          "totalNetReturn": -0.019678971096501074,
+          "MFE_R": 0.582539826404507,
+          "MAE_R": -0.6039562590586558
         }
       ],
       "byVolumeMultiple": [
         {
           "key": "(2,3]",
-          "trades": 9,
-          "winRate": 0.2222222222222222,
-          "expectancyR": -0.37536715949890087,
-          "PF": 0.41649448965996255,
-          "avgNetReturn": -0.01317827194290558,
-          "totalNetReturn": -0.11784264418410173,
-          "MFE_R": 0.595571598629513,
-          "MAE_R": -0.7347802503964851
+          "trades": 23,
+          "winRate": 0.2608695652173913,
+          "expectancyR": -0.2502780029574199,
+          "PF": 0.6483009558754972,
+          "avgNetReturn": -0.006934302680439156,
+          "totalNetReturn": -0.1642142745417735,
+          "MFE_R": 0.5590042241693304,
+          "MAE_R": -0.6566559766816055
         },
         {
           "key": "(3,4]",
-          "trades": 15,
-          "winRate": 0.3333333333333333,
-          "expectancyR": -0.09594625949659583,
-          "PF": 0.6529667137186349,
-          "avgNetReturn": -0.005391739603734244,
-          "totalNetReturn": -0.0849162898940562,
-          "MFE_R": 0.5876013205216365,
-          "MAE_R": -0.6915758551565562
+          "trades": 38,
+          "winRate": 0.34210526315789475,
+          "expectancyR": -0.17335345660649698,
+          "PF": 0.5189094624798909,
+          "avgNetReturn": -0.008815151448257022,
+          "totalNetReturn": -0.29969890523431464,
+          "MFE_R": 0.5222594442131748,
+          "MAE_R": -0.6487751025647697
         }
       ],
       "byBtcBenchmarkRegime": [
         {
           "key": "down",
-          "trades": 11,
-          "winRate": 0.18181818181818182,
-          "expectancyR": -0.2571305614664918,
-          "PF": 0.3657453683251998,
-          "avgNetReturn": -0.010869885266227695,
-          "totalNetReturn": -0.11720493046424962,
-          "MFE_R": 0.5752354400567484,
-          "MAE_R": -0.6663588066576452
+          "trades": 23,
+          "winRate": 0.2608695652173913,
+          "expectancyR": -0.27617710155482894,
+          "PF": 0.6224049573387324,
+          "avgNetReturn": -0.006837272405673499,
+          "totalNetReturn": -0.15960570216793235,
+          "MFE_R": 0.5527257988153002,
+          "MAE_R": -0.6785601568702632
         },
         {
           "key": "flat",
-          "trades": 12,
-          "winRate": 0.3333333333333333,
-          "expectancyR": -0.18651532191041506,
-          "PF": 0.6344153146770307,
-          "avgNetReturn": -0.007549121675594298,
-          "totalNetReturn": -0.09523806543568636,
-          "MFE_R": 0.6143828969191,
-          "MAE_R": -0.7949046720687889
+          "trades": 37,
+          "winRate": 0.32432432432432434,
+          "expectancyR": -0.16867226471415736,
+          "PF": 0.5255863597237285,
+          "avgNetReturn": -0.009402300212077006,
+          "totalNetReturn": -0.3108972341029729,
+          "MFE_R": 0.5274671100380164,
+          "MAE_R": -0.6495081246017562
         },
         {
           "key": "up",
@@ -1775,187 +2548,231 @@
       "byVolatilityRegime": [
         {
           "key": "high",
-          "trades": 7,
-          "winRate": 0.14285714285714285,
-          "expectancyR": -0.4049095516688646,
-          "PF": 0.3419959928108842,
-          "avgNetReturn": -0.01701988030118993,
-          "totalNetReturn": -0.11679165406280023,
-          "MFE_R": 0.5111590363677607,
-          "MAE_R": -0.8439889533686495
+          "trades": 16,
+          "winRate": 0.125,
+          "expectancyR": -0.42296893582720624,
+          "PF": 0.42041904345108766,
+          "avgNetReturn": -0.015569558878711845,
+          "totalNetReturn": -0.23297250951920845,
+          "MFE_R": 0.49515117156186367,
+          "MAE_R": -0.7908865813037314
         },
         {
           "key": "low",
-          "trades": 2,
-          "winRate": 1,
-          "expectancyR": 1.2321952461184813,
-          "PF": null,
-          "avgNetReturn": 0.05026178664361232,
-          "totalNetReturn": 0.10230080206829228,
-          "MFE_R": 1.492800836550833,
-          "MAE_R": -0.5959419240669233
+          "trades": 6,
+          "winRate": 0.6666666666666666,
+          "expectancyR": 0.3269797773183838,
+          "PF": 2.4243633177959922,
+          "avgNetReturn": 0.01309124837624564,
+          "totalNetReturn": 0.07631387605999662,
+          "MFE_R": 0.9156922752909349,
+          "MAE_R": -0.4708335205672067
         },
         {
           "key": "medium",
-          "trades": 15,
-          "winRate": 0.26666666666666666,
-          "expectancyR": -0.29650146389959703,
-          "PF": 0.29142153570146756,
-          "avgNetReturn": -0.012057663514737268,
-          "totalNetReturn": -0.1708299698321879,
-          "MFE_R": 0.5073632845209448,
-          "MAE_R": -0.6591235706134878
+          "trades": 39,
+          "winRate": 0.3333333333333333,
+          "expectancyR": -0.19328720794211657,
+          "PF": 0.5127900569263366,
+          "avgNetReturn": -0.008305109355947481,
+          "totalNetReturn": -0.2910266901479369,
+          "MFE_R": 0.4945226574169183,
+          "MAE_R": -0.6224962804326984
         }
       ],
       "byFundingSign": [
         {
           "key": "negative",
-          "trades": 8,
-          "winRate": 0.25,
-          "expectancyR": -0.10118592069101738,
-          "PF": 0.7031369543806139,
-          "avgNetReturn": -0.003831444496326762,
-          "totalNetReturn": -0.0333889853129421,
-          "MFE_R": 0.5327866077223924,
-          "MAE_R": -0.6054298519353669
+          "trades": 26,
+          "winRate": 0.3076923076923077,
+          "expectancyR": -0.22313895926441682,
+          "PF": 0.47380281463910995,
+          "avgNetReturn": -0.008675849344946942,
+          "totalNetReturn": -0.2108267842206175,
+          "MFE_R": 0.47213901158302224,
+          "MAE_R": -0.644921375909909
         },
         {
           "key": "positive",
-          "trades": 13,
-          "winRate": 0.38461538461538464,
-          "expectancyR": -0.06903265703395914,
-          "PF": 0.7322823119732833,
-          "avgNetReturn": -0.004618610412334805,
-          "totalNetReturn": -0.06691186571273666,
-          "MFE_R": 0.7410225354757648,
-          "MAE_R": -0.7033247127256749
+          "trades": 25,
+          "winRate": 0.36,
+          "expectancyR": -0.04880829012461102,
+          "PF": 0.7278636769553736,
+          "avgNetReturn": -0.0041532206233481405,
+          "totalNetReturn": -0.11104264511252815,
+          "MFE_R": 0.6470926781362282,
+          "MAE_R": -0.5814027456117086
         },
         {
           "key": "zero",
-          "trades": 3,
-          "winRate": 0,
-          "expectancyR": -1.036862140323146,
-          "PF": 0,
-          "avgNetReturn": -0.0362623500703991,
-          "totalNetReturn": -0.10498054074400032,
-          "MFE_R": 0.09285945750869411,
-          "MAE_R": -1.000000000000001
+          "trades": 10,
+          "winRate": 0.2,
+          "expectancyR": -0.532200522507743,
+          "PF": 0.5138703651381845,
+          "avgNetReturn": -0.016506211813154353,
+          "totalNetReturn": -0.16569184196528186,
+          "MFE_R": 0.425002478143096,
+          "MAE_R": -0.8453516947187836
         }
       ],
       "byExitReason": [
         {
           "key": "stop_loss",
-          "trades": 6,
+          "trades": 16,
           "winRate": 0,
-          "expectancyR": -1.0322805544618896,
+          "expectancyR": -1.034576055327282,
           "PF": 0,
-          "avgNetReturn": -0.04101095286310812,
-          "totalNetReturn": -0.2224040007702025,
-          "MFE_R": 0.33755072309225614,
-          "MAE_R": -1.0000000000000007
+          "avgNetReturn": -0.044110933942501034,
+          "totalNetReturn": -0.5146142009424144,
+          "MFE_R": 0.3046334791532601,
+          "MAE_R": -0.9999999999999997
         },
         {
           "key": "take_profit",
-          "trades": 3,
+          "trades": 6,
           "winRate": 1,
-          "expectancyR": 1.4667434214021409,
+          "expectancyR": 1.468825902684535,
           "PF": null,
-          "avgNetReturn": 0.06533954238511185,
-          "totalNetReturn": 0.20897709668670794,
-          "MFE_R": 1.495579451416962,
-          "MAE_R": -0.2965179376871336
+          "avgNetReturn": 0.07067849738677655,
+          "totalNetReturn": 0.5044149714399979,
+          "MFE_R": 1.495826850327883,
+          "MAE_R": -0.2268912537752209
         },
         {
           "key": "time_stop",
-          "trades": 15,
-          "winRate": 0.26666666666666666,
-          "expectancyR": -0.2016030176916087,
-          "PF": 0.21452579181900913,
-          "avgNetReturn": -0.009962230101256712,
-          "totalNetReturn": -0.14131318749814492,
-          "MFE_R": 0.5108081001790494,
-          "MAE_R": -0.6731404178570204
+          "trades": 39,
+          "winRate": 0.3333333333333333,
+          "expectancyR": -0.11804010128046769,
+          "PF": 0.5207990129005104,
+          "avgNetReturn": -0.005455404049346416,
+          "totalNetReturn": -0.19846029204065263,
+          "MFE_R": 0.48343228891219936,
+          "MAE_R": -0.5742357394483808
         }
       ],
       "byHoldingHours": [
         {
           "key": "<2h",
-          "trades": 2,
-          "winRate": 0,
-          "expectancyR": -1.0302901874986616,
-          "PF": 0,
-          "avgNetReturn": -0.04147645204093624,
-          "totalNetReturn": -0.08124678267473562,
-          "MFE_R": 0.1685814409327101,
-          "MAE_R": -0.9999999999999998
+          "trades": 10,
+          "winRate": 0.2,
+          "expectancyR": -0.5352295309132972,
+          "PF": 0.4739581290041005,
+          "avgNetReturn": -0.0193655228522318,
+          "totalNetReturn": -0.19020062699606144,
+          "MFE_R": 0.4661723416887245,
+          "MAE_R": -0.8453516947187827
         },
         {
           "key": "2-4h",
-          "trades": 2,
-          "winRate": 0,
-          "expectancyR": -1.0385501837784878,
-          "PF": 0,
-          "avgNetReturn": -0.0355377620175147,
-          "totalNetReturn": -0.0699052481638136,
-          "MFE_R": 0.12741975006126094,
-          "MAE_R": -1.0000000000000022
+          "trades": 6,
+          "winRate": 0.16666666666666666,
+          "expectancyR": -0.6179977207213492,
+          "PF": 0.27679670771262,
+          "avgNetReturn": -0.023328049945211937,
+          "totalNetReturn": -0.13532836353872546,
+          "MFE_R": 0.49004379256651726,
+          "MAE_R": -0.8363794604003484
         },
         {
           "key": "4-8h",
-          "trades": 20,
-          "winRate": 0.35,
-          "expectancyR": -0.03399087926923731,
-          "PF": 0.8389841357986432,
-          "avgNetReturn": -0.0022726056712630976,
-          "totalNetReturn": -0.0553284909881786,
-          "MFE_R": 0.679108090675111,
-          "MAE_R": -0.6493330040458354
+          "trades": 45,
+          "winRate": 0.35555555555555557,
+          "expectancyR": -0.07296763968014394,
+          "PF": 0.7265022899143664,
+          "avgNetReturn": -0.003574248633117286,
+          "totalNetReturn": -0.16410619732430187,
+          "MFE_R": 0.5577993303046421,
+          "MAE_R": -0.5841055033677389
         }
       ],
       "byRegime": [
         {
           "key": "down|high|negative",
-          "trades": 7,
+          "trades": 14,
           "winRate": 0.14285714285714285,
-          "expectancyR": -0.4049095516688646,
-          "PF": 0.3419959928108842,
-          "avgNetReturn": -0.01701988030118993,
-          "totalNetReturn": -0.11679165406280023,
-          "MFE_R": 0.5111590363677607,
-          "MAE_R": -0.8439889533686495
+          "expectancyR": -0.4273649164803236,
+          "PF": 0.49638124550028523,
+          "avgNetReturn": -0.013095529337350555,
+          "totalNetReturn": -0.17991674674978875,
+          "MFE_R": 0.5416246651639794,
+          "MAE_R": -0.8109103131779599
         },
         {
           "key": "down|medium|negative",
-          "trades": 4,
-          "winRate": 0.25,
-          "expectancyR": 0.0014826713876605613,
-          "PF": 0.9423933757584085,
-          "avgNetReturn": -0.00010739395504378722,
-          "totalNetReturn": -0.0004679262864198952,
-          "MFE_R": 0.6873691465124769,
-          "MAE_R": -0.35550604991338774
+          "trades": 8,
+          "winRate": 0.375,
+          "expectancyR": -0.10940493872335288,
+          "PF": 0.8436309939582266,
+          "avgNetReturn": -0.0010248151975371278,
+          "totalNetReturn": -0.009196375475225005,
+          "MFE_R": 0.5544483406985657,
+          "MAE_R": -0.5042645260706113
+        },
+        {
+          "key": "down|medium|neutral",
+          "trades": 1,
+          "winRate": 1,
+          "expectancyR": 0.5062750047502875,
+          "PF": null,
+          "avgNetReturn": 0.03427866697271431,
+          "totalNetReturn": 0.03427866697271442,
+          "MFE_R": 0.6943613348676675,
+          "MAE_R": -0.22002301495972215
+        },
+        {
+          "key": "flat|high|negative",
+          "trades": 2,
+          "winRate": 0,
+          "expectancyR": -0.3921970712553848,
+          "PF": 0,
+          "avgNetReturn": -0.03288776566824088,
+          "totalNetReturn": -0.06469558128293107,
+          "MFE_R": 0.16983671634705289,
+          "MAE_R": -0.6507204581841314
         },
         {
           "key": "flat|low|negative",
-          "trades": 2,
-          "winRate": 1,
-          "expectancyR": 1.2321952461184813,
-          "PF": null,
-          "avgNetReturn": 0.05026178664361232,
-          "totalNetReturn": 0.10230080206829228,
-          "MFE_R": 1.492800836550833,
-          "MAE_R": -0.5959419240669233
+          "trades": 6,
+          "winRate": 0.6666666666666666,
+          "expectancyR": 0.3269797773183838,
+          "PF": 2.4243633177959922,
+          "avgNetReturn": 0.01309124837624564,
+          "totalNetReturn": 0.07631387605999662,
+          "MFE_R": 0.9156922752909349,
+          "MAE_R": -0.4708335205672067
         },
         {
           "key": "flat|medium|negative",
-          "trades": 10,
-          "winRate": 0.2,
-          "expectancyR": -0.47025743551619426,
-          "PF": 0.228740318222809,
-          "avgNetReturn": -0.01911130333943562,
-          "totalNetReturn": -0.17920595461177957,
-          "MFE_R": 0.43869930899275333,
-          "MAE_R": -0.8346972216691622
+          "trades": 24,
+          "winRate": 0.3333333333333333,
+          "expectancyR": -0.14590553968476405,
+          "PF": 0.6191619576665871,
+          "avgNetReturn": -0.006451143796028402,
+          "totalNetReturn": -0.15467240213295042,
+          "MFE_R": 0.5138715818310011,
+          "MAE_R": -0.6449138262736144
+        },
+        {
+          "key": "flat|medium|neutral",
+          "trades": 1,
+          "winRate": 0,
+          "expectancyR": -0.4880571759090936,
+          "PF": 0,
+          "avgNetReturn": -0.017090740740151322,
+          "totalNetReturn": -0.017090740740151267,
+          "MFE_R": 0.193181818181816,
+          "MAE_R": -0.6874999999999999
+        },
+        {
+          "key": "flat|medium|positive",
+          "trades": 4,
+          "winRate": 0,
+          "expectancyR": -0.8571420468699811,
+          "PF": 0,
+          "avgNetReturn": -0.0471847187307521,
+          "totalNetReturn": -0.1761396661339223,
+          "MFE_R": 0.28908905121026196,
+          "MAE_R": -0.9349816849816839
         },
         {
           "key": "up|medium|negative",
@@ -1973,47 +2790,91 @@
     "regimeBreakdown": [
       {
         "key": "down|high|negative",
-        "trades": 7,
+        "trades": 14,
         "winRate": 0.14285714285714285,
-        "expectancyR": -0.4049095516688646,
-        "PF": 0.3419959928108842,
-        "avgNetReturn": -0.01701988030118993,
-        "totalNetReturn": -0.11679165406280023,
-        "MFE_R": 0.5111590363677607,
-        "MAE_R": -0.8439889533686495
+        "expectancyR": -0.4273649164803236,
+        "PF": 0.49638124550028523,
+        "avgNetReturn": -0.013095529337350555,
+        "totalNetReturn": -0.17991674674978875,
+        "MFE_R": 0.5416246651639794,
+        "MAE_R": -0.8109103131779599
       },
       {
         "key": "down|medium|negative",
-        "trades": 4,
-        "winRate": 0.25,
-        "expectancyR": 0.0014826713876605613,
-        "PF": 0.9423933757584085,
-        "avgNetReturn": -0.00010739395504378722,
-        "totalNetReturn": -0.0004679262864198952,
-        "MFE_R": 0.6873691465124769,
-        "MAE_R": -0.35550604991338774
+        "trades": 8,
+        "winRate": 0.375,
+        "expectancyR": -0.10940493872335288,
+        "PF": 0.8436309939582266,
+        "avgNetReturn": -0.0010248151975371278,
+        "totalNetReturn": -0.009196375475225005,
+        "MFE_R": 0.5544483406985657,
+        "MAE_R": -0.5042645260706113
+      },
+      {
+        "key": "down|medium|neutral",
+        "trades": 1,
+        "winRate": 1,
+        "expectancyR": 0.5062750047502875,
+        "PF": null,
+        "avgNetReturn": 0.03427866697271431,
+        "totalNetReturn": 0.03427866697271442,
+        "MFE_R": 0.6943613348676675,
+        "MAE_R": -0.22002301495972215
+      },
+      {
+        "key": "flat|high|negative",
+        "trades": 2,
+        "winRate": 0,
+        "expectancyR": -0.3921970712553848,
+        "PF": 0,
+        "avgNetReturn": -0.03288776566824088,
+        "totalNetReturn": -0.06469558128293107,
+        "MFE_R": 0.16983671634705289,
+        "MAE_R": -0.6507204581841314
       },
       {
         "key": "flat|low|negative",
-        "trades": 2,
-        "winRate": 1,
-        "expectancyR": 1.2321952461184813,
-        "PF": null,
-        "avgNetReturn": 0.05026178664361232,
-        "totalNetReturn": 0.10230080206829228,
-        "MFE_R": 1.492800836550833,
-        "MAE_R": -0.5959419240669233
+        "trades": 6,
+        "winRate": 0.6666666666666666,
+        "expectancyR": 0.3269797773183838,
+        "PF": 2.4243633177959922,
+        "avgNetReturn": 0.01309124837624564,
+        "totalNetReturn": 0.07631387605999662,
+        "MFE_R": 0.9156922752909349,
+        "MAE_R": -0.4708335205672067
       },
       {
         "key": "flat|medium|negative",
-        "trades": 10,
-        "winRate": 0.2,
-        "expectancyR": -0.47025743551619426,
-        "PF": 0.228740318222809,
-        "avgNetReturn": -0.01911130333943562,
-        "totalNetReturn": -0.17920595461177957,
-        "MFE_R": 0.43869930899275333,
-        "MAE_R": -0.8346972216691622
+        "trades": 24,
+        "winRate": 0.3333333333333333,
+        "expectancyR": -0.14590553968476405,
+        "PF": 0.6191619576665871,
+        "avgNetReturn": -0.006451143796028402,
+        "totalNetReturn": -0.15467240213295042,
+        "MFE_R": 0.5138715818310011,
+        "MAE_R": -0.6449138262736144
+      },
+      {
+        "key": "flat|medium|neutral",
+        "trades": 1,
+        "winRate": 0,
+        "expectancyR": -0.4880571759090936,
+        "PF": 0,
+        "avgNetReturn": -0.017090740740151322,
+        "totalNetReturn": -0.017090740740151267,
+        "MFE_R": 0.193181818181816,
+        "MAE_R": -0.6874999999999999
+      },
+      {
+        "key": "flat|medium|positive",
+        "trades": 4,
+        "winRate": 0,
+        "expectancyR": -0.8571420468699811,
+        "PF": 0,
+        "avgNetReturn": -0.0471847187307521,
+        "totalNetReturn": -0.1761396661339223,
+        "MFE_R": 0.28908905121026196,
+        "MAE_R": -0.9349816849816839
       },
       {
         "key": "up|medium|negative",
@@ -2031,27 +2892,28 @@
       "interpretation": "Overlapping diagnostic slices ranked by totalNetReturn; they are not independent causal effects.",
       "top3": [
         {
-          "dimension": "relativeMetric",
-          "key": "(-10%,-5%]",
-          "trades": 22,
-          "totalNetReturn": -0.2588185330432101,
-          "expectancyR": -0.29726097580126437,
-          "PF": 0.34040717007889965
-        },
-        {
           "dimension": "exitReason",
-          "trades": 6,
-          "totalNetReturn": -0.2224040007702025,
-          "expectancyR": -1.0322805544618896,
+          "key": "stop_loss",
+          "trades": 16,
+          "totalNetReturn": -0.5146142009424144,
+          "expectancyR": -1.034576055327282,
           "PF": 0
         },
         {
-          "dimension": "regime",
-          "key": "flat|medium|negative",
-          "trades": 10,
-          "totalNetReturn": -0.17920595461177957,
-          "expectancyR": -0.47025743551619426,
-          "PF": 0.228740318222809
+          "dimension": "relativeMetric",
+          "key": "(-10%,-5%]",
+          "trades": 51,
+          "totalNetReturn": -0.4029489919413488,
+          "expectancyR": -0.24367299710158952,
+          "PF": 0.5109244273598915
+        },
+        {
+          "dimension": "score",
+          "key": "87",
+          "trades": 14,
+          "totalNetReturn": -0.32782526806716417,
+          "expectancyR": -0.6178977575316802,
+          "PF": 0.04057385833843834
         }
       ]
     },
@@ -2083,6 +2945,54 @@
         "spreadDragPct": 0,
         "slippageDragPct": 0,
         "fundingPct": -0.00013758
+      },
+      {
+        "asset": "ALPINEUSDT",
+        "foldId": "fold-1",
+        "signalCandleOpenTime": 1759593600000,
+        "signalAvailableAt": 1759597200000,
+        "score": 86,
+        "poolRank": 2,
+        "momentum24h": -0.0886216723430876,
+        "relativeMetric": -0.0848040096206738,
+        "volumeMultiple": 2.8643243624641945,
+        "entry": 1.3114,
+        "exit": 1.324,
+        "exitReason": "time_stop",
+        "netR": -0.18417585912938383,
+        "MFE_R": 0.25272067714631125,
+        "MAE_R": -0.3373639661426846,
+        "holdingHours": 8,
+        "grossReturnPct": -0.009608052463016659,
+        "netReturnPct": -0.011614567294494468,
+        "feeDragPct": 0.00120576483147781,
+        "spreadDragPct": 0,
+        "slippageDragPct": 0,
+        "fundingPct": -0.00080075
+      },
+      {
+        "asset": "AUCTIONUSDT",
+        "foldId": "fold-1",
+        "signalCandleOpenTime": 1762182000000,
+        "signalAvailableAt": 1762185600000,
+        "score": 87,
+        "poolRank": 1,
+        "momentum24h": -0.10491007707679134,
+        "relativeMetric": -0.06520911406892016,
+        "volumeMultiple": 3.4715373817486346,
+        "entry": 6.271,
+        "exit": 6.409,
+        "exitReason": "time_stop",
+        "netR": -0.4565486155045889,
+        "MFE_R": 0.3058103975535158,
+        "MAE_R": -0.8287461773700305,
+        "holdingHours": 8,
+        "grossReturnPct": -0.022006059639610998,
+        "netReturnPct": -0.023806633275394763,
+        "feeDragPct": 0.0012132036357837665,
+        "spreadDragPct": 0,
+        "slippageDragPct": 0,
+        "fundingPct": -0.00058737
       },
       {
         "asset": "ENAUSDT",
@@ -2253,6 +3163,102 @@
         "fundingPct": 0.0001
       },
       {
+        "asset": "FORMUSDT",
+        "foldId": "fold-1",
+        "signalCandleOpenTime": 1761019200000,
+        "signalAvailableAt": 1761022800000,
+        "score": 86,
+        "poolRank": 6,
+        "momentum24h": -0.0832221278660682,
+        "relativeMetric": -0.07336043953834437,
+        "volumeMultiple": 3.2913602794471144,
+        "entry": 0.756,
+        "exit": 0.7655,
+        "exitReason": "time_stop",
+        "netR": -0.2749281914893596,
+        "MFE_R": 0.40425531914893587,
+        "MAE_R": -0.5638297872340441,
+        "holdingHours": 8,
+        "grossReturnPct": -0.012566137566137447,
+        "netReturnPct": -0.01367367724867713,
+        "feeDragPct": 0.0012075396825396824,
+        "spreadDragPct": 0,
+        "slippageDragPct": 0,
+        "fundingPct": 0.0001
+      },
+      {
+        "asset": "GALAUSDT",
+        "foldId": "fold-1",
+        "signalCandleOpenTime": 1761166800000,
+        "signalAvailableAt": 1761170400000,
+        "score": 87,
+        "poolRank": 6,
+        "momentum24h": -0.10166520595968442,
+        "relativeMetric": -0.0666855462895044,
+        "volumeMultiple": 3.3581202189042463,
+        "entry": 0.01025,
+        "exit": 0.0106,
+        "exitReason": "time_stop",
+        "netR": -0.8106478833333358,
+        "MFE_R": 0.15555555555555606,
+        "MAE_R": -0.8000000000000025,
+        "holdingHours": 8,
+        "grossReturnPct": -0.034146341463414664,
+        "netReturnPct": -0.03558941926829271,
+        "feeDragPct": 0.0012204878048780487,
+        "spreadDragPct": 0,
+        "slippageDragPct": 0,
+        "fundingPct": -0.00022259
+      },
+      {
+        "asset": "HUSDT",
+        "foldId": "fold-1",
+        "signalCandleOpenTime": 1760716800000,
+        "signalAvailableAt": 1760720400000,
+        "score": 89,
+        "poolRank": 1,
+        "momentum24h": -0.10892871757099587,
+        "relativeMetric": -0.09284679491121783,
+        "volumeMultiple": 3.02910442312413,
+        "entry": 0.10889,
+        "exit": 0.11249,
+        "exitReason": "time_stop",
+        "netR": -0.30352655551386615,
+        "MFE_R": 0.22512234910277365,
+        "MAE_R": -0.49184339314844977,
+        "holdingHours": 8,
+        "grossReturnPct": -0.03306088713380473,
+        "netReturnPct": -0.03417426366608501,
+        "feeDragPct": 0.001219836532280283,
+        "spreadDragPct": 0,
+        "slippageDragPct": 0,
+        "fundingPct": 0.00010646000000000001
+      },
+      {
+        "asset": "HUSDT",
+        "foldId": "fold-1",
+        "signalCandleOpenTime": 1762009200000,
+        "signalAvailableAt": 1762012800000,
+        "score": 89,
+        "poolRank": 1,
+        "momentum24h": -0.10715622426828342,
+        "relativeMetric": -0.10813396623333149,
+        "volumeMultiple": 3.296297113343747,
+        "entry": 0.23858,
+        "exit": 0.24408,
+        "exitReason": "time_stop",
+        "netR": -0.30233736263736327,
+        "MFE_R": 0.2532705389848243,
+        "MAE_R": -0.7399267399267405,
+        "holdingHours": 8,
+        "grossReturnPct": -0.023010184835910996,
+        "netReturnPct": -0.02421689580015093,
+        "feeDragPct": 0.0012138318383770642,
+        "spreadDragPct": 0,
+        "slippageDragPct": 0.00004287912586287135,
+        "fundingPct": 0.00005
+      },
+      {
         "asset": "HYPEUSDT",
         "foldId": "fold-1",
         "signalCandleOpenTime": 1758470400000,
@@ -2301,6 +3307,78 @@
         "fundingPct": 0.00031832999999999997
       },
       {
+        "asset": "LAUSDT",
+        "foldId": "fold-1",
+        "signalCandleOpenTime": 1758520800000,
+        "signalAvailableAt": 1758524400000,
+        "score": 89,
+        "poolRank": 5,
+        "momentum24h": -0.10583580613254207,
+        "relativeMetric": -0.09702172123317232,
+        "volumeMultiple": 3.439094883807857,
+        "entry": 0.36159,
+        "exit": 0.3604,
+        "exitReason": "time_stop",
+        "netR": 0.028259622238062693,
+        "MFE_R": 0.6161796151104796,
+        "MAE_R": -0.0858873841767632,
+        "holdingHours": 8,
+        "grossReturnPct": 0.0033185840707964376,
+        "netReturnPct": 0.002192994828396909,
+        "feeDragPct": 0.0011980253878702395,
+        "spreadDragPct": 0,
+        "slippageDragPct": 0.00002756385452928889,
+        "fundingPct": 0.0001
+      },
+      {
+        "asset": "LDOUSDT",
+        "foldId": "fold-1",
+        "signalCandleOpenTime": 1760684400000,
+        "signalAvailableAt": 1760688000000,
+        "score": 87,
+        "poolRank": 6,
+        "momentum24h": -0.10592850915431551,
+        "relativeMetric": -0.06116216821230036,
+        "volumeMultiple": 3.2729708661920216,
+        "entry": 0.8205,
+        "exit": 0.8588,
+        "exitReason": "stop_loss",
+        "netR": -1.0258966791122706,
+        "MFE_R": 0.5039164490861604,
+        "MAE_R": -0.9999999999999991,
+        "holdingHours": 3.1666666666666665,
+        "grossReturnPct": -0.046678854357099286,
+        "netReturnPct": -0.04788768166971354,
+        "feeDragPct": 0.0012280073126142597,
+        "spreadDragPct": 0,
+        "slippageDragPct": 0,
+        "fundingPct": 0.00001918
+      },
+      {
+        "asset": "OMUSDT",
+        "foldId": "fold-1",
+        "signalCandleOpenTime": 1760227200000,
+        "signalAvailableAt": 1760230800000,
+        "score": 87,
+        "poolRank": 4,
+        "momentum24h": -0.09881749014575136,
+        "relativeMetric": -0.07992935497334974,
+        "volumeMultiple": 2.7551145954404515,
+        "entry": 0.0983,
+        "exit": 0.10099,
+        "exitReason": "time_stop",
+        "netR": -0.4808675869969034,
+        "MFE_R": 0.11455108359133212,
+        "MAE_R": -0.8095975232198129,
+        "holdingHours": 8,
+        "grossReturnPct": -0.02736520854526958,
+        "netReturnPct": -0.03160126767039674,
+        "feeDragPct": 0.0012164191251271615,
+        "spreadDragPct": 0,
+        "slippageDragPct": 0,
+        "fundingPct": -0.0030196399999999997
+      },
+      {
         "asset": "ONDOUSDT",
         "foldId": "fold-1",
         "signalCandleOpenTime": 1760684400000,
@@ -2347,6 +3425,102 @@
         "spreadDragPct": 0,
         "slippageDragPct": 0,
         "fundingPct": 0.00005
+      },
+      {
+        "asset": "SEIUSDT",
+        "foldId": "fold-1",
+        "signalCandleOpenTime": 1760680800000,
+        "signalAvailableAt": 1760684400000,
+        "score": 89,
+        "poolRank": 5,
+        "momentum24h": -0.10784763653051865,
+        "relativeMetric": -0.08851097924980567,
+        "volumeMultiple": 3.440453436241628,
+        "entry": 0.19439,
+        "exit": 0.1907,
+        "exitReason": "time_stop",
+        "netR": 0.4653878159239129,
+        "MFE_R": 1.2214673913043455,
+        "MAE_R": -0.1372282608695614,
+        "holdingHours": 8,
+        "grossReturnPct": 0.019032921810699488,
+        "netReturnPct": 0.01762052742013479,
+        "feeDragPct": 0.0011886105252327792,
+        "spreadDragPct": 0,
+        "slippageDragPct": 0.00005046386533191782,
+        "fundingPct": -0.00017332
+      },
+      {
+        "asset": "SPXUSDT",
+        "foldId": "fold-1",
+        "signalCandleOpenTime": 1760126400000,
+        "signalAvailableAt": 1760130000000,
+        "score": 88,
+        "poolRank": 2,
+        "momentum24h": -0.10938597723760013,
+        "relativeMetric": -0.0739154605719421,
+        "volumeMultiple": 2.9809342093781255,
+        "entry": 1.2668,
+        "exit": 1.1149,
+        "exitReason": "take_profit",
+        "netR": 1.4651507302823754,
+        "MFE_R": 1.4790652385589091,
+        "MAE_R": -0.37293086660175295,
+        "holdingHours": 0.16666666666666666,
+        "grossReturnPct": 0.11990843069150614,
+        "netReturnPct": 0.11878037574992105,
+        "feeDragPct": 0.0011280549415850962,
+        "spreadDragPct": 0,
+        "slippageDragPct": 0,
+        "fundingPct": 0
+      },
+      {
+        "asset": "TIAUSDT",
+        "foldId": "fold-1",
+        "signalCandleOpenTime": 1760684400000,
+        "signalAvailableAt": 1760688000000,
+        "score": 85,
+        "poolRank": 10,
+        "momentum24h": -0.09852859005401393,
+        "relativeMetric": -0.05376224911199878,
+        "volumeMultiple": 3.133965719445658,
+        "entry": 0.9683,
+        "exit": 1.0095,
+        "exitReason": "stop_loss",
+        "netR": -1.0325604806796127,
+        "MFE_R": 0.5388349514563102,
+        "MAE_R": -1.000000000000001,
+        "holdingHours": 3.4166666666666665,
+        "grossReturnPct": -0.04254879686047719,
+        "netReturnPct": -0.04393420613859347,
+        "feeDragPct": 0.0012255292781162862,
+        "spreadDragPct": 0,
+        "slippageDragPct": 0,
+        "fundingPct": -0.00015988
+      },
+      {
+        "asset": "TUTUSDT",
+        "foldId": "fold-1",
+        "signalCandleOpenTime": 1760418000000,
+        "signalAvailableAt": 1760421600000,
+        "score": 88,
+        "poolRank": 1,
+        "momentum24h": -0.09611057537769208,
+        "relativeMetric": -0.0846046782047678,
+        "volumeMultiple": 3.1999651892242578,
+        "entry": 0.02812,
+        "exit": 0.02708,
+        "exitReason": "time_stop",
+        "netR": 0.44682709621621536,
+        "MFE_R": 0.9099099099099092,
+        "MAE_R": -0.13063063063063102,
+        "holdingHours": 8,
+        "grossReturnPct": 0.03698435277382639,
+        "netReturnPct": 0.035275823385490686,
+        "feeDragPct": 0.001177809388335704,
+        "spreadDragPct": 0,
+        "slippageDragPct": 0,
+        "fundingPct": -0.0005307199999999999
       },
       {
         "asset": "WIFUSDT",
@@ -2421,6 +3595,30 @@
         "fundingPct": -0.00017963
       },
       {
+        "asset": "ZROUSDT",
+        "foldId": "fold-1",
+        "signalCandleOpenTime": 1759226400000,
+        "signalAvailableAt": 1759230000000,
+        "score": 86,
+        "poolRank": 1,
+        "momentum24h": -0.09228376393329296,
+        "relativeMetric": -0.10867194997202945,
+        "volumeMultiple": 2.7689317675348093,
+        "entry": 2.101,
+        "exit": 1.9861,
+        "exitReason": "take_profit",
+        "netR": 1.4693575718015652,
+        "MFE_R": 1.4999999999999987,
+        "MAE_R": -0.018276762402087934,
+        "holdingHours": 3.4166666666666665,
+        "grossReturnPct": 0.054688243693479244,
+        "netReturnPct": 0.05357105663969533,
+        "feeDragPct": 0.0011671870537839123,
+        "spreadDragPct": 0,
+        "slippageDragPct": 0,
+        "fundingPct": 0.00005
+      },
+      {
         "asset": "1000BONKUSDT",
         "foldId": "fold-2",
         "signalCandleOpenTime": 1763092800000,
@@ -2443,6 +3641,30 @@
         "spreadDragPct": 0,
         "slippageDragPct": 0,
         "fundingPct": -0.00011386999999999999
+      },
+      {
+        "asset": "CRVUSDT",
+        "foldId": "fold-2",
+        "signalCandleOpenTime": 1762963200000,
+        "signalAvailableAt": 1762966800000,
+        "score": 85,
+        "poolRank": 9,
+        "momentum24h": -0.08146639511201625,
+        "relativeMetric": -0.06907001284357528,
+        "volumeMultiple": 3.3641761634745406,
+        "entry": 0.451,
+        "exit": 0.452,
+        "exitReason": "time_stop",
+        "netR": -0.07836125654450216,
+        "MFE_R": 0.36649214659685814,
+        "MAE_R": -0.4712041884816766,
+        "holdingHours": 8,
+        "grossReturnPct": -0.0022172949002217113,
+        "netReturnPct": -0.0033186252771618442,
+        "feeDragPct": 0.0012013303769401328,
+        "spreadDragPct": 0,
+        "slippageDragPct": 0,
+        "fundingPct": 0.0001
       },
       {
         "asset": "FARTCOINUSDT",
@@ -2541,6 +3763,54 @@
         "fundingPct": -0.00018701
       },
       {
+        "asset": "RESOLVUSDT",
+        "foldId": "fold-2",
+        "signalCandleOpenTime": 1764140400000,
+        "signalAvailableAt": 1764144000000,
+        "score": 88,
+        "poolRank": 1,
+        "momentum24h": -0.09924242424242424,
+        "relativeMetric": -0.10553917078224051,
+        "volumeMultiple": 3.123632715981987,
+        "entry": 0.13079,
+        "exit": 0.13787,
+        "exitReason": "stop_loss",
+        "netR": -1.071902163601693,
+        "MFE_R": 0.3488700564971756,
+        "MAE_R": -0.9999999999999982,
+        "holdingHours": 0.6666666666666666,
+        "grossReturnPct": -0.05413257894334422,
+        "netReturnPct": -0.05802482849071023,
+        "feeDragPct": 0.0012324795473660066,
+        "spreadDragPct": 0,
+        "slippageDragPct": 0,
+        "fundingPct": -0.00265977
+      },
+      {
+        "asset": "VIRTUALUSDT",
+        "foldId": "fold-2",
+        "signalCandleOpenTime": 1764950400000,
+        "signalAvailableAt": 1764954000000,
+        "score": 88,
+        "poolRank": 3,
+        "momentum24h": -0.10802207130730046,
+        "relativeMetric": -0.08100152984883835,
+        "volumeMultiple": 2.8764007910198255,
+        "entry": 0.8406,
+        "exit": 0.8514,
+        "exitReason": "time_stop",
+        "netR": -0.3684142739449572,
+        "MFE_R": 0.3425076452599397,
+        "MAE_R": -0.541284403669722,
+        "holdingHours": 8,
+        "grossReturnPct": -0.012847965738758127,
+        "netReturnPct": -0.014331604518201382,
+        "feeDragPct": 0.0012077087794432548,
+        "spreadDragPct": 0,
+        "slippageDragPct": 0,
+        "fundingPct": -0.00027592999999999997
+      },
+      {
         "asset": "WIFUSDT",
         "foldId": "fold-2",
         "signalCandleOpenTime": 1764950400000,
@@ -2563,6 +3833,174 @@
         "spreadDragPct": 0,
         "slippageDragPct": 0,
         "fundingPct": -0.00020053
+      },
+      {
+        "asset": "ZENUSDT",
+        "foldId": "fold-2",
+        "signalCandleOpenTime": 1764550800000,
+        "signalAvailableAt": 1764554400000,
+        "score": 88,
+        "poolRank": 1,
+        "momentum24h": -0.10741878432467655,
+        "relativeMetric": -0.10254622803654156,
+        "volumeMultiple": 2.9279617409595486,
+        "entry": 9.589,
+        "exit": 9.608,
+        "exitReason": "time_stop",
+        "netR": -0.07563086907928591,
+        "MFE_R": 0.7109974424552434,
+        "MAE_R": -0.4015345268542216,
+        "holdingHours": 8,
+        "grossReturnPct": -0.001981437063301783,
+        "netReturnPct": -0.0030839159255397638,
+        "feeDragPct": 0.0012011888622379808,
+        "spreadDragPct": 0,
+        "slippageDragPct": 0,
+        "fundingPct": 0.00009871
+      },
+      {
+        "asset": "1000BONKUSDT",
+        "foldId": "fold-3",
+        "signalCandleOpenTime": 1769875200000,
+        "signalAvailableAt": 1769878800000,
+        "score": 88,
+        "poolRank": 5,
+        "momentum24h": -0.10112917235389018,
+        "relativeMetric": -0.08204477554553369,
+        "volumeMultiple": 3.0739035988234864,
+        "entry": 0.007245,
+        "exit": 0.006833,
+        "exitReason": "take_profit",
+        "netR": 1.4782168498168455,
+        "MFE_R": 1.509157509157505,
+        "MAE_R": -0.08058608058608395,
+        "holdingHours": 0.16666666666666666,
+        "grossReturnPct": 0.056866804692891626,
+        "netReturnPct": 0.05570092477570736,
+        "feeDragPct": 0.001165879917184265,
+        "spreadDragPct": 0,
+        "slippageDragPct": 0,
+        "fundingPct": 0
+      },
+      {
+        "asset": "DASHUSDT",
+        "foldId": "fold-3",
+        "signalCandleOpenTime": 1770141600000,
+        "signalAvailableAt": 1770145200000,
+        "score": 88,
+        "poolRank": 2,
+        "momentum24h": -0.10224494332073797,
+        "relativeMetric": -0.0931424771970597,
+        "volumeMultiple": 3.266291361488494,
+        "entry": 40.39,
+        "exit": 42.52,
+        "exitReason": "stop_loss",
+        "netR": -1.023354929577464,
+        "MFE_R": 0.07511737089201986,
+        "MAE_R": -0.9999999999999993,
+        "holdingHours": 0.5,
+        "grossReturnPct": -0.05273582569943058,
+        "netReturnPct": -0.05396746719485024,
+        "feeDragPct": 0.0012316414954196583,
+        "spreadDragPct": 0,
+        "slippageDragPct": 0,
+        "fundingPct": 0
+      },
+      {
+        "asset": "FARTCOINUSDT",
+        "foldId": "fold-3",
+        "signalCandleOpenTime": 1767052800000,
+        "signalAvailableAt": 1767056400000,
+        "score": 86,
+        "poolRank": 1,
+        "momentum24h": -0.08618463524854747,
+        "relativeMetric": -0.07804867218385048,
+        "volumeMultiple": 3.092880649028039,
+        "entry": 0.2832,
+        "exit": 0.2868,
+        "exitReason": "time_stop",
+        "netR": -0.31818536585365836,
+        "MFE_R": 0.2113821138211389,
+        "MAE_R": -0.37398373983739724,
+        "holdingHours": 8,
+        "grossReturnPct": -0.012711864406779627,
+        "netReturnPct": -0.013819491525423696,
+        "feeDragPct": 0.0012076271186440678,
+        "spreadDragPct": 0,
+        "slippageDragPct": 0,
+        "fundingPct": 0.0001
+      },
+      {
+        "asset": "PAXGUSDT",
+        "foldId": "fold-3",
+        "signalCandleOpenTime": 1769792400000,
+        "signalAvailableAt": 1769796000000,
+        "score": 85,
+        "poolRank": 1,
+        "momentum24h": -0.0902600761361817,
+        "relativeMetric": -0.06612275165772186,
+        "volumeMultiple": 2.861817524764738,
+        "entry": 4889.47,
+        "exit": 4928.54,
+        "exitReason": "time_stop",
+        "netR": -0.2312706196424176,
+        "MFE_R": 0.7056599918267302,
+        "MAE_R": -0.44314466693910887,
+        "holdingHours": 8,
+        "grossReturnPct": -0.007988579562652864,
+        "netReturnPct": -0.009259395497098767,
+        "feeDragPct": 0.0012047943846674588,
+        "spreadDragPct": 0,
+        "slippageDragPct": 0.0000020615497784426395,
+        "fundingPct": -0.00006396
+      },
+      {
+        "asset": "PENGUUSDT",
+        "foldId": "fold-3",
+        "signalCandleOpenTime": 1770141600000,
+        "signalAvailableAt": 1770145200000,
+        "score": 87,
+        "poolRank": 3,
+        "momentum24h": -0.09085125334011956,
+        "relativeMetric": -0.0817487872164413,
+        "volumeMultiple": 3.059932501425276,
+        "entry": 0.007145,
+        "exit": 0.007452,
+        "exitReason": "stop_loss",
+        "netR": -1.0285283387622153,
+        "MFE_R": 0.04234527687296347,
+        "MAE_R": -1.0000000000000002,
+        "holdingHours": 0.25,
+        "grossReturnPct": -0.04296710986703989,
+        "netReturnPct": -0.044192890132960114,
+        "feeDragPct": 0.0012257802659202239,
+        "spreadDragPct": 0,
+        "slippageDragPct": 0,
+        "fundingPct": 0
+      },
+      {
+        "asset": "PIPPINUSDT",
+        "foldId": "fold-3",
+        "signalCandleOpenTime": 1767358800000,
+        "signalAvailableAt": 1767362400000,
+        "score": 88,
+        "poolRank": 1,
+        "momentum24h": -0.09858036080360788,
+        "relativeMetric": -0.11537463567937001,
+        "volumeMultiple": 3.343487691620757,
+        "entry": 0.35177,
+        "exit": 0.36828,
+        "exitReason": "stop_loss",
+        "netR": -1.0326014820835836,
+        "MFE_R": 0.3313143549364044,
+        "MAE_R": -0.9999999999999979,
+        "holdingHours": 0.5,
+        "grossReturnPct": -0.0469340762429995,
+        "netReturnPct": -0.0484641966887453,
+        "feeDragPct": 0.0012281604457457997,
+        "spreadDragPct": 0,
+        "slippageDragPct": 0,
+        "fundingPct": -0.00030196
       },
       {
         "asset": "PUMPUSDT",
@@ -2613,6 +4051,78 @@
         "fundingPct": 0
       },
       {
+        "asset": "XMRUSDT",
+        "foldId": "fold-3",
+        "signalCandleOpenTime": 1768586400000,
+        "signalAvailableAt": 1768590000000,
+        "score": 89,
+        "poolRank": 1,
+        "momentum24h": -0.10998322031312846,
+        "relativeMetric": -0.08774706340776939,
+        "volumeMultiple": 3.105330134522979,
+        "entry": 641.73,
+        "exit": 619.07,
+        "exitReason": "time_stop",
+        "netR": 0.5062750047502875,
+        "MFE_R": 0.6943613348676675,
+        "MAE_R": -0.22002301495972215,
+        "holdingHours": 8,
+        "grossReturnPct": 0.03531080049241886,
+        "netReturnPct": 0.03427866697271431,
+        "feeDragPct": 0.0011788135197045484,
+        "spreadDragPct": 0,
+        "slippageDragPct": 0,
+        "fundingPct": 0.00014668
+      },
+      {
+        "asset": "XMRUSDT",
+        "foldId": "fold-3",
+        "signalCandleOpenTime": 1768698000000,
+        "signalAvailableAt": 1768701600000,
+        "score": 87,
+        "poolRank": 1,
+        "momentum24h": -0.09573617375171928,
+        "relativeMetric": -0.0915167490134593,
+        "volumeMultiple": 2.967456364664041,
+        "entry": 565.4,
+        "exit": 594.14,
+        "exitReason": "stop_loss",
+        "netR": -1.024207515657621,
+        "MFE_R": 0.32707028531663196,
+        "MAE_R": -1.0000000000000009,
+        "holdingHours": 4.75,
+        "grossReturnPct": -0.050812684600555436,
+        "netReturnPct": -0.05206176865935627,
+        "feeDragPct": 0.0012304987619384507,
+        "spreadDragPct": 0,
+        "slippageDragPct": 0.000018585296862383416,
+        "fundingPct": 0
+      },
+      {
+        "asset": "BIOUSDT",
+        "foldId": "fold-4",
+        "signalCandleOpenTime": 1771718400000,
+        "signalAvailableAt": 1771722000000,
+        "score": 86,
+        "poolRank": 2,
+        "momentum24h": -0.08481848184818475,
+        "relativeMetric": -0.08417043725071993,
+        "volumeMultiple": 3.289488821726476,
+        "entry": 0.02774,
+        "exit": 0.0268,
+        "exitReason": "time_stop",
+        "netR": 0.5690669341721841,
+        "MFE_R": 0.8543046357615883,
+        "MAE_R": -0.14569536423840745,
+        "holdingHours": 8,
+        "grossReturnPct": 0.0338860850757029,
+        "netReturnPct": 0.030976606726748325,
+        "feeDragPct": 0.001179668348954578,
+        "spreadDragPct": 0,
+        "slippageDragPct": 0,
+        "fundingPct": -0.00172981
+      },
+      {
         "asset": "ENAUSDT",
         "foldId": "fold-4",
         "signalCandleOpenTime": 1771516800000,
@@ -2635,13 +4145,251 @@
         "spreadDragPct": 0,
         "slippageDragPct": 0,
         "fundingPct": 0
+      },
+      {
+        "asset": "HYPEUSDT",
+        "foldId": "fold-4",
+        "signalCandleOpenTime": 1772258400000,
+        "signalAvailableAt": 1772262000000,
+        "score": 86,
+        "poolRank": 4,
+        "momentum24h": -0.09812826864849988,
+        "relativeMetric": -0.0714507894929155,
+        "volumeMultiple": 2.7836266058835815,
+        "entry": 26.213,
+        "exit": 26.984,
+        "exitReason": "stop_loss",
+        "netR": -1.0417863687808018,
+        "MFE_R": 0.1426718547341123,
+        "MAE_R": -0.9999999999999977,
+        "holdingHours": 2.1666666666666665,
+        "grossReturnPct": -0.029412886735589172,
+        "netReturnPct": -0.030641944467630525,
+        "feeDragPct": 0.0012176477320413534,
+        "spreadDragPct": 0,
+        "slippageDragPct": 0,
+        "fundingPct": -0.00001141
+      },
+      {
+        "asset": "JTOUSDT",
+        "foldId": "fold-4",
+        "signalCandleOpenTime": 1774501200000,
+        "signalAvailableAt": 1774504800000,
+        "score": 87,
+        "poolRank": 1,
+        "momentum24h": -0.10027624309392269,
+        "relativeMetric": -0.10317188160646651,
+        "volumeMultiple": 2.80377893112882,
+        "entry": 0.3257,
+        "exit": 0.3219,
+        "exitReason": "time_stop",
+        "netR": 0.20214760546052332,
+        "MFE_R": 0.41447368421052494,
+        "MAE_R": -0.7697368421052647,
+        "holdingHours": 8,
+        "grossReturnPct": 0.011667178385016741,
+        "netReturnPct": 0.009433968692047752,
+        "feeDragPct": 0.0011929996929689896,
+        "spreadDragPct": 0,
+        "slippageDragPct": 0,
+        "fundingPct": -0.00104021
+      },
+      {
+        "asset": "SIRENUSDT",
+        "foldId": "fold-4",
+        "signalCandleOpenTime": 1772247600000,
+        "signalAvailableAt": 1772251200000,
+        "score": 89,
+        "poolRank": 1,
+        "momentum24h": -0.10785043944585138,
+        "relativeMetric": -0.081172960290267,
+        "volumeMultiple": 3.238462518932556,
+        "entry": 0.29944,
+        "exit": 0.29618,
+        "exitReason": "time_stop",
+        "netR": 0.07067011811293031,
+        "MFE_R": 0.4255683207039841,
+        "MAE_R": -0.9621119530677097,
+        "holdingHours": 8,
+        "grossReturnPct": 0.01092002003673398,
+        "netReturnPct": 0.009655071239647274,
+        "feeDragPct": 0.001193467806572268,
+        "spreadDragPct": 0,
+        "slippageDragPct": 0.0000330309905144377,
+        "fundingPct": -0.00003844999999999999
+      },
+      {
+        "asset": "SIRENUSDT",
+        "foldId": "fold-4",
+        "signalCandleOpenTime": 1773561600000,
+        "signalAvailableAt": 1773565200000,
+        "score": 86,
+        "poolRank": 3,
+        "momentum24h": -0.08759562021898892,
+        "relativeMetric": -0.09973372643021583,
+        "volumeMultiple": 2.7594178716468067,
+        "entry": 0.54737,
+        "exit": 0.57846,
+        "exitReason": "stop_loss",
+        "netR": -1.0217271791572844,
+        "MFE_R": 0.22290125442264352,
+        "MAE_R": -0.999999999999999,
+        "holdingHours": 0.3333333333333333,
+        "grossReturnPct": -0.05679887461863076,
+        "netReturnPct": -0.05803295394340194,
+        "feeDragPct": 0.0012340793247711782,
+        "spreadDragPct": 0,
+        "slippageDragPct": 0,
+        "fundingPct": 0
+      },
+      {
+        "asset": "WIFUSDT",
+        "foldId": "fold-4",
+        "signalCandleOpenTime": 1772884800000,
+        "signalAvailableAt": 1772888400000,
+        "score": 86,
+        "poolRank": 1,
+        "momentum24h": -0.09848484848484862,
+        "relativeMetric": -0.06710972466509735,
+        "volumeMultiple": 2.8909662397497504,
+        "entry": 0.1785,
+        "exit": 0.1823,
+        "exitReason": "stop_loss",
+        "netR": -1.0569684210526284,
+        "MFE_R": 0.31578947368420435,
+        "MAE_R": -0.9999999999999969,
+        "holdingHours": 1.9166666666666667,
+        "grossReturnPct": -0.02128851540616239,
+        "netReturnPct": -0.022501288515406087,
+        "feeDragPct": 0.0012127731092436973,
+        "spreadDragPct": 0,
+        "slippageDragPct": 0,
+        "fundingPct": 0
+      },
+      {
+        "asset": "ICPUSDT",
+        "foldId": "fold-5",
+        "signalCandleOpenTime": 1778850000000,
+        "signalAvailableAt": 1778853600000,
+        "score": 88,
+        "poolRank": 2,
+        "momentum24h": -0.10197710718002084,
+        "relativeMetric": -0.11926565006646017,
+        "volumeMultiple": 3.293890314310231,
+        "entry": 2.59,
+        "exit": 2.619,
+        "exitReason": "time_stop",
+        "netR": -0.33972183052631627,
+        "MFE_R": 0.10526315789473338,
+        "MAE_R": -0.9684210526315773,
+        "holdingHours": 8,
+        "grossReturnPct": -0.011196911196911241,
+        "netReturnPct": -0.012460839343629388,
+        "feeDragPct": 0.0012067181467181466,
+        "spreadDragPct": 0,
+        "slippageDragPct": 0,
+        "fundingPct": -0.00005721
+      },
+      {
+        "asset": "ORDIUSDT",
+        "foldId": "fold-5",
+        "signalCandleOpenTime": 1777968000000,
+        "signalAvailableAt": 1777971600000,
+        "score": 86,
+        "poolRank": 2,
+        "momentum24h": -0.08601563920712851,
+        "relativeMetric": -0.10055625723734929,
+        "volumeMultiple": 2.932799935775318,
+        "entry": 5.026,
+        "exit": 5.106,
+        "exitReason": "time_stop",
+        "netR": -0.4880571759090936,
+        "MFE_R": 0.193181818181816,
+        "MAE_R": -0.6874999999999999,
+        "holdingHours": 8,
+        "grossReturnPct": -0.015917230401910176,
+        "netReturnPct": -0.017090740740151322,
+        "feeDragPct": 0.0012095503382411458,
+        "spreadDragPct": 0,
+        "slippageDragPct": 0,
+        "fundingPct": 0.00003604
+      },
+      {
+        "asset": "SAGAUSDT",
+        "foldId": "fold-5",
+        "signalCandleOpenTime": 1778914800000,
+        "signalAvailableAt": 1778918400000,
+        "score": 85,
+        "poolRank": 7,
+        "momentum24h": -0.09535066981875484,
+        "relativeMetric": -0.06509497928255659,
+        "volumeMultiple": 2.818581229890247,
+        "entry": 0.02296,
+        "exit": 0.0223,
+        "exitReason": "time_stop",
+        "netR": 0.45836032927536324,
+        "MFE_R": 0.7753623188405816,
+        "MAE_R": -0.10869565217391083,
+        "holdingHours": 8,
+        "grossReturnPct": 0.028745644599303177,
+        "netReturnPct": 0.027549531986062758,
+        "feeDragPct": 0.001182752613240418,
+        "spreadDragPct": 0,
+        "slippageDragPct": 0,
+        "fundingPct": -0.00001336
+      },
+      {
+        "asset": "SOONUSDT",
+        "foldId": "fold-5",
+        "signalCandleOpenTime": 1777316400000,
+        "signalAvailableAt": 1777320000000,
+        "score": 88,
+        "poolRank": 1,
+        "momentum24h": -0.09687665431445214,
+        "relativeMetric": -0.07970623648889197,
+        "volumeMultiple": 3.2170328194410374,
+        "entry": 0.1706,
+        "exit": 0.1664,
+        "exitReason": "time_stop",
+        "netR": 0.5402485456756774,
+        "MFE_R": 0.864864864864865,
+        "MAE_R": -0.3378378378378368,
+        "holdingHours": 8,
+        "grossReturnPct": 0.024618991793669442,
+        "netReturnPct": 0.023433993188745644,
+        "feeDragPct": 0.0011852286049237983,
+        "spreadDragPct": 0,
+        "slippageDragPct": 0,
+        "fundingPct": 2.3e-7
+      },
+      {
+        "asset": "TONUSDT",
+        "foldId": "fold-5",
+        "signalCandleOpenTime": 1778684400000,
+        "signalAvailableAt": 1778688000000,
+        "score": 88,
+        "poolRank": 1,
+        "momentum24h": -0.10402296388329546,
+        "relativeMetric": -0.08524184692217196,
+        "volumeMultiple": 3.201242222701418,
+        "entry": 2.0912,
+        "exit": 2.1006,
+        "exitReason": "time_stop",
+        "netR": -0.1540883102842343,
+        "MFE_R": 0.06847545219638207,
+        "MAE_R": -0.9418604651162796,
+        "holdingHours": 8,
+        "grossReturnPct": -0.004495026778882805,
+        "netReturnPct": -0.005703153794950134,
+        "feeDragPct": 0.0012026970160673297,
+        "spreadDragPct": 0,
+        "slippageDragPct": 0,
+        "fundingPct": -0.0000054300000000000005
       }
     ],
     "quality": {
       "unmatchedTradeSignals": 0,
-      "degradedReasons": {
-        "INCOMPLETE_FUNDING": 37
-      }
+      "degradedReasons": {}
     }
   },
   "attrition": {
@@ -2711,6 +4459,34 @@
           "exclusionReasons": {}
         },
         {
+          "stage": "initial_training_context_not_oos",
+          "count": 0,
+          "denominator": 8,
+          "denominatorStage": "replay_signals",
+          "percentage": 0,
+          "exclusionReasons": {
+            "not_attributed_to_oos": 0
+          }
+        },
+        {
+          "stage": "development_oos",
+          "count": 8,
+          "denominator": 8,
+          "denominatorStage": "replay_signals",
+          "percentage": 100,
+          "exclusionReasons": {}
+        },
+        {
+          "stage": "holdout",
+          "count": 0,
+          "denominator": 8,
+          "denominatorStage": "replay_signals",
+          "percentage": 0,
+          "exclusionReasons": {
+            "not_attributed_to_development": 0
+          }
+        },
+        {
           "stage": "development_oos_selected",
           "count": 8,
           "denominator": 8,
@@ -2764,23 +4540,21 @@
         },
         {
           "stage": "complete_trades",
-          "count": 3,
+          "count": 8,
           "denominator": 8,
           "denominatorStage": "entry_accepted",
-          "percentage": 37.5,
+          "percentage": 100,
           "exclusionReasons": {
-            "degraded": 5
+            "degraded": 0
           }
         },
         {
           "stage": "degraded_trades",
-          "count": 5,
+          "count": 0,
           "denominator": 8,
           "denominatorStage": "entry_accepted",
-          "percentage": 62.5,
-          "exclusionReasons": {
-            "INCOMPLETE_FUNDING": 5
-          }
+          "percentage": 0,
+          "exclusionReasons": {}
         },
         {
           "stage": "NO_ENTRY",
@@ -2799,6 +4573,14 @@
           "exclusionReasons": {}
         }
       ],
+      "conservation": {
+        "replaySignals": 8,
+        "initialTrainingContextSignals": 0,
+        "developmentOosSignals": 8,
+        "holdoutSignals": 0,
+        "sum": 8,
+        "valid": true
+      },
       "counts": {
         "poolCandidates": 9163,
         "strategyEvaluated": 9038,
@@ -2807,11 +4589,13 @@
         "primaryEligible": 8,
         "tradePlanCreated": 8,
         "entryAccepted": 8,
-        "completeTrades": 3,
-        "degradedTrades": 5,
+        "completeTrades": 8,
+        "degradedTrades": 0,
         "noEntry": 0,
         "missedEntry": 0,
         "purged": 0,
+        "initialTrainingContextSignals": 0,
+        "developmentOosSignals": 8,
         "holdoutRawSignals": 0,
         "holdoutTrades": 0,
         "holdoutCompleteTrades": 0,
@@ -2910,6 +4694,34 @@
           "exclusionReasons": {}
         },
         {
+          "stage": "initial_training_context_not_oos",
+          "count": 4,
+          "denominator": 78,
+          "denominatorStage": "replay_signals",
+          "percentage": 5.128205128205128,
+          "exclusionReasons": {
+            "not_attributed_to_oos": 4
+          }
+        },
+        {
+          "stage": "development_oos",
+          "count": 61,
+          "denominator": 78,
+          "denominatorStage": "replay_signals",
+          "percentage": 78.2051282051282,
+          "exclusionReasons": {}
+        },
+        {
+          "stage": "holdout",
+          "count": 13,
+          "denominator": 78,
+          "denominatorStage": "replay_signals",
+          "percentage": 16.666666666666664,
+          "exclusionReasons": {
+            "not_attributed_to_development": 13
+          }
+        },
+        {
           "stage": "development_oos_selected",
           "count": 61,
           "denominator": 78,
@@ -2963,23 +4775,21 @@
         },
         {
           "stage": "complete_trades",
-          "count": 24,
+          "count": 61,
           "denominator": 61,
           "denominatorStage": "entry_accepted",
-          "percentage": 39.34426229508197,
+          "percentage": 100,
           "exclusionReasons": {
-            "degraded": 37
+            "degraded": 0
           }
         },
         {
           "stage": "degraded_trades",
-          "count": 37,
+          "count": 0,
           "denominator": 61,
           "denominatorStage": "entry_accepted",
-          "percentage": 60.65573770491803,
-          "exclusionReasons": {
-            "INCOMPLETE_FUNDING": 37
-          }
+          "percentage": 0,
+          "exclusionReasons": {}
         },
         {
           "stage": "NO_ENTRY",
@@ -2998,6 +4808,14 @@
           "exclusionReasons": {}
         }
       ],
+      "conservation": {
+        "replaySignals": 78,
+        "initialTrainingContextSignals": 4,
+        "developmentOosSignals": 61,
+        "holdoutSignals": 13,
+        "sum": 78,
+        "valid": true
+      },
       "counts": {
         "poolCandidates": 13954,
         "strategyEvaluated": 12473,
@@ -3006,15 +4824,17 @@
         "primaryEligible": 78,
         "tradePlanCreated": 61,
         "entryAccepted": 61,
-        "completeTrades": 24,
-        "degradedTrades": 37,
+        "completeTrades": 61,
+        "degradedTrades": 0,
         "noEntry": 0,
         "missedEntry": 0,
         "purged": 0,
+        "initialTrainingContextSignals": 4,
+        "developmentOosSignals": 61,
         "holdoutRawSignals": 13,
         "holdoutTrades": 13,
-        "holdoutCompleteTrades": 0,
-        "holdoutDegradedTrades": 13
+        "holdoutCompleteTrades": 13,
+        "holdoutDegradedTrades": 0
       },
       "exclusionReasons": {
         "poolCandidates": {
@@ -3037,8 +4857,8 @@
       "holdoutExcludedFromAttribution": {
         "rawSignals": 13,
         "tradeResults": 13,
-        "completeTrades": 0,
-        "degradedTrades": 13,
+        "completeTrades": 13,
+        "degradedTrades": 0,
         "usedForOptimization": false,
         "includedInMetrics": false
       }
@@ -3046,66 +4866,66 @@
   },
   "costDecomposition": {
     "strong": {
-      "trades": 3,
+      "trades": 8,
       "grossDirectionalPnl": {
-        "sumReturnPct": 0.03714156234345056,
-        "averageReturnPct": 0.012380520781150187,
-        "sumR": 0.5247709965787488,
-        "averageR": 0.1749236655262496
+        "sumReturnPct": 0.2896768581289487,
+        "averageReturnPct": 0.03620960726611859,
+        "sumR": 4.144858262490576,
+        "averageR": 0.518107282811322
       },
-      "grossExpectancyR": 0.1749236655262496,
-      "feeDragPct": 0.0036222849374060702,
-      "feeDrag": 0.0036222849374060702,
+      "grossExpectancyR": 0.518107282811322,
+      "feeDragPct": 0.00977380611487737,
+      "feeDrag": 0.00977380611487737,
       "spreadDragPct": 0,
       "spreadDrag": 0,
       "slippageDragPct": 0,
       "slippageDrag": 0,
-      "fundingPctTotal": -0.00011545,
-      "fundingDragPct": 0.00011545,
-      "fundingDrag": 0.00011545,
+      "fundingPctTotal": 0.020322100000000003,
+      "fundingDragPct": -0.020322100000000003,
+      "fundingDrag": -0.020322100000000003,
       "netPnl": {
-        "sumReturnPct": 0.033403827406044494,
-        "averageReturnPct": 0.011134609135348165,
-        "sumR": 0.4647552167832883,
-        "averageR": 0.15491840559442943,
-        "compoundedReturnPct": 0.027688238672729737,
-        "profitFactor": 1.5480250183170035
+        "sumReturnPct": 0.30022515201407135,
+        "averageReturnPct": 0.03752814400175892,
+        "sumR": 4.321117923931797,
+        "averageR": 0.5401397404914746,
+        "compoundedReturnPct": 0.32519471972438874,
+        "profitFactor": 3.9220048046653218
       },
-      "netExpectancyR": 0.15491840559442943,
-      "costImpactR": 0.020005259931820174,
-      "reconciliationErrorPct": -6.938893903907228e-18,
+      "netExpectancyR": 0.5401397404914746,
+      "costImpactR": -0.022032457680152606,
+      "reconciliationErrorPct": 0,
       "reconciles": true,
       "rawEdgeClassification": "RAW_SIGNAL_POSITIVE_AFTER_COST"
     },
     "weak": {
-      "trades": 24,
+      "trades": 61,
       "grossDirectionalPnl": {
-        "sumReturnPct": -0.16935471086059195,
-        "averageReturnPct": -0.007056446285857998,
-        "sumR": -4.068572779290232,
-        "averageR": -0.16952386580375967
+        "sumReturnPct": -0.40883603777245936,
+        "averageReturnPct": -0.006702230127417367,
+        "sumR": -10.453092253166416,
+        "averageR": -0.17136216808469534
       },
-      "grossExpectancyR": -0.16952386580375967,
-      "feeDragPct": 0.02890164495994933,
-      "feeDrag": 0.02890164495994933,
+      "grossExpectancyR": -0.17136216808469534,
+      "feeDragPct": 0.07344543850690619,
+      "feeDrag": 0.07344543850690619,
       "spreadDragPct": 0,
       "spreadDrag": 0,
-      "slippageDragPct": 0.000053555721622577934,
-      "slippageDrag": 0.000053555721622577934,
-      "fundingPctTotal": -0.00117063,
-      "fundingDragPct": 0.00117063,
-      "fundingDrag": 0.00117063,
+      "slippageDragPct": 0.00022814040450191975,
+      "slippageDrag": 0.00022814040450191975,
+      "fundingPctTotal": -0.011955100000000005,
+      "fundingDragPct": 0.011955100000000005,
+      "fundingDrag": 0.011955100000000005,
       "netPnl": {
-        "sumReturnPct": -0.19948054154216388,
-        "averageReturnPct": -0.008311689230923494,
-        "sumR": -4.817498327939045,
-        "averageR": -0.20072909699746022,
-        "compoundedReturnPct": -0.19275217394273847,
-        "profitFactor": 0.5428028614635102
+        "sumReturnPct": -0.4944647166838675,
+        "averageReturnPct": -0.008105978962030615,
+        "sumR": -12.343825419067542,
+        "averageR": -0.2023577937552056,
+        "compoundedReturnPct": -0.41469834147207174,
+        "profitFactor": 0.5699430218673189
       },
-      "netExpectancyR": -0.20072909699746022,
-      "costImpactR": 0.031205231193700556,
-      "reconciliationErrorPct": 2.7755575615628914e-17,
+      "netExpectancyR": -0.2023577937552056,
+      "costImpactR": 0.030995625670510257,
+      "reconciliationErrorPct": 0,
       "reconciles": true,
       "rawEdgeClassification": "RAW_SIGNAL_NEGATIVE"
     }
@@ -3113,42 +4933,46 @@
   "exitDecomposition": {
     "strong": [
       {
+        "key": "take_profit",
         "exitReason": "take_profit",
-        "trades": 1,
+        "trades": 3,
         "winRate": 1,
-        "expectancyR": 1.4778305486083256,
+        "expectancyR": 1.4855778100326906,
         "PF": null,
-        "avgNetReturn": 0.0939516119139699,
-        "totalNetReturn": 0.09395161191396983,
-        "MFE_R": 1.4978479196556715,
-        "MAE_R": -0.458536585365852,
-        "averageHoldingHours": 5.333333333333333
+        "avgNetReturn": 0.09185634540401738,
+        "totalNetReturn": 0.30165221779272877,
+        "MFE_R": 1.5065158132332617,
+        "MAE_R": -0.20458385433238338,
+        "averageHoldingHours": 3.6666666666666665
       },
       {
+        "key": "stop_loss",
         "exitReason": "stop_loss",
-        "trades": 1,
+        "trades": 2,
         "winRate": 0,
-        "expectancyR": -1.0194705882352941,
+        "expectancyR": -1.0247642169624744,
         "PF": 0,
-        "avgNetReturn": -0.060953106682297746,
-        "totalNetReturn": -0.0609531066822977,
-        "MFE_R": 0.1830065359477095,
-        "MAE_R": -1,
-        "averageHoldingHours": 2.6666666666666665
+        "avgNetReturn": -0.051373144824184896,
+        "totalNetReturn": -0.10019886530844602,
+        "MFE_R": 0.3156411990083391,
+        "MAE_R": -0.9999999999999999,
+        "averageHoldingHours": 2.875
       },
       {
+        "key": "time_stop",
         "exitReason": "time_stop",
-        "trades": 1,
+        "trades": 3,
         "winRate": 1,
-        "expectancyR": 0.006395256410256804,
+        "expectancyR": 0.6379709759195583,
         "PF": null,
-        "avgNetReturn": 0.0004053221743723333,
-        "totalNetReturn": 0.00040532217437228013,
-        "MFE_R": 0.5576923076923099,
-        "MAE_R": -0.5371794871794877,
+        "avgNetReturn": 0.04246746848346301,
+        "totalNetReturn": 0.13145737503056298,
+        "MFE_R": 0.9096032572080217,
+        "MAE_R": -0.3262687235647781,
         "averageHoldingHours": 8
       },
       {
+        "key": "end_of_data",
         "exitReason": "end_of_data",
         "trades": 0,
         "winRate": null,
@@ -3161,6 +4985,7 @@
         "averageHoldingHours": null
       },
       {
+        "key": "other",
         "exitReason": "other",
         "trades": 0,
         "winRate": null,
@@ -3175,42 +5000,46 @@
     ],
     "weak": [
       {
+        "key": "take_profit",
         "exitReason": "take_profit",
-        "trades": 3,
-        "winRate": 1,
-        "expectancyR": 1.4667434214021409,
-        "PF": null,
-        "avgNetReturn": 0.06533954238511185,
-        "totalNetReturn": 0.20897709668670794,
-        "MFE_R": 1.495579451416962,
-        "MAE_R": -0.2965179376871336,
-        "averageHoldingHours": 5.583333333333333
-      },
-      {
-        "exitReason": "stop_loss",
         "trades": 6,
-        "winRate": 0,
-        "expectancyR": -1.0322805544618896,
-        "PF": 0,
-        "avgNetReturn": -0.04101095286310812,
-        "totalNetReturn": -0.2224040007702025,
-        "MFE_R": 0.33755072309225614,
-        "MAE_R": -1.0000000000000007,
-        "averageHoldingHours": 3.2638888888888893
+        "winRate": 1,
+        "expectancyR": 1.468825902684535,
+        "PF": null,
+        "avgNetReturn": 0.07067849738677655,
+        "totalNetReturn": 0.5044149714399979,
+        "MFE_R": 1.495826850327883,
+        "MAE_R": -0.2268912537752209,
+        "averageHoldingHours": 3.4166666666666674
       },
       {
+        "key": "stop_loss",
+        "exitReason": "stop_loss",
+        "trades": 16,
+        "winRate": 0,
+        "expectancyR": -1.034576055327282,
+        "PF": 0,
+        "avgNetReturn": -0.044110933942501034,
+        "totalNetReturn": -0.5146142009424144,
+        "MFE_R": 0.3046334791532601,
+        "MAE_R": -0.9999999999999997,
+        "averageHoldingHours": 2.328125
+      },
+      {
+        "key": "time_stop",
         "exitReason": "time_stop",
-        "trades": 15,
-        "winRate": 0.26666666666666666,
-        "expectancyR": -0.2016030176916087,
-        "PF": 0.21452579181900913,
-        "avgNetReturn": -0.009962230101256712,
-        "totalNetReturn": -0.14131318749814492,
-        "MFE_R": 0.5108081001790494,
-        "MAE_R": -0.6731404178570204,
+        "trades": 39,
+        "winRate": 0.3333333333333333,
+        "expectancyR": -0.11804010128046769,
+        "PF": 0.5207990129005104,
+        "avgNetReturn": -0.005455404049346416,
+        "totalNetReturn": -0.19846029204065263,
+        "MFE_R": 0.48343228891219936,
+        "MAE_R": -0.5742357394483808,
         "averageHoldingHours": 8
       },
       {
+        "key": "end_of_data",
         "exitReason": "end_of_data",
         "trades": 0,
         "winRate": null,
@@ -3223,6 +5052,7 @@
         "averageHoldingHours": null
       },
       {
+        "key": "other",
         "exitReason": "other",
         "trades": 0,
         "winRate": null,
@@ -3238,60 +5068,60 @@
   },
   "mfeMae": {
     "strong": {
-      "trades": 3,
-      "averageMfeR": 0.746182254431897,
-      "averageMaeR": -0.6652386908484466,
+      "trades": 8,
+      "averageMfeR": 0.984954951167566,
+      "averageMaeR": -0.4490697167114356,
       "mfeAtLeast": {
         "0.5R": {
-          "count": 2,
-          "percentage": 66.66666666666666
+          "count": 6,
+          "percentage": 75
         },
         "1R": {
-          "count": 1,
-          "percentage": 33.33333333333333
+          "count": 4,
+          "percentage": 50
         },
         "1.5R": {
-          "count": 0,
-          "percentage": 0
+          "count": 2,
+          "percentage": 25
         }
       },
       "maeAtMost": {
         "-0.5R": {
-          "count": 2,
-          "percentage": 66.66666666666666
+          "count": 3,
+          "percentage": 37.5
         },
         "-1R": {
           "count": 1,
-          "percentage": 33.33333333333333
+          "percentage": 12.5
         }
       }
     },
     "weak": {
-      "trades": 24,
-      "averageMfeR": 0.5905901748120901,
-      "averageMaeR": -0.7077775033715296,
+      "trades": 61,
+      "averageMfeR": 0.5361140333769712,
+      "averageMaeR": -0.65174657969079,
       "mfeAtLeast": {
         "0.5R": {
-          "count": 9,
-          "percentage": 37.5
+          "count": 23,
+          "percentage": 37.704918032786885
         },
         "1R": {
-          "count": 6,
-          "percentage": 25
+          "count": 10,
+          "percentage": 16.39344262295082
         },
         "1.5R": {
-          "count": 1,
-          "percentage": 4.166666666666666
+          "count": 2,
+          "percentage": 3.278688524590164
         }
       },
       "maeAtMost": {
         "-0.5R": {
-          "count": 16,
-          "percentage": 66.66666666666666
+          "count": 37,
+          "percentage": 60.65573770491803
         },
         "-1R": {
-          "count": 4,
-          "percentage": 16.666666666666664
+          "count": 7,
+          "percentage": 11.475409836065573
         }
       }
     }
@@ -3302,28 +5132,28 @@
         {
           "bucket": "85",
           "signals": 3,
-          "completeTrades": 1,
-          "trades": 1,
-          "winRate": 0,
-          "expectancyR": -1.0194705882352941,
-          "PF": 0,
-          "avgNetReturn": -0.060953106682297746,
-          "totalNetReturn": -0.0609531066822977,
-          "MFE_R": 0.1830065359477095,
-          "MAE_R": -1
+          "completeTrades": 3,
+          "trades": 3,
+          "winRate": 0.6666666666666666,
+          "expectancyR": 0.6531440977514839,
+          "PF": 2.9796253904614893,
+          "avgNetReturn": 0.04022143920526149,
+          "totalNetReturn": 0.11733687119836134,
+          "MFE_R": 1.0682353519972745,
+          "MAE_R": -0.3850716592104327
         },
         {
           "bucket": "86",
           "signals": 1,
-          "completeTrades": 0,
-          "trades": 0,
-          "winRate": null,
-          "expectancyR": null,
+          "completeTrades": 1,
+          "trades": 1,
+          "winRate": 1,
+          "expectancyR": 0.8682994470975455,
           "PF": null,
-          "avgNetReturn": null,
-          "totalNetReturn": 0,
-          "MFE_R": null,
-          "MAE_R": null
+          "avgNetReturn": 0.06899326562529708,
+          "totalNetReturn": 0.06899326562529717,
+          "MFE_R": 0.993417115499699,
+          "MAE_R": -0.3231597845601433
         },
         {
           "bucket": "87",
@@ -3341,15 +5171,15 @@
         {
           "bucket": "88",
           "signals": 2,
-          "completeTrades": 0,
-          "trades": 0,
-          "winRate": null,
-          "expectancyR": null,
-          "PF": null,
-          "avgNetReturn": null,
-          "totalNetReturn": 0,
-          "MFE_R": null,
-          "MAE_R": null
+          "completeTrades": 2,
+          "trades": 2,
+          "winRate": 0.5,
+          "expectancyR": 0.004580189280608882,
+          "PF": 1.3878774846559894,
+          "avgNetReturn": 0.008105317342323781,
+          "totalNetReturn": 0.013786470520840366,
+          "MFE_R": 0.8129881052505126,
+          "MAE_R": -0.5592334494773515
         },
         {
           "bucket": "89+",
@@ -3365,9 +5195,9 @@
           "MAE_R": null
         }
       ],
-      "spearmanCorrelation": 0.8660254037844387,
-      "sampleSize": 3,
-      "distinctBuckets": 2,
+      "spearmanCorrelation": -0.21002063972064536,
+      "sampleSize": 8,
+      "distinctBuckets": 4,
       "status": "INSUFFICIENT_FOR_CALIBRATION"
     },
     "weak": {
@@ -3375,77 +5205,110 @@
         {
           "bucket": "85",
           "signals": 11,
-          "completeTrades": 5,
-          "trades": 5,
-          "winRate": 0.2,
-          "expectancyR": -0.3576267741772167,
-          "PF": 0.4961763772376604,
-          "avgNetReturn": -0.011467325473086808,
-          "totalNetReturn": -0.05918800680223035,
-          "MFE_R": 0.5304764987794628,
-          "MAE_R": -0.7220649696048635
+          "completeTrades": 9,
+          "trades": 9,
+          "winRate": 0.2222222222222222,
+          "expectancyR": -0.29688509983080585,
+          "PF": 0.4932964227390342,
+          "avgNetReturn": -0.00958881358802504,
+          "totalNetReturn": -0.08733857227638886,
+          "MFE_R": 0.559859100290866,
+          "MAE_R": -0.6259299284021127
         },
         {
           "bucket": "86",
           "signals": 20,
-          "completeTrades": 8,
-          "trades": 8,
-          "winRate": 0.375,
-          "expectancyR": -0.2037562212420821,
-          "PF": 0.25025945315396836,
-          "avgNetReturn": -0.01265194726351411,
-          "totalNetReturn": -0.0991815800167809,
-          "MFE_R": 0.7109965623436073,
-          "MAE_R": -0.7103872058142378
+          "completeTrades": 17,
+          "trades": 17,
+          "winRate": 0.29411764705882354,
+          "expectancyR": -0.23396787207853634,
+          "PF": 0.3913442163687956,
+          "avgNetReturn": -0.010826034028050257,
+          "totalNetReturn": -0.17471713566352287,
+          "MFE_R": 0.5755988026852711,
+          "MAE_R": -0.6358674862569715
         },
         {
           "bucket": "87",
           "signals": 19,
-          "completeTrades": 7,
-          "trades": 7,
+          "completeTrades": 14,
+          "trades": 14,
           "winRate": 0.14285714285714285,
-          "expectancyR": -0.5751456559338731,
-          "PF": 0.0411985335806077,
-          "avgNetReturn": -0.0233640710343647,
-          "totalNetReturn": -0.15333080947358046,
-          "MFE_R": 0.299005082008521,
-          "MAE_R": -0.8597070384440391
+          "expectancyR": -0.6178977575316802,
+          "PF": 0.04057385833843834,
+          "avgNetReturn": -0.027803870658901383,
+          "totalNetReturn": -0.32782526806716417,
+          "MFE_R": 0.2826255933033094,
+          "MAE_R": -0.8732878437002417
         },
         {
           "bucket": "88",
           "signals": 20,
-          "completeTrades": 4,
-          "trades": 4,
-          "winRate": 0.5,
-          "expectancyR": 0.6566762261052016,
-          "PF": 8.241867898931686,
-          "avgNetReturn": 0.03065504029298399,
-          "totalNetReturn": 0.1250013005684225,
-          "MFE_R": 0.935193407196086,
-          "MAE_R": -0.4188220793175546
+          "completeTrades": 15,
+          "trades": 15,
+          "winRate": 0.4,
+          "expectancyR": 0.1660956178209591,
+          "PF": 1.7502309238227145,
+          "avgNetReturn": 0.01065168482101162,
+          "totalNetReturn": 0.1518214464137997,
+          "MFE_R": 0.6990877754271622,
+          "MAE_R": -0.5633582787465545
         },
         {
           "bucket": "89+",
           "signals": 8,
-          "completeTrades": 0,
-          "trades": 0,
-          "winRate": null,
-          "expectancyR": null,
-          "PF": null,
-          "avgNetReturn": null,
-          "totalNetReturn": 0,
-          "MFE_R": null,
-          "MAE_R": null
+          "completeTrades": 6,
+          "trades": 6,
+          "winRate": 0.6666666666666666,
+          "expectancyR": 0.07745477381232733,
+          "PF": 1.0917279438123584,
+          "avgNetReturn": 0.0008926834991095572,
+          "totalNetReturn": 0.003690671063765194,
+          "MFE_R": 0.5726615916790124,
+          "MAE_R": -0.43950345769149113
         }
       ],
-      "spearmanCorrelation": 0.22318922759065404,
-      "sampleSize": 24,
-      "distinctBuckets": 4,
+      "spearmanCorrelation": 0.14483773806545347,
+      "sampleSize": 61,
+      "distinctBuckets": 5,
       "status": "AVAILABLE"
     }
   },
   "assetBreakdown": {
     "strong": [
+      {
+        "key": "GUNUSDT",
+        "trades": 1,
+        "winRate": 1,
+        "expectancyR": 1.5002443890274315,
+        "PF": null,
+        "avgNetReturn": 0.08983544051767044,
+        "totalNetReturn": 0.08983544051767045,
+        "MFE_R": 1.5211970074812968,
+        "MAE_R": -0.07481296758104787
+      },
+      {
+        "key": "ONDOUSDT",
+        "trades": 1,
+        "winRate": 0,
+        "expectancyR": -1.030057845689655,
+        "PF": 0,
+        "avgNetReturn": -0.04179318296607205,
+        "totalNetReturn": -0.04179318296607204,
+        "MFE_R": 0.44827586206896874,
+        "MAE_R": -0.9999999999999998
+      },
+      {
+        "key": "POPCATUSDT",
+        "trades": 1,
+        "winRate": 1,
+        "expectancyR": 1.4786584924623145,
+        "PF": null,
+        "avgNetReturn": 0.09178198378041179,
+        "totalNetReturn": 0.09178198378041169,
+        "MFE_R": 1.500502512562817,
+        "MAE_R": -0.08040201005025027
+      },
       {
         "key": "PUMPUSDT",
         "trades": 1,
@@ -3456,6 +5319,28 @@
         "totalNetReturn": -0.0609531066822977,
         "MFE_R": 0.1830065359477095,
         "MAE_R": -1
+      },
+      {
+        "key": "ROSEUSDT",
+        "trades": 1,
+        "winRate": 1,
+        "expectancyR": 0.8682994470975455,
+        "PF": null,
+        "avgNetReturn": 0.06899326562529708,
+        "totalNetReturn": 0.06899326562529717,
+        "MFE_R": 0.993417115499699,
+        "MAE_R": -0.3231597845601433
+      },
+      {
+        "key": "SAHARAUSDT",
+        "trades": 1,
+        "winRate": 1,
+        "expectancyR": 1.0392182242508727,
+        "PF": null,
+        "avgNetReturn": 0.05800381765071961,
+        "totalNetReturn": 0.0580038176507196,
+        "MFE_R": 1.1777003484320563,
+        "MAE_R": -0.1184668989547033
       },
       {
         "key": "ZECUSDT",
@@ -3472,14 +5357,69 @@
     "weak": [
       {
         "key": "1000BONKUSDT",
-        "trades": 2,
+        "trades": 3,
+        "winRate": 0.3333333333333333,
+        "expectancyR": 0.19211370743273046,
+        "PF": 1.445432075114784,
+        "avgNetReturn": 0.005721698246453524,
+        "totalNetReturn": 0.015281289267049525,
+        "MFE_R": 0.6610925715907894,
+        "MAE_R": -0.5664384953827437
+      },
+      {
+        "key": "ALPINEUSDT",
+        "trades": 1,
         "winRate": 0,
-        "expectancyR": -0.4509378637593271,
+        "expectancyR": -0.18417585912938383,
         "PF": 0,
-        "avgNetReturn": -0.019267915018173393,
-        "totalNetReturn": -0.03828701345245611,
-        "MFE_R": 0.23706010280743167,
-        "MAE_R": -0.8093647027810736
+        "avgNetReturn": -0.011614567294494468,
+        "totalNetReturn": -0.011614567294494504,
+        "MFE_R": 0.25272067714631125,
+        "MAE_R": -0.3373639661426846
+      },
+      {
+        "key": "AUCTIONUSDT",
+        "trades": 1,
+        "winRate": 0,
+        "expectancyR": -0.4565486155045889,
+        "PF": 0,
+        "avgNetReturn": -0.023806633275394763,
+        "totalNetReturn": -0.023806633275394784,
+        "MFE_R": 0.3058103975535158,
+        "MAE_R": -0.8287461773700305
+      },
+      {
+        "key": "BIOUSDT",
+        "trades": 1,
+        "winRate": 1,
+        "expectancyR": 0.5690669341721841,
+        "PF": null,
+        "avgNetReturn": 0.030976606726748325,
+        "totalNetReturn": 0.03097660672674829,
+        "MFE_R": 0.8543046357615883,
+        "MAE_R": -0.14569536423840745
+      },
+      {
+        "key": "CRVUSDT",
+        "trades": 1,
+        "winRate": 0,
+        "expectancyR": -0.07836125654450216,
+        "PF": 0,
+        "avgNetReturn": -0.0033186252771618442,
+        "totalNetReturn": -0.0033186252771618685,
+        "MFE_R": 0.36649214659685814,
+        "MAE_R": -0.4712041884816766
+      },
+      {
+        "key": "DASHUSDT",
+        "trades": 1,
+        "winRate": 0,
+        "expectancyR": -1.023354929577464,
+        "PF": 0,
+        "avgNetReturn": -0.05396746719485024,
+        "totalNetReturn": -0.05396746719485024,
+        "MFE_R": 0.07511737089201986,
+        "MAE_R": -0.9999999999999993
       },
       {
         "key": "ENAUSDT",
@@ -3494,25 +5434,113 @@
       },
       {
         "key": "FARTCOINUSDT",
-        "trades": 6,
-        "winRate": 0.3333333333333333,
-        "expectancyR": -0.15279443245757876,
-        "PF": 0.5772493352357627,
-        "avgNetReturn": -0.006918341652577767,
-        "totalNetReturn": -0.04388461060698767,
-        "MFE_R": 0.6215658474569253,
-        "MAE_R": -0.6514630793998206
+        "trades": 7,
+        "winRate": 0.2857142857142857,
+        "expectancyR": -0.17642170865701873,
+        "PF": 0.5060297906053681,
+        "avgNetReturn": -0.00790422020584147,
+        "totalNetReturn": -0.05709763912803156,
+        "MFE_R": 0.5629681712232416,
+        "MAE_R": -0.6118231737480458
+      },
+      {
+        "key": "FORMUSDT",
+        "trades": 1,
+        "winRate": 0,
+        "expectancyR": -0.2749281914893596,
+        "PF": 0,
+        "avgNetReturn": -0.01367367724867713,
+        "totalNetReturn": -0.013673677248677185,
+        "MFE_R": 0.40425531914893587,
+        "MAE_R": -0.5638297872340441
+      },
+      {
+        "key": "GALAUSDT",
+        "trades": 1,
+        "winRate": 0,
+        "expectancyR": -0.8106478833333358,
+        "PF": 0,
+        "avgNetReturn": -0.03558941926829271,
+        "totalNetReturn": -0.03558941926829273,
+        "MFE_R": 0.15555555555555606,
+        "MAE_R": -0.8000000000000025
+      },
+      {
+        "key": "HUSDT",
+        "trades": 2,
+        "winRate": 0,
+        "expectancyR": -0.3029319590756147,
+        "PF": 0,
+        "avgNetReturn": -0.02919557973311797,
+        "totalNetReturn": -0.057563564883987506,
+        "MFE_R": 0.23919644404379897,
+        "MAE_R": -0.6158850665375951
       },
       {
         "key": "HYPEUSDT",
-        "trades": 3,
-        "winRate": 0.6666666666666666,
-        "expectancyR": 0.33265755653015383,
-        "PF": 3.0749625600464006,
-        "avgNetReturn": 0.006730173178151112,
-        "totalNetReturn": 0.02005868994101334,
-        "MFE_R": 0.7849904600977049,
-        "MAE_R": -0.6690803520224401
+        "trades": 4,
+        "winRate": 0.5,
+        "expectancyR": -0.01095342479758507,
+        "PF": 0.7411250903677798,
+        "avgNetReturn": -0.0026128562332942973,
+        "totalNetReturn": -0.011197891789883174,
+        "MFE_R": 0.6244108087568068,
+        "MAE_R": -0.7518102640168295
+      },
+      {
+        "key": "ICPUSDT",
+        "trades": 1,
+        "winRate": 0,
+        "expectancyR": -0.33972183052631627,
+        "PF": 0,
+        "avgNetReturn": -0.012460839343629388,
+        "totalNetReturn": -0.012460839343629404,
+        "MFE_R": 0.10526315789473338,
+        "MAE_R": -0.9684210526315773
+      },
+      {
+        "key": "JTOUSDT",
+        "trades": 1,
+        "winRate": 1,
+        "expectancyR": 0.20214760546052332,
+        "PF": null,
+        "avgNetReturn": 0.009433968692047752,
+        "totalNetReturn": 0.009433968692047712,
+        "MFE_R": 0.41447368421052494,
+        "MAE_R": -0.7697368421052647
+      },
+      {
+        "key": "LAUSDT",
+        "trades": 1,
+        "winRate": 1,
+        "expectancyR": 0.028259622238062693,
+        "PF": null,
+        "avgNetReturn": 0.002192994828396909,
+        "totalNetReturn": 0.002192994828396966,
+        "MFE_R": 0.6161796151104796,
+        "MAE_R": -0.0858873841767632
+      },
+      {
+        "key": "LDOUSDT",
+        "trades": 1,
+        "winRate": 0,
+        "expectancyR": -1.0258966791122706,
+        "PF": 0,
+        "avgNetReturn": -0.04788768166971354,
+        "totalNetReturn": -0.04788768166971358,
+        "MFE_R": 0.5039164490861604,
+        "MAE_R": -0.9999999999999991
+      },
+      {
+        "key": "OMUSDT",
+        "trades": 1,
+        "winRate": 0,
+        "expectancyR": -0.4808675869969034,
+        "PF": 0,
+        "avgNetReturn": -0.03160126767039674,
+        "totalNetReturn": -0.03160126767039673,
+        "MFE_R": 0.11455108359133212,
+        "MAE_R": -0.8095975232198129
       },
       {
         "key": "ONDOUSDT",
@@ -3526,15 +5554,48 @@
         "MAE_R": -0.9584905660377353
       },
       {
-        "key": "PENGUUSDT",
+        "key": "ORDIUSDT",
         "trades": 1,
         "winRate": 0,
-        "expectancyR": -0.023869391286030873,
+        "expectancyR": -0.4880571759090936,
         "PF": 0,
-        "avgNetReturn": -0.0010110919010049707,
-        "totalNetReturn": -0.0010110919010050123,
-        "MFE_R": 0.35033259423503343,
-        "MAE_R": -0.3702882483370287
+        "avgNetReturn": -0.017090740740151322,
+        "totalNetReturn": -0.017090740740151267,
+        "MFE_R": 0.193181818181816,
+        "MAE_R": -0.6874999999999999
+      },
+      {
+        "key": "PAXGUSDT",
+        "trades": 1,
+        "winRate": 0,
+        "expectancyR": -0.2312706196424176,
+        "PF": 0,
+        "avgNetReturn": -0.009259395497098767,
+        "totalNetReturn": -0.009259395497098755,
+        "MFE_R": 0.7056599918267302,
+        "MAE_R": -0.44314466693910887
+      },
+      {
+        "key": "PENGUUSDT",
+        "trades": 2,
+        "winRate": 0,
+        "expectancyR": -0.526198865024123,
+        "PF": 0,
+        "avgNetReturn": -0.022601991016982542,
+        "totalNetReturn": -0.045159298960669725,
+        "MFE_R": 0.19633893555399845,
+        "MAE_R": -0.6851441241685144
+      },
+      {
+        "key": "PIPPINUSDT",
+        "trades": 1,
+        "winRate": 0,
+        "expectancyR": -1.0326014820835836,
+        "PF": 0,
+        "avgNetReturn": -0.0484641966887453,
+        "totalNetReturn": -0.048464196688745353,
+        "MFE_R": 0.3313143549364044,
+        "MAE_R": -0.9999999999999979
       },
       {
         "key": "PUMPUSDT",
@@ -3548,6 +5609,72 @@
         "MAE_R": -0.6681547619047623
       },
       {
+        "key": "RESOLVUSDT",
+        "trades": 1,
+        "winRate": 0,
+        "expectancyR": -1.071902163601693,
+        "PF": 0,
+        "avgNetReturn": -0.05802482849071023,
+        "totalNetReturn": -0.05802482849071022,
+        "MFE_R": 0.3488700564971756,
+        "MAE_R": -0.9999999999999982
+      },
+      {
+        "key": "SAGAUSDT",
+        "trades": 1,
+        "winRate": 1,
+        "expectancyR": 0.45836032927536324,
+        "PF": null,
+        "avgNetReturn": 0.027549531986062758,
+        "totalNetReturn": 0.027549531986062803,
+        "MFE_R": 0.7753623188405816,
+        "MAE_R": -0.10869565217391083
+      },
+      {
+        "key": "SEIUSDT",
+        "trades": 1,
+        "winRate": 1,
+        "expectancyR": 0.4653878159239129,
+        "PF": null,
+        "avgNetReturn": 0.01762052742013479,
+        "totalNetReturn": 0.01762052742013487,
+        "MFE_R": 1.2214673913043455,
+        "MAE_R": -0.1372282608695614
+      },
+      {
+        "key": "SIRENUSDT",
+        "trades": 2,
+        "winRate": 0.5,
+        "expectancyR": -0.47552853052217703,
+        "PF": 0.16637221756906634,
+        "avgNetReturn": -0.02418894135187733,
+        "totalNetReturn": -0.048938195008325414,
+        "MFE_R": 0.3242347875633138,
+        "MAE_R": -0.9810559765338543
+      },
+      {
+        "key": "SOONUSDT",
+        "trades": 1,
+        "winRate": 1,
+        "expectancyR": 0.5402485456756774,
+        "PF": null,
+        "avgNetReturn": 0.023433993188745644,
+        "totalNetReturn": 0.023433993188745728,
+        "MFE_R": 0.864864864864865,
+        "MAE_R": -0.3378378378378368
+      },
+      {
+        "key": "SPXUSDT",
+        "trades": 1,
+        "winRate": 1,
+        "expectancyR": 1.4651507302823754,
+        "PF": null,
+        "avgNetReturn": 0.11878037574992105,
+        "totalNetReturn": 0.11878037574992106,
+        "MFE_R": 1.4790652385589091,
+        "MAE_R": -0.37293086660175295
+      },
+      {
         "key": "TAOUSDT",
         "trades": 1,
         "winRate": 0,
@@ -3559,15 +5686,59 @@
         "MAE_R": -0.999999999999999
       },
       {
-        "key": "WIFUSDT",
-        "trades": 2,
+        "key": "TIAUSDT",
+        "trades": 1,
         "winRate": 0,
-        "expectancyR": -0.32901885547384707,
+        "expectancyR": -1.0325604806796127,
         "PF": 0,
-        "avgNetReturn": -0.013127798743856554,
-        "totalNetReturn": -0.026150328862424854,
-        "MFE_R": 0.39781040969899806,
-        "MAE_R": -0.66913147993311
+        "avgNetReturn": -0.04393420613859347,
+        "totalNetReturn": -0.043934206138593446,
+        "MFE_R": 0.5388349514563102,
+        "MAE_R": -1.000000000000001
+      },
+      {
+        "key": "TONUSDT",
+        "trades": 1,
+        "winRate": 0,
+        "expectancyR": -0.1540883102842343,
+        "PF": 0,
+        "avgNetReturn": -0.005703153794950134,
+        "totalNetReturn": -0.005703153794950122,
+        "MFE_R": 0.06847545219638207,
+        "MAE_R": -0.9418604651162796
+      },
+      {
+        "key": "TUTUSDT",
+        "trades": 1,
+        "winRate": 1,
+        "expectancyR": 0.44682709621621536,
+        "PF": null,
+        "avgNetReturn": 0.035275823385490686,
+        "totalNetReturn": 0.03527582338549062,
+        "MFE_R": 0.9099099099099092,
+        "MAE_R": -0.13063063063063102
+      },
+      {
+        "key": "VIRTUALUSDT",
+        "trades": 1,
+        "winRate": 0,
+        "expectancyR": -0.3684142739449572,
+        "PF": 0,
+        "avgNetReturn": -0.014331604518201382,
+        "totalNetReturn": -0.014331604518201368,
+        "MFE_R": 0.3425076452599397,
+        "MAE_R": -0.541284403669722
+      },
+      {
+        "key": "WIFUSDT",
+        "trades": 3,
+        "winRate": 0,
+        "expectancyR": -0.5716687106667742,
+        "PF": 0,
+        "avgNetReturn": -0.016252295334373067,
+        "totalNetReturn": -0.04806320128332475,
+        "MFE_R": 0.37047009769406686,
+        "MAE_R": -0.7794209866220724
       },
       {
         "key": "WLDUSDT",
@@ -3579,6 +5750,39 @@
         "totalNetReturn": -0.06345454150775309,
         "MFE_R": 0.33381900533292164,
         "MAE_R": -0.9829541303765523
+      },
+      {
+        "key": "XMRUSDT",
+        "trades": 2,
+        "winRate": 0.5,
+        "expectancyR": -0.2589662554536667,
+        "PF": 0.658423020489411,
+        "avgNetReturn": -0.00889155084332098,
+        "totalNetReturn": -0.019567709716526438,
+        "MFE_R": 0.5107158100921497,
+        "MAE_R": -0.6100115074798615
+      },
+      {
+        "key": "ZENUSDT",
+        "trades": 1,
+        "winRate": 0,
+        "expectancyR": -0.07563086907928591,
+        "PF": 0,
+        "avgNetReturn": -0.0030839159255397638,
+        "totalNetReturn": -0.003083915925539804,
+        "MFE_R": 0.7109974424552434,
+        "MAE_R": -0.4015345268542216
+      },
+      {
+        "key": "ZROUSDT",
+        "trades": 1,
+        "winRate": 1,
+        "expectancyR": 1.4693575718015652,
+        "PF": null,
+        "avgNetReturn": 0.05357105663969533,
+        "totalNetReturn": 0.053571056639695414,
+        "MFE_R": 1.4999999999999987,
+        "MAE_R": -0.018276762402087934
       }
     ]
   },
@@ -3586,71 +5790,93 @@
     "strong": [
       {
         "key": "fold-2",
-        "trades": 1,
+        "trades": 3,
         "winRate": 1,
-        "expectancyR": 1.4778305486083256,
+        "expectancyR": 1.4855778100326906,
         "PF": null,
-        "avgNetReturn": 0.0939516119139699,
-        "totalNetReturn": 0.09395161191396983,
-        "MFE_R": 1.4978479196556715,
-        "MAE_R": -0.458536585365852
+        "avgNetReturn": 0.09185634540401738,
+        "totalNetReturn": 0.30165221779272877,
+        "MFE_R": 1.5065158132332617,
+        "MAE_R": -0.20458385433238338
       },
       {
         "key": "fold-3",
+        "trades": 3,
+        "winRate": 0.6666666666666666,
+        "expectancyR": -0.04825862824249728,
+        "PF": 1.1385570248517691,
+        "avgNetReturn": 0.0028151603724572215,
+        "totalNetReturn": 0.004241681568879274,
+        "MFE_R": 0.5780386530465728,
+        "MAE_R": -0.620113090579877
+      },
+      {
+        "key": "fold-4",
         "trades": 2,
         "winRate": 0.5,
-        "expectancyR": -0.5065376659125187,
-        "PF": 0.006649737748150721,
-        "avgNetReturn": -0.030273892253962705,
-        "totalNetReturn": -0.06057249015366062,
-        "MFE_R": 0.37034942182000974,
-        "MAE_R": -0.7685897435897439
+        "expectancyR": 0.004580189280608882,
+        "PF": 1.3878774846559894,
+        "avgNetReturn": 0.008105317342323781,
+        "totalNetReturn": 0.013786470520840366,
+        "MFE_R": 0.8129881052505126,
+        "MAE_R": -0.5592334494773515
       }
     ],
     "weak": [
       {
         "key": "fold-1",
-        "trades": 15,
-        "winRate": 0.4,
-        "expectancyR": -0.08418004294426788,
-        "PF": 0.8072692754616623,
-        "avgNetReturn": -0.0036576199812906906,
-        "totalNetReturn": -0.06441337521912205,
-        "MFE_R": 0.6194660648722454,
-        "MAE_R": -0.7497283308368157
+        "trades": 29,
+        "winRate": 0.3793103448275862,
+        "expectancyR": -0.07790369041719211,
+        "PF": 0.829593982462545,
+        "avgNetReturn": -0.0032386942664662187,
+        "totalNetReturn": -0.11220439188130715,
+        "MFE_R": 0.6128500155032085,
+        "MAE_R": -0.6400753949749931
       },
       {
         "key": "fold-2",
-        "trades": 6,
-        "winRate": 0.16666666666666666,
-        "expectancyR": -0.07502068420299962,
-        "PF": 0.22252298224043046,
-        "avgNetReturn": -0.004092239702046596,
-        "totalNetReturn": -0.024449964027834392,
-        "MFE_R": 0.5807448951737815,
-        "MAE_R": -0.4567891863940789
+        "trades": 10,
+        "winRate": 0.1,
+        "expectancyR": -0.20444326683884356,
+        "PF": 0.06368938712054985,
+        "avgNetReturn": -0.010331241242389278,
+        "totalNetReturn": -0.10001601343304878,
+        "MFE_R": 0.5253336661851906,
+        "MAE_R": -0.5154758237370091
       },
       {
         "key": "fold-3",
-        "trades": 2,
-        "winRate": 0,
-        "expectancyR": -1.027742449655872,
-        "PF": 0,
-        "avgNetReturn": -0.04707543721998701,
-        "totalNetReturn": -0.09202246048055762,
-        "MFE_R": 0.6233802275686877,
-        "MAE_R": -1.0000000000000002
+        "trades": 10,
+        "winRate": 0.2,
+        "expectancyR": -0.4729141296321571,
+        "PF": 0.28482117963009446,
+        "avgNetReturn": -0.022593649238998672,
+        "totalNetReturn": -0.20995568355257954,
+        "MFE_R": 0.5143168692828437,
+        "MAE_R": -0.711773750232231
       },
       {
         "key": "fold-4",
-        "trades": 1,
-        "winRate": 0,
-        "expectancyR": -1.0491886792452851,
-        "PF": 0,
-        "avgNetReturn": -0.025911929170549908,
-        "totalNetReturn": -0.025911929170549852,
-        "MFE_R": 0.15094339622641761,
-        "MAE_R": -1.000000000000002
+        "trades": 7,
+        "winRate": 0.42857142857142855,
+        "expectancyR": -0.4753979986414803,
+        "PF": 0.36520778083362393,
+        "avgNetReturn": -0.012431781348363587,
+        "totalNetReturn": -0.0864462409705915,
+        "MFE_R": 0.36095037424906795,
+        "MAE_R": -0.8396491656301966
+      },
+      {
+        "key": "fold-5",
+        "trades": 5,
+        "winRate": 0.4,
+        "expectancyR": 0.0033483116462793006,
+        "PF": 1.4461469302301762,
+        "avgNetReturn": 0.0031457582592155113,
+        "totalNetReturn": 0.014954137453209615,
+        "MFE_R": 0.4014295223956756,
+        "MAE_R": -0.608863001551921
       }
     ]
   },
@@ -3658,14 +5884,14 @@
     "strong": [
       {
         "key": "down|high|negative",
-        "trades": 2,
+        "trades": 4,
         "winRate": 1,
-        "expectancyR": 0.7421129025092912,
+        "expectancyR": 0.8479358690917502,
         "PF": null,
-        "avgNetReturn": 0.04717846704417112,
-        "totalNetReturn": 0.09439501475996881,
-        "MFE_R": 1.0277701136739907,
-        "MAE_R": -0.4978580362726699
+        "avgNetReturn": 0.05533850434108973,
+        "totalNetReturn": 0.23775961922663358,
+        "MFE_R": 1.0566644228199342,
+        "MAE_R": -0.3593356890150466
       },
       {
         "key": "down|high|positive",
@@ -3677,52 +5903,107 @@
         "totalNetReturn": -0.0609531066822977,
         "MFE_R": 0.1830065359477095,
         "MAE_R": -1
+      },
+      {
+        "key": "down|medium|negative",
+        "trades": 3,
+        "winRate": 0.6666666666666666,
+        "expectancyR": 0.6496150119333636,
+        "PF": 4.345623171260258,
+        "avgNetReturn": 0.04660808044400339,
+        "totalNetReturn": 0.1401345497486317,
+        "MFE_R": 1.1566584607043608,
+        "MAE_R": -0.3850716592104326
       }
     ],
     "weak": [
       {
         "key": "down|high|negative",
-        "trades": 7,
+        "trades": 14,
         "winRate": 0.14285714285714285,
-        "expectancyR": -0.4049095516688646,
-        "PF": 0.3419959928108842,
-        "avgNetReturn": -0.01701988030118993,
-        "totalNetReturn": -0.11679165406280023,
-        "MFE_R": 0.5111590363677607,
-        "MAE_R": -0.8439889533686495
+        "expectancyR": -0.4273649164803236,
+        "PF": 0.49638124550028523,
+        "avgNetReturn": -0.013095529337350555,
+        "totalNetReturn": -0.17991674674978875,
+        "MFE_R": 0.5416246651639794,
+        "MAE_R": -0.8109103131779599
       },
       {
         "key": "down|medium|negative",
-        "trades": 4,
-        "winRate": 0.25,
-        "expectancyR": 0.0014826713876605613,
-        "PF": 0.9423933757584085,
-        "avgNetReturn": -0.00010739395504378722,
-        "totalNetReturn": -0.0004679262864198952,
-        "MFE_R": 0.6873691465124769,
-        "MAE_R": -0.35550604991338774
+        "trades": 8,
+        "winRate": 0.375,
+        "expectancyR": -0.10940493872335288,
+        "PF": 0.8436309939582266,
+        "avgNetReturn": -0.0010248151975371278,
+        "totalNetReturn": -0.009196375475225005,
+        "MFE_R": 0.5544483406985657,
+        "MAE_R": -0.5042645260706113
+      },
+      {
+        "key": "down|medium|neutral",
+        "trades": 1,
+        "winRate": 1,
+        "expectancyR": 0.5062750047502875,
+        "PF": null,
+        "avgNetReturn": 0.03427866697271431,
+        "totalNetReturn": 0.03427866697271442,
+        "MFE_R": 0.6943613348676675,
+        "MAE_R": -0.22002301495972215
+      },
+      {
+        "key": "flat|high|negative",
+        "trades": 2,
+        "winRate": 0,
+        "expectancyR": -0.3921970712553848,
+        "PF": 0,
+        "avgNetReturn": -0.03288776566824088,
+        "totalNetReturn": -0.06469558128293107,
+        "MFE_R": 0.16983671634705289,
+        "MAE_R": -0.6507204581841314
       },
       {
         "key": "flat|low|negative",
-        "trades": 2,
-        "winRate": 1,
-        "expectancyR": 1.2321952461184813,
-        "PF": null,
-        "avgNetReturn": 0.05026178664361232,
-        "totalNetReturn": 0.10230080206829228,
-        "MFE_R": 1.492800836550833,
-        "MAE_R": -0.5959419240669233
+        "trades": 6,
+        "winRate": 0.6666666666666666,
+        "expectancyR": 0.3269797773183838,
+        "PF": 2.4243633177959922,
+        "avgNetReturn": 0.01309124837624564,
+        "totalNetReturn": 0.07631387605999662,
+        "MFE_R": 0.9156922752909349,
+        "MAE_R": -0.4708335205672067
       },
       {
         "key": "flat|medium|negative",
-        "trades": 10,
-        "winRate": 0.2,
-        "expectancyR": -0.47025743551619426,
-        "PF": 0.228740318222809,
-        "avgNetReturn": -0.01911130333943562,
-        "totalNetReturn": -0.17920595461177957,
-        "MFE_R": 0.43869930899275333,
-        "MAE_R": -0.8346972216691622
+        "trades": 24,
+        "winRate": 0.3333333333333333,
+        "expectancyR": -0.14590553968476405,
+        "PF": 0.6191619576665871,
+        "avgNetReturn": -0.006451143796028402,
+        "totalNetReturn": -0.15467240213295042,
+        "MFE_R": 0.5138715818310011,
+        "MAE_R": -0.6449138262736144
+      },
+      {
+        "key": "flat|medium|neutral",
+        "trades": 1,
+        "winRate": 0,
+        "expectancyR": -0.4880571759090936,
+        "PF": 0,
+        "avgNetReturn": -0.017090740740151322,
+        "totalNetReturn": -0.017090740740151267,
+        "MFE_R": 0.193181818181816,
+        "MAE_R": -0.6874999999999999
+      },
+      {
+        "key": "flat|medium|positive",
+        "trades": 4,
+        "winRate": 0,
+        "expectancyR": -0.8571420468699811,
+        "PF": 0,
+        "avgNetReturn": -0.0471847187307521,
+        "totalNetReturn": -0.1761396661339223,
+        "MFE_R": 0.28908905121026196,
+        "MAE_R": -0.9349816849816839
       },
       {
         "key": "up|medium|negative",

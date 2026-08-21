@@ -7,7 +7,7 @@ import { CONFIG } from "../lib/config.js";
 import { M3_REAL_DATA_WINDOW, M3_REAL_MANIFEST_SHA256 } from "../lib/validation/real-data.js";
 
 const ROOT = process.cwd();
-const FROZEN_BASE_SHA = "4e74aa8bd37025195f46c5c2adc9bc0ca130646e";
+const FROZEN_BASE_SHA = "f8a6f5c4f1b8b129dd866cd29638db8b57d228f0";
 
 const manifestBytes = await readFile("artifacts/m3/manifest.json");
 assert.equal(createHash("sha256").update(manifestBytes).digest("hex"), M3_REAL_MANIFEST_SHA256);
@@ -59,6 +59,13 @@ const signal2 = {
   signalAvailableAt: 5600,
   recommendationScore: 89.2,
   details: { ...signal1.details, poolRank: 2, momentum24h: -0.1 }
+};
+const signal3 = {
+  ...signal1,
+  signalCandleOpenTime: 3000,
+  signalAvailableAt: 6600,
+  recommendationScore: 87.1,
+  details: { ...signal1.details, poolRank: 3, momentum24h: -0.08 }
 };
 const trade1 = {
   strategyId: signal1.strategyId,
@@ -139,11 +146,11 @@ const pipelineDiagnostics = {
   signalQualityExclusions: {}
 };
 
-const before = JSON.stringify({ validation, signal1, signal2, trade1, trade2, CONFIG: originalConfigSnapshot });
+const before = JSON.stringify({ validation, signal1, signal2, signal3, trade1, trade2, CONFIG: originalConfigSnapshot });
 const analysis = decomposeFrozenValidation({
   strategyId: signal1.strategyId,
   validationResult: validation,
-  replaySignals: [signal1, signal2],
+  replaySignals: [signal1, signal2, signal3],
   pipelineDiagnostics,
   datasets: [],
   benchmarkCandles: []
@@ -152,6 +159,12 @@ assert.equal(analysis.completeTrades, 2);
 assert.equal(analysis.degradedTrades, 1);
 assert.equal(analysis.tradeDetails.length, 2);
 assert.equal(analysis.costDecomposition.reconciles, true);
+assert.equal(analysis.attrition.conservation.valid, true);
+assert.equal(analysis.attrition.conservation.replaySignals, 3);
+assert.equal(analysis.attrition.conservation.initialTrainingContextSignals, 0);
+assert.equal(analysis.attrition.conservation.developmentOosSignals, 3);
+assert.equal(analysis.attrition.conservation.holdoutSignals, 0);
+assert.equal(analysis.exitDecomposition.find((group) => group.exitReason === "stop_loss")?.key, "stop_loss");
 assertClose(analysis.costDecomposition.grossExpectancyR, 2.5);
 assertClose(analysis.costDecomposition.grossDirectionalPnl.sumR, 5);
 assertClose(analysis.costDecomposition.netExpectancyR, 2.1);
@@ -168,7 +181,7 @@ assert.equal(analysis.scoreCalibration.buckets.find((bucket) => bucket.bucket ==
 assert.equal(analysis.scoreCalibration.buckets.find((bucket) => bucket.bucket === "89+")?.signals, 1);
 assert.equal(analysis.scoreCalibration.status, "INSUFFICIENT_FOR_CALIBRATION");
 assert.equal(analysis.lossDrivers.top3.length <= 3, true);
-assert.equal(JSON.stringify({ validation, signal1, signal2, trade1, trade2, CONFIG: originalConfigSnapshot }), before);
+assert.equal(JSON.stringify({ validation, signal1, signal2, signal3, trade1, trade2, CONFIG: originalConfigSnapshot }), before);
 assert.equal(JSON.stringify({
   relativeStrengthMinMomentum24h: CONFIG.relativeStrengthMinMomentum24h,
   relativeStrengthMaxMomentum24h: CONFIG.relativeStrengthMaxMomentum24h,
@@ -186,7 +199,7 @@ const strongRecommendation = decomposeFrozenValidation({
     aggregate: { ...validation.aggregate, negativeFolds: 1 },
     folds: validation.folds
   },
-  replaySignals: [signal1, signal2],
+  replaySignals: [signal1, signal2, signal3],
   pipelineDiagnostics
 });
 assert.equal(strongRecommendation.recommendedStatus.status, "KEEP_FOR_MORE_DATA");
@@ -204,10 +217,14 @@ const weakRecommendation = decomposeFrozenValidation({
     aggregate: { ...validation.aggregate, negativeFolds: 4 },
     folds: [{ expectancyR: 1 }, { expectancyR: -1 }, { expectancyR: -0.2 }, { expectancyR: -0.3 }, { expectancyR: -0.1 }]
   },
-  replaySignals: [signal1, signal2],
+  replaySignals: [signal1, signal2, signal3],
   pipelineDiagnostics
 });
 assert.equal(weakRecommendation.recommendedStatus.status, "REDESIGN_CANDIDATE");
+assert.equal(
+  weakRecommendation.lossDrivers.top3.some((driver) => driver.dimension === "exitReason" && driver.key === "stop_loss"),
+  true
+);
 
 const report = buildFailureDecompositionReport({
   frozenBaseSha: FROZEN_BASE_SHA,
@@ -220,6 +237,8 @@ assert.equal(report.parameterSearchPerformed, false);
 assert.equal(report.holdoutUsedForOptimization, false);
 assert.equal(report.source.holdoutIncludedInAttribution, false);
 assert.equal(report.frozenBaseSha, FROZEN_BASE_SHA);
+assert.equal(report.attrition.strong.conservation.valid, true);
+assert.equal(report.attrition.weak.conservation.valid, true);
 
 console.log(JSON.stringify({ test: "m3-5", passed: true }, null, 2));
 

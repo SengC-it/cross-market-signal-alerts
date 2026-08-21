@@ -285,6 +285,8 @@ function formatStability(stability = {}) {
 function formatAggregateMetrics(metrics = {}) {
   return {
     completeTrades: metrics.completeTrades,
+    degradedTrades: metrics.degradedTrades,
+    fundingIncompleteTrades: metrics.fundingIncompleteTrades,
     positiveFolds: metrics.positiveFolds,
     negativeFolds: metrics.negativeFolds,
     winRate: metrics.winRate,
@@ -309,6 +311,8 @@ function formatAggregateMetrics(metrics = {}) {
 function formatHoldoutMetrics(metrics = {}) {
   return {
     completeTrades: metrics.completeTrades,
+    degradedTrades: metrics.degradedTrades,
+    fundingIncompleteTrades: metrics.fundingIncompleteTrades,
     winRate: metrics.winRate,
     profitFactor: metrics.profitFactor,
     expectancyR: metrics.expectancyR,

@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { buildFundingCoverage } from "../lib/market-data/funding-history.js";
+import { validateFundingCoverageForTrade } from "../lib/backtest/execution-model.js";
 import {
   aggregateValidationMetrics,
   buildValidationStability,
@@ -275,6 +276,126 @@ function testBoundedContextAndNoFutureInputs() {
   assert.ok(observations.every((row) =>
     row.maxVisibleOpenTime <= BASE + row.index * HOUR
   ), "strategy evaluation must not see candles after the current index");
+}
+
+function testFundingCoverageIsTradeScoped() {
+  const completeCoverage = buildFundingCoverage({
+    requestedStart: BASE,
+    requestedEnd: BASE + 10 * HOUR,
+    events: [
+      { time: BASE + 5 * HOUR, rate: 0.001 },
+      { time: BASE + 8 * HOUR, rate: -0.001 }
+    ],
+    complete: true
+  });
+  const boundedToFold = boundBacktestOptionsToEnd({
+    fundingEvents: [
+      { time: BASE + 5 * HOUR, rate: 0.001 },
+      { time: BASE + 8 * HOUR, rate: -0.001 },
+      { time: BASE + 30 * HOUR, rate: 0.003 }
+    ],
+    fundingCoverage: completeCoverage
+  }, BASE + 20 * HOUR);
+  assert.equal(boundedToFold.fundingCoverage.requestedEnd, BASE + 10 * HOUR);
+  assert.equal(boundedToFold.fundingCoverage.complete, true);
+  assert.equal(validateFundingCoverageForTrade({
+    fundingCoverage: boundedToFold.fundingCoverage,
+    entryTime: BASE + 2 * HOUR,
+    exitTime: BASE + 8 * HOUR
+  }).valid, true, "a complete [0h,10h] window must cover a [2h,8h] trade");
+  assert.equal(validateFundingCoverageForTrade({
+    fundingCoverage: boundedToFold.fundingCoverage,
+    entryTime: BASE + 9 * HOUR,
+    exitTime: BASE + 12 * HOUR
+  }).valid, false, "a trade beyond coverage must remain incomplete");
+  assert.equal(boundedToFold.fundingEvents.length, 2, "future funding must not enter a bounded fold");
+
+  const boundedToFiveHours = boundBacktestOptionsToEnd({
+    fundingEvents: completeCoverage ? [
+      { time: BASE + 5 * HOUR, rate: 0.001 },
+      { time: BASE + 8 * HOUR, rate: -0.001 }
+    ] : [],
+    fundingCoverage: completeCoverage
+  }, BASE + 5 * HOUR);
+  assert.equal(boundedToFiveHours.fundingCoverage.requestedEnd, BASE + 5 * HOUR);
+  assert.ok(boundedToFiveHours.fundingEvents.every((event) => event.time <= BASE + 5 * HOUR));
+  assert.equal(boundedToFiveHours.fundingEvents.some((event) => event.time === BASE + 8 * HOUR), false);
+
+  const shortCoverageEnd = boundBacktestOptionsToEnd({
+    fundingEvents: completeCoverage ? [{ time: BASE + 5 * HOUR, rate: 0.001 }] : [],
+    fundingCoverage: { ...completeCoverage, coverageEnd: BASE + 9 * HOUR }
+  }, BASE + 20 * HOUR);
+  assert.equal(shortCoverageEnd.fundingCoverage.complete, false, "coverageEnd below requestedEnd must be incomplete");
+
+  const withoutFutureSignal = boundBacktestOptionsToEnd({
+    fundingEvents: [{ time: BASE + 5 * HOUR, rate: 0.001 }],
+    fundingCoverage: completeCoverage
+  }, BASE + 20 * HOUR);
+  const withFutureSignal = boundBacktestOptionsToEnd({
+    fundingEvents: [
+      { time: BASE + 5 * HOUR, rate: 0.001 },
+      { time: BASE + 50 * HOUR, rate: 0.5 }
+    ],
+    fundingCoverage: completeCoverage
+  }, BASE + 20 * HOUR);
+  assert.deepEqual(
+    validateFundingCoverageForTrade({
+      fundingCoverage: withoutFutureSignal.fundingCoverage,
+      entryTime: BASE + 2 * HOUR,
+      exitTime: BASE + 8 * HOUR
+    }),
+    validateFundingCoverageForTrade({
+      fundingCoverage: withFutureSignal.fundingCoverage,
+      entryTime: BASE + 2 * HOUR,
+      exitTime: BASE + 8 * HOUR
+    }),
+    "future signals/events must not change historical trade coverage"
+  );
+
+  const holdoutCoverage = buildFundingCoverage({
+    requestedStart: BASE,
+    requestedEnd: BASE + 110 * HOUR,
+    events: [{ time: BASE + 104 * HOUR, rate: 0.001 }],
+    complete: true
+  });
+  const boundedHoldout = boundBacktestOptionsToEnd({
+    fundingEvents: holdoutCoverage ? [{ time: BASE + 104 * HOUR, rate: 0.001 }] : [],
+    fundingCoverage: holdoutCoverage
+  }, BASE + 200 * HOUR);
+  assert.equal(boundedHoldout.fundingCoverage.complete, true);
+  assert.equal(validateFundingCoverageForTrade({
+    fundingCoverage: boundedHoldout.fundingCoverage,
+    entryTime: BASE + 100 * HOUR,
+    exitTime: BASE + 108 * HOUR
+  }).valid, true, "holdout trade inside coverage must remain complete");
+
+  const overlappingGap = buildFundingCoverage({
+    ...completeCoverage,
+    gaps: [{ start: BASE + 6 * HOUR, end: BASE + 7 * HOUR, reason: "gap" }]
+  });
+  const boundedOverlappingGap = boundBacktestOptionsToEnd({
+    fundingEvents: [{ time: BASE + 5 * HOUR, rate: 0.001 }],
+    fundingCoverage: overlappingGap
+  }, BASE + 20 * HOUR);
+  assert.equal(validateFundingCoverageForTrade({
+    fundingCoverage: boundedOverlappingGap.fundingCoverage,
+    entryTime: BASE + 2 * HOUR,
+    exitTime: BASE + 8 * HOUR
+  }).valid, false, "a funding gap overlapping the trade must fail closed");
+
+  const nonOverlappingGap = buildFundingCoverage({
+    ...completeCoverage,
+    gaps: [{ start: BASE + 12 * HOUR, end: BASE + 13 * HOUR, reason: "gap" }]
+  });
+  const boundedNonOverlappingGap = boundBacktestOptionsToEnd({
+    fundingEvents: [{ time: BASE + 5 * HOUR, rate: 0.001 }],
+    fundingCoverage: nonOverlappingGap
+  }, BASE + 20 * HOUR);
+  assert.equal(validateFundingCoverageForTrade({
+    fundingCoverage: boundedNonOverlappingGap.fundingCoverage,
+    entryTime: BASE + 2 * HOUR,
+    exitTime: BASE + 8 * HOUR
+  }).valid, true, "a funding gap outside the trade must not fail it");
 }
 
 function testQualityAndMetricRecomputation() {
@@ -554,6 +675,7 @@ testChronologicalSplitAndFolds();
 testPurgeRules();
 testInvalidPlanAndPurgedDenominator();
 testBoundedContextAndNoFutureInputs();
+testFundingCoverageIsTradeScoped();
 testQualityAndMetricRecomputation();
 testStabilityAndVerdicts();
 testHoldoutRunsAfterDevelopmentOnly();

@@ -18,7 +18,7 @@ import {
   M3_REAL_MANIFEST_SHA256
 } from "../lib/validation/real-data.js";
 
-const FROZEN_BASE_SHA = "4e74aa8bd37025195f46c5c2adc9bc0ca130646e";
+const FROZEN_BASE_SHA = "f8a6f5c4f1b8b129dd866cd29638db8b57d228f0";
 const dataDir = argumentValue("--data-dir") || process.env.M3_REAL_DATA_DIR || ".local/m3-data";
 const manifestPath = argumentValue("--manifest") || process.env.M3_REAL_MANIFEST || "artifacts/m3/manifest.json";
 const frozenReportPath = argumentValue("--frozen-report") || "artifacts/m3/m3-real-validation-report.json";
@@ -41,14 +41,16 @@ if (!existsSync(resolve(dataDir, "index.json"))) {
     for (const strategyId of DYNAMIC_STRATEGY_IDS) {
       const validation = runFrozenStrategy({ input, validationDatasets, strategyId });
       assertFrozenParity({ validation, frozenReport: frozenReport.strategies?.[strategyId], strategyId });
-      strategyAnalyses.push(decomposeFrozenValidation({
+      const analysis = decomposeFrozenValidation({
         strategyId,
         validationResult: validation,
         replaySignals: validation.replaySignals,
         pipelineDiagnostics: validation.pipelineDiagnostics,
         datasets: validationDatasets,
         benchmarkCandles: input.benchmarkCandles
-      }));
+      });
+      assert.equal(analysis.attrition.conservation?.valid, true, `${strategyId} attrition conservation must hold`);
+      strategyAnalyses.push(analysis);
     }
 
     const report = buildFailureDecompositionReport({
