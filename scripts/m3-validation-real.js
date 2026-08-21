@@ -1,5 +1,6 @@
 import { existsSync } from "node:fs";
 import { mkdir, writeFile } from "node:fs/promises";
+import { CONFIG } from "../lib/config.js";
 import { dirname, resolve } from "node:path";
 import { DYNAMIC_STRATEGY_IDS } from "../lib/strategies/dynamic-production.js";
 import { runM3DynamicProductionValidation } from "../lib/validation/validation-engine.js";
@@ -128,6 +129,8 @@ function buildValidationReport({ input, results }) {
       fundingSource: manifest.sources?.funding,
       exchangeFilterSource: manifest.sources?.futuresExchangeInfo
     },
+    executionCostModel: input.executionCostModel,
+    providerChecksum: input.providerChecksum || manifest.providerChecksum || null,
     validationFlags,
     quality,
     strategies: Object.fromEntries(results.map((result) => [
@@ -295,7 +298,11 @@ function formatAggregateMetrics(metrics = {}) {
     totalFeeDrag: metrics.feeDrag,
     totalSpreadDrag: metrics.spreadDrag,
     totalSlippageDrag: metrics.slippageDrag,
-    totalFundingDrag: metrics.fundingDrag
+    totalFundingDrag: metrics.fundingDrag,
+    feeDrag: metrics.feeDrag,
+    spreadDrag: metrics.spreadDrag,
+    slippageDrag: metrics.slippageDrag,
+    fundingDrag: metrics.fundingDrag
   };
 }
 
@@ -418,6 +425,15 @@ function validateRealInput(input) {
     || input.universeProvenance.historicalUniverseComplete !== true
     || input.universeProvenance.survivorshipBiasRisk !== false) {
     throw new Error("HISTORICAL_UNIVERSE_UNAVAILABLE");
+  }
+  if (Number(input.executionCostModel?.roundTripFeePct) !== CONFIG.futuresTradingCost
+    || Number(input.executionCostModel?.entryFeePct) !== CONFIG.futuresTradingCost / 2
+    || Number(input.executionCostModel?.exitFeePct) !== CONFIG.futuresTradingCost / 2) {
+    throw new Error("M3_REAL_EXECUTION_COST_INVALID");
+  }
+  if (input.providerChecksum?.mismatchedFiles > 0
+    || input.providerChecksum?.status === "MISMATCH") {
+    throw new Error("M3_DATA_HASH_MISMATCH: provider-checksum");
   }
   for (const [index, dataset] of input.datasets.entries()) {
     if (!dataset?.asset

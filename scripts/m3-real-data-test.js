@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { mkdir, mkdtemp, readFile, rm, unlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -9,6 +10,7 @@ import {
   M3_REAL_DATA_WINDOW,
   M3_REAL_MANIFEST_SHA256,
   HISTORICAL_BINANCE_VISION_UNIVERSE,
+  PROVIDER_CHECKSUM_STATUS,
   buildExchangeFilterProvenance,
   buildManifest,
   buildHistoricalUniverseFromVisionListings,
@@ -17,11 +19,16 @@ import {
   loadM3RealInput,
   normalizeKlineRows,
   sha256File,
+  summarizeExecutionCostModel,
   validateCandleSeries,
+  verifyBinanceVisionChecksum,
   verifyFrozenM3Data
 } from "../lib/validation/real-data.js";
 import { DYNAMIC_STRATEGY_IDS, evaluateDynamicProductionSignal } from "../lib/strategies/dynamic-production.js";
 import { buildFundingCoverage } from "../lib/market-data/funding-history.js";
+import { createExecutionModel } from "../lib/backtest/execution-model.js";
+import { simulateTrade } from "../lib/backtest/trade-simulator.js";
+import { createTradeSpec } from "../lib/trading/trade-spec.js";
 
 const HOUR = 3600 * 1000;
 const FIVE_MINUTES = 5 * 60 * 1000;
@@ -93,6 +100,75 @@ const fundingCoverage = buildFundingCoverage({
 });
 assert.equal(fundingCoverage.complete, true);
 assert.equal(fundingCoverage.eventCount, 1);
+
+const frozenExecutionCost = summarizeExecutionCostModel({
+  executionModel: {
+    marketType: "futures",
+    exchangeRulesRequired: true,
+    legacyRoundTripCostPct: CONFIG.futuresTradingCost
+  }
+});
+assert.equal(frozenExecutionCost.source, "CONFIG.futuresTradingCost");
+assert.equal(frozenExecutionCost.roundTripFeePct, CONFIG.futuresTradingCost);
+assert.equal(frozenExecutionCost.entryFeePct, CONFIG.futuresTradingCost / 2);
+assert.equal(frozenExecutionCost.exitFeePct, CONFIG.futuresTradingCost / 2);
+
+const feeSpec = createTradeSpec({
+  side: "LONG",
+  interval: "1h",
+  signalCandleOpenTime: BASE,
+  signalCandleCloseTime: BASE + HOUR,
+  signalAvailableAt: BASE + HOUR,
+  entryEligibleAt: BASE + HOUR,
+  referencePrice: 100,
+  stopLoss: 95,
+  takeProfit: 105,
+  maxHoldingHours: 4
+});
+const feeCandles = [
+  { openTime: BASE, open: 100, high: 101, low: 99, close: 100 },
+  { openTime: BASE + HOUR, open: 100, high: 101, low: 99, close: 100 },
+  { openTime: BASE + 2 * HOUR, open: 100, high: 105, low: 99, close: 105 }
+];
+const feeModel = createExecutionModel({
+  marketType: "spot",
+  exchangeRulesRequired: false,
+  legacyRoundTripCostPct: CONFIG.futuresTradingCost
+});
+const noFeeModel = createExecutionModel({
+  marketType: "spot",
+  exchangeRulesRequired: false,
+  legacyRoundTripCostPct: 0
+});
+const tradeWithFee = simulateTrade({
+  tradeSpec: feeSpec,
+  candles: feeCandles,
+  entryIndex: 1,
+  executionModel: feeModel
+});
+const tradeWithoutFee = simulateTrade({
+  tradeSpec: feeSpec,
+  candles: feeCandles,
+  entryIndex: 1,
+  executionModel: noFeeModel
+});
+assert.ok(tradeWithFee.totalFeePct > 0);
+assert.notEqual(tradeWithFee.netReturnPct, tradeWithoutFee.netReturnPct);
+
+const checksumBytes = Buffer.from("m3-vision-zip");
+const checksumHash = createHash("sha256").update(checksumBytes).digest("hex");
+assert.equal(
+  verifyBinanceVisionChecksum({ bytes: checksumBytes, checksumText: `${checksumHash}  archive.zip` }).status,
+  PROVIDER_CHECKSUM_STATUS.VERIFIED
+);
+assert.equal(
+  verifyBinanceVisionChecksum({ bytes: checksumBytes, checksumText: `${"0".repeat(64)}  archive.zip` }).status,
+  PROVIDER_CHECKSUM_STATUS.MISMATCH
+);
+assert.equal(
+  verifyBinanceVisionChecksum({ bytes: checksumBytes, checksumText: null }).status,
+  PROVIDER_CHECKSUM_STATUS.CHECKSUM_UNAVAILABLE
+);
 
 const currentUniverse = buildUniverseProvenance({
   assets: ["ETHUSDT", "BTCUSDT"],
@@ -194,6 +270,10 @@ assert.equal(committedReport.quality.productionPolicyComplete, false);
 assert.equal(committedReport.quality.coreSignalPolicyComplete, true);
 assert.equal(committedReport.fullProductionPolicyValidated, false);
 assert.equal(committedReport.productionPolicyComplete, false);
+assert.equal(committedReport.executionCostModel.roundTripFeePct, CONFIG.futuresTradingCost);
+assert.equal(committedReport.executionCostModel.entryFeePct, CONFIG.futuresTradingCost / 2);
+assert.equal(committedReport.executionCostModel.exitFeePct, CONFIG.futuresTradingCost / 2);
+assert.equal(committedReport.providerChecksum.mismatchedFiles, 0);
 for (const strategyId of DYNAMIC_STRATEGY_IDS) {
   const report = committedReport.strategies[strategyId];
   assert.equal(report.validationVerdict, "PROVISIONAL");
@@ -203,6 +283,7 @@ for (const strategyId of DYNAMIC_STRATEGY_IDS) {
   assert.equal(report.flags.strategyParametersChanged, false);
   assert.equal(report.flags.parameterSearchPerformed, false);
   assert.equal(report.flags.holdoutUsedForOptimization, false);
+  assert.ok(report.aggregateOOS.feeDrag > 0);
   assert.equal(report.developmentEnd, report.holdoutStart);
   assert.ok(report.walkForward.folds.every((fold) => fold.testEnd <= report.holdoutStart));
 }
@@ -238,6 +319,7 @@ try {
     historicalUniverseComplete: true,
     survivorshipBiasRisk: false,
     historicalUniverse: [{ time: M3_REAL_DATA_WINDOW.start, assets: ["TESTUSDT"] }],
+    executionCostModel: frozenExecutionCost,
     checksums: { algorithm: "SHA-256", files: fixtureFiles }
   };
   await writeFile(join(fixtureDataDir, "index.json"), `${JSON.stringify(fixtureIndex)}\n`, "utf8");
@@ -257,6 +339,7 @@ try {
       historicalUniverseComplete: true
     },
     exchangeFilterProvenance: { exchangeFilterProvenance: "CURRENT_SNAPSHOT_PROXY" },
+    executionCostModel: frozenExecutionCost,
     checksums: { algorithm: "SHA-256", files: fixtureFiles }
   };
   const fixtureManifestPath = join(temp, "manifest.json");
@@ -268,6 +351,27 @@ try {
     expectedManifestSha256: fixtureManifestSha256
   });
   assert.equal(loadedFixture.manifestSha256, fixtureManifestSha256);
+
+  const mismatchedProviderManifest = {
+    ...fixtureManifestObject,
+    providerChecksum: {
+      verifiedFiles: 0,
+      unavailableFiles: 0,
+      mismatchedFiles: 1,
+      status: PROVIDER_CHECKSUM_STATUS.MISMATCH
+    }
+  };
+  await writeFile(fixtureManifestPath, `${JSON.stringify(mismatchedProviderManifest)}\n`, "utf8");
+  const mismatchedProviderManifestSha256 = await sha256File(fixtureManifestPath);
+  await assert.rejects(
+    () => verifyFrozenM3Data({
+      dataDir: fixtureDataDir,
+      manifestPath: fixtureManifestPath,
+      expectedManifestSha256: mismatchedProviderManifestSha256
+    }),
+    /M3_DATA_HASH_MISMATCH: provider-checksum/
+  );
+  await writeFile(fixtureManifestPath, `${JSON.stringify(fixtureManifestObject)}\n`, "utf8");
 
   await writeFile(fixtureManifestPath, `${JSON.stringify({
     ...fixtureManifestObject,

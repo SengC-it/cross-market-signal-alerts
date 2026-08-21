@@ -45,6 +45,9 @@ function makeCandles(kind = "strong", length = 80) {
         ? kind === "strong" ? 108 : 91.9
         : 100;
     const open = isEntry ? close : 100;
+    const volume = isTarget
+      ? kind === "strong" ? 150000 : 275000
+      : 100000;
     return {
       openTime,
       open,
@@ -59,9 +62,8 @@ function makeCandles(kind = "strong", length = 80) {
           ? kind === "strong" ? 107 : 91
           : 99,
       close,
-      volume: isTarget
-        ? kind === "strong" ? 150000 : 275000
-        : 100000
+      volume,
+      quoteVolume: volume * close
     };
   });
 }
@@ -270,7 +272,8 @@ function testCausalHourlyReconstruction() {
     ...futureChangedCandles[49],
     close: 250,
     high: 260,
-    volume: 9_000_000
+    volume: 9_000_000,
+    quoteVolume: 2_250_000_000
   };
   const changed = replayDynamicProductionSignals({
     ...options,
@@ -282,10 +285,32 @@ function testCausalHourlyReconstruction() {
   );
 }
 
+function testQuoteVolumeMustBeProviderData() {
+  const options = makeReplayOptions();
+  const candles = makeCandles("strong");
+  candles[30] = { ...candles[30], quoteVolume: undefined };
+  const replay = replayDynamicProductionSignals({
+    ...options,
+    datasets: [{ asset: "DYNSTRONGUSDT", candles }]
+  });
+  const signal = replay.signals.find((candidate) => candidate.signalAvailableAt === BASE + 49 * HOUR);
+  assert.ok(signal, "missing quoteVolume should remain available as a diagnostic signal");
+  assert.equal(signal.quality.tickerReconstruction, "INCOMPLETE");
+  assert.equal(signal.quality.exclusionReasons.includes("incomplete_ticker_window"), true);
+  assert.equal(signal.primaryEligible, false);
+  assert.equal(replay.replaySignalsPrimaryEligible, 0);
+}
+
 function testNoFutureHighVolumeCoinEntersHistoricalPool() {
   const baseAsset = makeCandles("strong");
   const futureAsset = makeCandles("strong");
-  futureAsset[48] = { ...futureAsset[48], close: 100, high: 101, volume: 100000 };
+  futureAsset[48] = {
+    ...futureAsset[48],
+    close: 100,
+    high: 101,
+    volume: 100000,
+    quoteVolume: 10000000
+  };
   const replay = replayDynamicProductionSignals({
     ...makeReplayOptions({ asset: "DYNSTRONGUSDT" }),
     datasets: [
@@ -686,6 +711,7 @@ testSharedStrongWeakParity();
 testFrozenGoldenProductionBehavior();
 testPoolEligibilityRankingAndMaxAssets();
 testCausalHourlyReconstruction();
+testQuoteVolumeMustBeProviderData();
 testNoFutureHighVolumeCoinEntersHistoricalPool();
 testStrongAndWeakHistoricalSignals();
 testOrderBookModesAndSensitivity();

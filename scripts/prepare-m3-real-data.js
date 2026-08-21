@@ -1,4 +1,5 @@
 import { prepareM3RealData } from "../lib/validation/real-data.js";
+import { CONFIG } from "../lib/config.js";
 
 const dataDir = argumentValue("--data-dir") || process.env.M3_REAL_DATA_DIR || ".local/m3-data";
 const manifestPath = argumentValue("--manifest") || "artifacts/m3/manifest.json";
@@ -17,6 +18,11 @@ try {
     maxAssets: maxAssets == null ? null : Number(maxAssets),
     universeFile,
     concurrency,
+    executionModel: {
+      marketType: "futures",
+      exchangeRulesRequired: true,
+      legacyRoundTripCostPct: CONFIG.futuresTradingCost
+    },
     onProgress: (progress) => {
       if (progress.phase === "1h" && (progress.error || progress.index === progress.total || progress.index % 10 === 0)) {
         console.error(JSON.stringify(progress));
