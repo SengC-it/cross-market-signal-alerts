@@ -11,6 +11,7 @@ try {
     dataDir,
     network,
     concurrency,
+    retainDatasets: false,
     onProgress(progress) {
       if (progress.phase === "funding" && (progress.index === progress.total || progress.index % 25 === 0)) {
         console.error(JSON.stringify(progress));
