@@ -46,9 +46,11 @@ assert.equal(forwardSpec.createdBeforeFormalForwardEvaluation, true);
 assert.equal(forwardSpec.candidateDefinitionsFrozen, true);
 assert.deepEqual(forwardSpec.split, fixedForwardWindowSplit());
 assert.equal(forwardSpec.split.walkForwardStart, "2026-08-01T00:00:00.000Z");
+assert.equal(forwardSpec.split.walkForwardEndExclusive, "2026-11-06T15:00:00.000Z");
+assert.equal(forwardSpec.split.finalHoldoutStart, "2026-11-06T15:00:00.000Z");
 assert.equal(forwardSpec.split.finalHoldoutEndExclusive, "2026-12-01T00:00:00.000Z");
-assert.equal(Date.parse(forwardSpec.split.finalHoldoutStart) > Date.parse(M37_FORWARD_SPEC.start), true);
-assert.equal(Date.parse(forwardSpec.split.finalHoldoutStart) < Date.parse(M37_FORWARD_SPEC.endExclusive), true);
+assert.equal(forwardSpec.split.splitAlignedToInterval, true);
+assert.equal(candidateDefinitionsHash(), "d368c1f83680d7b30418ff279af9e706e6486a4ba45415896aedbeb40908e3ff");
 
 assert.equal(crossSectionalPercentile(1, [1, 2, 3]), 0);
 assert.equal(crossSectionalPercentile(3, [1, 2, 3]), 1);
@@ -59,6 +61,33 @@ const historicalUniverse = [
 ];
 assert.equal(historicalUniverseAssetsAt(historicalUniverse, "2026-08-15T00:00:00.000Z").has("DELISTEDUSDT"), true);
 assert.equal(historicalUniverseAssetsAt(historicalUniverse, "2026-09-15T00:00:00.000Z").has("DELISTEDUSDT"), false);
+
+const lifecycleHour = 3600 * 1000;
+const lifecycleContext = buildM37MarketContext({
+  datasets: [
+    { asset: "OLDUSDT", candles: buildFlatCandles(40, 0) },
+    { asset: "NEWUSDT", candles: buildFlatCandles(20, 20) }
+  ],
+  historicalUniverse: [
+    { time: 0, assets: ["OLDUSDT"] },
+    { time: 20 * lifecycleHour, assets: ["OLDUSDT", "NEWUSDT"] },
+    { time: 35 * lifecycleHour, assets: ["OLDUSDT"] }
+  ],
+  window: { start: 0, endExclusive: 40 * lifecycleHour }
+});
+assert.equal(lifecycleContext.assetsAt(19 * lifecycleHour).has("NEWUSDT"), false);
+assert.equal(lifecycleContext.assetsAt(20 * lifecycleHour).has("NEWUSDT"), true);
+assert.equal(lifecycleContext.assetsAt(35 * lifecycleHour).has("NEWUSDT"), false);
+assert.equal(lifecycleContext.crossSectionalUniverseAt(20 * lifecycleHour).crossSectionalUniverseComplete, true);
+
+const missingActiveContext = buildM37MarketContext({
+  datasets: [{ asset: "OLDUSDT", candles: buildFlatCandles(40, 0) }],
+  historicalUniverse: [{ time: 0, assets: ["OLDUSDT", "MISSINGUSDT"] }],
+  window: { start: 0, endExclusive: 40 * lifecycleHour }
+});
+const missingDiagnostic = missingActiveContext.crossSectionalUniverseAt(25 * lifecycleHour);
+assert.equal(missingDiagnostic.crossSectionalUniverseComplete, false);
+assert.deepEqual(missingDiagnostic.missingActiveAssets, ["MISSINGUSDT"]);
 
 const dislocationCandles = buildDislocationCandles();
 const dislocationContext = buildM37MarketContext({
@@ -119,6 +148,8 @@ const fundingSignals = buildM37FamilySignals({
 });
 assert.equal(fundingSignals.length >= 2, true);
 assert.equal(fundingSignals.every((signal) => signal.details.fundingEventTime < signal.signalAvailableAt), true);
+assert.equal(new Set(fundingSignals.map((signal) => `${signal.asset}:${signal.details.fundingEventTime}`)).size, fundingSignals.length);
+assert.equal(fundingContext.fundingEvaluation.duplicateFundingEventSignals, 0);
 const futureFundingContext = buildM37MarketContext({
   datasets: [
     { asset: "AUSDT", candles: fundingCandlesA, fundingEvents: [...fundingEventsA, { time: 31 * 3600 * 1000, rate: 0.9 }] },
@@ -132,6 +163,21 @@ const futureFundingSignals = buildM37FamilySignals({
   context: futureFundingContext
 });
 assert.deepEqual(futureFundingSignals, fundingSignals, "future settlement must not affect the current funding signal");
+
+const incompleteQuality = evaluateM37ResearchGate({
+  completeTrades: 100,
+  positiveResearchFolds: 5,
+  concentration: {
+    maxAssetTradeShare: 0.2,
+    maxFoldTradeShare: 0.2,
+    maxSideTradeShare: 0.8,
+    sideCount: 2
+  },
+  metrics: { netExpectancyR: 0.2, profitFactor: 1.5, grossExpectancyR: 0.3 },
+  researchDataQualityComplete: false
+});
+assert.equal(incompleteQuality.status, "DATA_INCOMPLETE");
+assert.equal(incompleteQuality.allGatesPassed, false);
 
 const passingResearch = evaluateM37ResearchGate({
   completeTrades: 30,
@@ -190,8 +236,13 @@ if (existsSync(REPORT_PATH)) {
   assert.equal(report.forwardSpec.datasetId, M37_FORWARD_SPEC.datasetId);
   assert.equal(report.forwardSpec.start, M37_FORWARD_SPEC.start);
   assert.equal(report.forwardSpec.endExclusive, M37_FORWARD_SPEC.endExclusive);
+  assert.equal(report.forwardSpec.split.walkForwardEndExclusive, "2026-11-06T15:00:00.000Z");
+  assert.equal(report.forwardSpec.split.splitAlignedToInterval, true);
   assert.equal(report.familyDefinitions.length, 3);
   assert.equal(report.candidateDefinitionsHash, candidateDefinitionsHash());
+  assert.equal(report.dataCoverage.historicalUniverseAssetCount > 0, true);
+  assert.equal(report.dataCoverage.researchDatasetAssetCount > 0, true);
+  assert.equal(typeof report.dataCoverage.researchDataQualityComplete, "boolean");
   assert.equal(report.formalForwardVerdict, "PENDING_FORWARD_WINDOW");
   assert.equal(report.flags.parameterSearchPerformed, false);
   assert.equal(report.flags.gridSearchPerformed, false);
@@ -233,6 +284,18 @@ function buildDislocationCandles() {
     volume: 20
   };
   return candles;
+}
+
+function buildFlatCandles(count, startIndex) {
+  const hour = 3600 * 1000;
+  return Array.from({ length: count }, (_, index) => ({
+    openTime: (startIndex + index) * hour,
+    open: 100,
+    high: 101,
+    low: 99,
+    close: 100,
+    volume: 10
+  }));
 }
 
 function buildFundingCandles(close) {

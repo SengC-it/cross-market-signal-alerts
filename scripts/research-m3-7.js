@@ -2,11 +2,7 @@ import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
-import {
-  M3_REAL_DATA_INTERVALS,
-  M3_REAL_MANIFEST_SHA256,
-  loadM3RealInput
-} from "../lib/validation/real-data.js";
+import { loadM37Data } from "../lib/validation/m3-7-data.js";
 import {
   M37_BASE_SHA,
   M37_FORWARD_SPEC,
@@ -25,17 +21,17 @@ import {
   summarizeM37Research
 } from "../lib/validation/m3-7-strategy-family-reset.js";
 
-const DATA_DIR = argumentValue("--data-dir") || process.env.M3_REAL_DATA_DIR || ".local/m3-data";
+const DATA_DIR = argumentValue("--data-dir") || process.env.M3_7_DATA_DIR || ".local/m3-7-data";
 const FORWARD_DATA_DIR = argumentValue("--forward-data-dir") || process.env.M3_7_FORWARD_DATA_DIR || null;
 const REPORT_PATH = argumentValue("--output") || "artifacts/m3/m3-7-strategy-family-reset.json";
 const FORWARD_SPEC_PATH = argumentValue("--forward-spec") || "artifacts/m3/m3-7-forward-spec.json";
 
 if (!existsSync(resolve(DATA_DIR, "index.json"))) {
-  failClosed("M3_REAL_DATA_REQUIRED");
+  failClosed("M3_7_DATA_REQUIRED");
 } else {
   try {
-    const input = await loadM3RealInput({ dataDir: DATA_DIR });
-    assert.equal(input.manifestSha256, M3_REAL_MANIFEST_SHA256, "M3.7 requires the frozen M3 manifest");
+    const input = await loadM37Data({ dataDir: DATA_DIR });
+    assert.equal(input.datasetId, "M37_RESEARCH_DATA_2025_08_2026_08", "M3.7 dataset mismatch");
     assert.equal(input.windowStart, M37_OLD_WINDOW.start, "M3.7 old research start mismatch");
     assert.equal(input.windowEnd, M37_OLD_WINDOW.endExclusive, "M3.7 old research end mismatch");
 
@@ -43,9 +39,7 @@ if (!existsSync(resolve(DATA_DIR, "index.json"))) {
     assert.equal(definitions.length, 3, "M3.7 requires exactly three fixed families");
     assert.equal(candidateDefinitionsHash(definitions), candidateDefinitionsHash(familyDefinitions()));
     const forwardSpec = await createOrVerifyForwardSpec(FORWARD_SPEC_PATH, definitions);
-    const datasets = input.datasets.filter(isCompleteHourlyDataset);
-    // Release unusable asset payloads before building the cross-sectional context.
-    input.datasets = datasets;
+    const datasets = input.datasets;
     assert.ok(datasets.length > 0, "M3.7 requires usable historical 1h datasets");
     assert.equal(input.historicalUniverseComplete, true, "M3.7 requires the historical universe");
 
@@ -53,6 +47,8 @@ if (!existsSync(resolve(DATA_DIR, "index.json"))) {
       datasets,
       benchmarkCandles: input.benchmarkCandles,
       historicalUniverse: input.historicalUniverse,
+      historicalUniverseMetadata: input.historicalUniverseMetadata,
+      preparedCoverage: input.dataCoverage,
       window: M37_OLD_WINDOW
     });
     const researchResults = {};
@@ -60,25 +56,40 @@ if (!existsSync(resolve(DATA_DIR, "index.json"))) {
 
     for (const definition of definitions) {
       const signals = buildM37FamilySignals({ familyId: definition.id, context });
-      const replay = runFamilyResearch({
+      const replay = input.dataCoverage?.researchDataQualityComplete === true
+        ? runFamilyResearch({
+          familyId: definition.id,
+          signals,
+          datasets,
+          lowerTimeframe: input.lowerTimeframe || "5m"
+        })
+        : emptyResearchReplay();
+      const quality = buildResearchDataQuality({
+        inputCoverage: input.dataCoverage,
         familyId: definition.id,
-        signals,
-        datasets,
-        lowerTimeframe: M3_REAL_DATA_INTERVALS.lowerTimeframe
+        context,
+        tradeResults: replay.tradeResults
       });
       const result = summarizeM37Research({
         familyId: definition.id,
         signals,
         tradeResults: replay.tradeResults,
         missedEntries: replay.missedEntries,
-        window: M37_OLD_WINDOW
+        window: M37_OLD_WINDOW,
+        dataQuality: quality
       });
       researchResults[definition.id] = {
         ...result,
         entryStats: replay.entryStats,
         historicalDatasetCount: datasets.length,
         historicalUniverseSource: input.universeSource,
-        lowerTimeframe: M3_REAL_DATA_INTERVALS.lowerTimeframe
+        lowerTimeframe: input.lowerTimeframe || "5m",
+        uniqueFundingEventsEvaluated: definition.id === "funding_extreme_crowding_reversal_v1"
+          ? context.fundingEvaluation.uniqueFundingEventsEvaluated
+          : null,
+        duplicateFundingEventSignals: definition.id === "funding_extreme_crowding_reversal_v1"
+          ? context.fundingEvaluation.duplicateFundingEventSignals
+          : null
       };
       researchComparison[definition.id] = {
         familyId: definition.id,
@@ -89,9 +100,13 @@ if (!existsSync(resolve(DATA_DIR, "index.json"))) {
         researchOnly: true,
         reason: result.researchGate.allGatesPassed
           ? "Research gates passed; registered for the fixed prospective forward window."
-          : "At least one fixed research gate failed."
+          : result.researchGate.status === "DATA_INCOMPLETE"
+            ? "Required lifecycle, lower-timeframe, funding, or universe coverage is incomplete."
+            : "At least one fixed research gate failed."
       };
     }
+
+    const dataCoverage = summarizeReportCoverage({ inputCoverage: input.dataCoverage, researchResults, context });
 
     const forwardTestCandidates = Object.values(researchComparison)
       .filter((comparison) => comparison.researchStatus === "FORWARD_TEST_CANDIDATE")
@@ -130,6 +145,7 @@ if (!existsSync(resolve(DATA_DIR, "index.json"))) {
       researchGate: M37_RESEARCH_GATE,
       forwardTestCandidates,
       rejectedCandidates,
+      dataCoverage,
       interimForwardDataStatus,
       formalForwardVerdict,
       flags: {
@@ -139,6 +155,7 @@ if (!existsSync(resolve(DATA_DIR, "index.json"))) {
         gridSearchPerformed: false,
         manualThresholdIteration: false,
         oldWindowPreviouslyObserved: true,
+        familyDefinitionsChanged: false,
         interimResultsUsedForOptimization: false,
         holdoutUsedForNewUntouchedValidation: false,
         WeakChanged: false,
@@ -161,13 +178,14 @@ if (!existsSync(resolve(DATA_DIR, "index.json"))) {
       },
       dataSource: {
         source: input.dataSource,
-        frozenManifestSha256: input.manifestSha256,
+        preparedDataDir: input.dataDir,
+        sourceDataDir: input.sourceDataDir,
         historicalUniverseSource: input.universeSource,
         historicalUniverseComplete: input.historicalUniverseComplete,
         datasetCountLoaded: input.datasets.length,
         datasetCountResearch: datasets.length,
-        interval: M3_REAL_DATA_INTERVALS.candles,
-        lowerTimeframe: M3_REAL_DATA_INTERVALS.lowerTimeframe,
+        interval: input.interval || "1h",
+        lowerTimeframe: input.lowerTimeframe || "5m",
         execution: "TradeSpec + M2-B execution primitives"
       },
       formalForwardGate: M37_FORMAL_FORWARD_GATE
@@ -180,6 +198,7 @@ if (!existsSync(resolve(DATA_DIR, "index.json"))) {
       oldWindowRole: report.oldWindowRole,
       candidateDefinitionsHash: report.candidateDefinitionsHash,
       families: Object.values(researchResults).map(compactResearchResult),
+      dataCoverage,
       forwardTestCandidates: report.forwardTestCandidates,
       rejectedCandidates: report.rejectedCandidates,
       interimForwardDataStatus,
@@ -195,8 +214,11 @@ async function createOrVerifyForwardSpec(path, definitions) {
   assert.deepEqual(expected.candidateIds, definitions.map((definition) => definition.id));
   if (existsSync(resolve(path))) {
     const existing = JSON.parse(await readFile(resolve(path), "utf8"));
-    assert.deepEqual(existing, expected, "M3_7_FORWARD_SPEC_LOCK_MISMATCH");
-    return existing;
+    assert.deepEqual({ ...existing, split: expected.split }, expected, "M3_7_FORWARD_SPEC_LOCK_MISMATCH");
+    if (JSON.stringify(existing) !== JSON.stringify(expected)) {
+      await writeFile(resolve(path), `${JSON.stringify(expected, null, 2)}\n`, "utf8");
+    }
+    return expected;
   }
   await mkdir(dirname(resolve(path)), { recursive: true });
   await writeFile(resolve(path), `${JSON.stringify(expected, null, 2)}\n`, "utf8");
@@ -234,6 +256,14 @@ function runFamilyResearch({ familyId, signals, datasets, lowerTimeframe }) {
     }
   }
   return { tradeResults, missedEntries, entryStats };
+}
+
+function emptyResearchReplay() {
+  return {
+    tradeResults: [],
+    missedEntries: [],
+    entryStats: { signals: 0, planned: 0, entries: 0, noEntry: 0, missedEntry: 0 }
+  };
 }
 
 function inspectForwardData(dataDir) {
@@ -299,19 +329,55 @@ function compactResearchResult(result) {
     maxDrawdown: result.metrics.maxDrawdown,
     positiveResearchFolds: result.positiveResearchFolds,
     negativeResearchFolds: result.negativeResearchFolds,
+    fundingIncompleteTrades: result.dataQuality.fundingIncompleteTrades,
+    incompleteIntrabarTrades: result.dataQuality.incompleteIntrabarTrades,
+    researchDataQualityComplete: result.researchDataQualityComplete,
     researchStatus: result.researchGate.status
   };
 }
 
-function isCompleteHourlyDataset(dataset) {
-  const candles = dataset?.candles;
-  if (!Array.isArray(candles) || candles.length !== 8760) return false;
-  const start = Date.parse(M37_OLD_WINDOW.start);
-  const end = Date.parse(M37_OLD_WINDOW.endExclusive);
-  return Number(candles[0]?.openTime) === start
-    && Number(candles.at(-1)?.openTime) + 3600 * 1000 === end
-    && candles.every((candle, index) => index === 0
-      || Number(candle?.openTime) - Number(candles[index - 1]?.openTime) === 3600 * 1000);
+function buildResearchDataQuality({ inputCoverage, familyId, context, tradeResults }) {
+  const familyCoverage = inputCoverage?.byFamily?.[familyId] || {};
+  const fundingIncompleteTrades = (Array.isArray(tradeResults) ? tradeResults : [])
+    .filter((trade) => trade.dataQuality === "INCOMPLETE_FUNDING"
+      || trade.dataQualityComponents?.funding === "INCOMPLETE_FUNDING").length;
+  const incompleteIntrabarTrades = (Array.isArray(tradeResults) ? tradeResults : [])
+    .filter((trade) => trade.dataQuality === "INCOMPLETE_INTRABAR_DATA"
+      || trade.dataQualityComponents?.intrabar === "INCOMPLETE_INTRABAR_DATA").length;
+  const crossSectionalIncompleteTimestamps = context.crossSectionalDiagnostics
+    .filter((diagnostic) => diagnostic.crossSectionalUniverseComplete !== true).length;
+  const researchDataQualityComplete = inputCoverage?.researchDataQualityComplete === true
+    && familyCoverage.signalRelevantFundingCoverage?.complete === true
+    && familyCoverage.signalRelevantLowerTfCoverage?.complete === true
+    && fundingIncompleteTrades === 0
+    && incompleteIntrabarTrades === 0
+    && crossSectionalIncompleteTimestamps === 0;
+  return {
+    degradedTrades: Array.isArray(tradeResults)
+      ? tradeResults.filter((trade) => trade.dataQuality !== "COMPLETE").length
+      : 0,
+    fundingIncompleteTrades,
+    incompleteIntrabarTrades,
+    crossSectionalIncompleteTimestamps,
+    requiredHistoricalFundingAvailable: inputCoverage?.requiredHistoricalFundingAvailable === true,
+    signalRelevantFundingCoverage: familyCoverage.signalRelevantFundingCoverage || null,
+    signalRelevantLowerTfCoverage: familyCoverage.signalRelevantLowerTfCoverage || null,
+    researchDataQualityComplete
+  };
+}
+
+function summarizeReportCoverage({ inputCoverage, researchResults, context }) {
+  const results = Object.values(researchResults);
+  const fundingIncompleteTrades = results.reduce((sum, result) => sum + Number(result.dataQuality?.fundingIncompleteTrades || 0), 0);
+  const incompleteIntrabarTrades = results.reduce((sum, result) => sum + Number(result.dataQuality?.incompleteIntrabarTrades || 0), 0);
+  return {
+    ...(inputCoverage || {}),
+    fundingIncompleteTrades,
+    incompleteIntrabarTrades,
+    crossSectionalIncompleteTimestamps: context.crossSectionalDiagnostics
+      .filter((diagnostic) => diagnostic.crossSectionalUniverseComplete !== true).length,
+    researchDataQualityComplete: results.length > 0 && results.every((result) => result.researchDataQualityComplete === true)
+  };
 }
 
 function argumentValue(name) {

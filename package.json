@@ -17,6 +17,7 @@
     "test:m3-6": "node scripts/m3-6-test.js",
     "research:m3-7": "node scripts/research-m3-7.js",
     "test:m3-7": "node scripts/m3-7-test.js",
+    "prepare:m3-7-data": "node scripts/prepare-m3-7-data.js",
     "inverse-report": "node scripts/inverse-signal-report.js",
     "backtest:tiered": "node scripts/backtest-tiered-dynamic.js",
     "search:tiered": "node scripts/search-tiered-policy.js",

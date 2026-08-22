@@ -28,10 +28,11 @@
   },
   "split": {
     "walkForwardStart": "2026-08-01T00:00:00.000Z",
-    "walkForwardEndExclusive": "2026-11-06T14:24:00.000Z",
-    "finalHoldoutStart": "2026-11-06T14:24:00.000Z",
+    "walkForwardEndExclusive": "2026-11-06T15:00:00.000Z",
+    "finalHoldoutStart": "2026-11-06T15:00:00.000Z",
     "finalHoldoutEndExclusive": "2026-12-01T00:00:00.000Z",
-    "finalHoldoutPct": 0.2
+    "finalHoldoutPct": 0.2,
+    "splitAlignedToInterval": true
   },
   "createdBeforeFormalForwardEvaluation": true,
   "candidateDefinitionsFrozen": true
