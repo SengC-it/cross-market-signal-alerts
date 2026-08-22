@@ -26,6 +26,10 @@ import {
   candidateDefinitions,
   causalTimingForCandidate
 } from "../lib/validation/m3-6-strategy-redesign.js";
+import {
+  buildM36ForwardTestDecision,
+  compareM36Candidate
+} from "../lib/validation/m3-6-gates.js";
 
 const FROZEN_BASE_SHA = "975f0d11231947c306b02e0241ca5179eed5a650";
 const BASELINE_WEAK_ID = "dynamic_relative_weakness_breakdown";
@@ -96,20 +100,17 @@ if (!existsSync(resolve(DATA_DIR, "index.json"))) {
       });
     });
 
-    const candidateComparison = candidateResults.map((result) => compareCandidate({
+    const candidateComparison = candidateResults.map((result) => compareM36Candidate({
       baseline: baselineResearch.metrics,
       candidate: result
     }));
     const candidateComparisonById = Object.fromEntries(candidateComparison.map((row) => [row.candidateId, row]));
     const newUntouchedOos = detectNewUntouchedOos(FORWARD_DATA_DIR);
-    const forwardTestCandidates = candidateComparison
-      .filter((comparison) => comparison.researchStatus === "FORWARD_TEST_CANDIDATE")
-      .map((comparison) => ({
-        candidateId: comparison.candidateId,
-        status: "FORWARD_TEST_CANDIDATE",
-        requiresNewUntouchedOos: !newUntouchedOos.available,
-        newUntouchedOosAvailable: newUntouchedOos.available
-      }));
+    const forwardTestDecision = buildM36ForwardTestDecision(
+      candidateComparison,
+      newUntouchedOos.available
+    );
+    const forwardTestCandidates = forwardTestDecision.forwardTestCandidates;
     const rejectedCandidates = candidateComparison
       .filter((comparison) => comparison.researchStatus === "REJECTED_CANDIDATE")
       .map((comparison) => ({
@@ -125,6 +126,9 @@ if (!existsSync(resolve(DATA_DIR, "index.json"))) {
       manifestSha256: input.manifestSha256,
       oldWindowRole: M36_OLD_WINDOW_ROLE,
       oldWindow: M3_REAL_DATA_WINDOW,
+      formerHoldoutRole: "RESEARCH_ONLY_AFTER_BEING_OBSERVED",
+      oldWindowFullyResearch: true,
+      holdoutUsedForNewUntouchedValidation: false,
       newUntouchedOosAvailable: newUntouchedOos.available,
       newUntouchedOosReason: newUntouchedOos.reason,
       researchStatus: M36_RESEARCH_STATUS,
@@ -182,9 +186,7 @@ if (!existsSync(resolve(DATA_DIR, "index.json"))) {
         enteredM4: false,
         mergedMain: false
       },
-      validationVerdict: newUntouchedOos.available
-        ? "RESEARCH_COMPLETE_FORWARD_TEST_REQUIRED"
-        : "NOT_READY_FOR_NEW_OOS"
+      validationVerdict: forwardTestDecision.validationVerdict
     };
 
     await mkdir(dirname(resolve(OUTPUT_PATH)), { recursive: true });
@@ -328,37 +330,6 @@ function summarizeResearchMetrics(trades, { signalCount, missedEntries }) {
   };
 }
 
-function compareCandidate({ baseline, candidate }) {
-  const metrics = candidate.metrics || {};
-  const gates = {
-    researchExpectancyAboveBaseline: finite(metrics.netExpectancyR)
-      && finite(baseline.netExpectancyR)
-      && metrics.netExpectancyR > baseline.netExpectancyR,
-    researchProfitFactorAboveBaseline: finite(metrics.profitFactor)
-      && finite(baseline.profitFactor)
-      && metrics.profitFactor > baseline.profitFactor,
-    drawdownMateriallyImproved: finite(metrics.maxDrawdown)
-      && finite(baseline.maxDrawdown)
-      && metrics.maxDrawdown >= baseline.maxDrawdown + 0.05,
-    notDominatedByOneAsset: metrics.maxAssetTradeShare <= 0.5,
-    notDominatedByOneFold: metrics.maxFoldTradeShare <= 0.5,
-    reasonableSampleSize: candidate.completeTrades >= 10
-  };
-  const candidateId = candidate.strategyId;
-  const passed = Object.values(gates).every(Boolean);
-  return {
-    candidateId,
-    baselineReference: "old-window research baseline",
-    gates,
-    allGatesPassed: passed,
-    researchStatus: passed ? "FORWARD_TEST_CANDIDATE" : "REJECTED_CANDIDATE",
-    promisingEdge: false,
-    reason: passed
-      ? "Research gates passed; new unseen OOS is still required."
-      : "At least one deterministic research gate failed."
-  };
-}
-
 function frozenBaselineMetrics(strategyReport = {}) {
   return {
     replaySignals: strategyReport.replayDiagnostics?.replaySignalsTotal ?? null,
@@ -477,10 +448,6 @@ function safeRatio(numerator, denominator) {
 function average(values) {
   const finite = values.map(Number).filter(Number.isFinite);
   return finite.length ? finite.reduce((sum, value) => sum + value, 0) / finite.length : null;
-}
-
-function finite(value) {
-  return Number.isFinite(Number(value));
 }
 
 function requireRead(path) {

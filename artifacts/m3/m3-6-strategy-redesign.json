@@ -7,6 +7,9 @@
     "start": "2025-08-01T00:00:00.000Z",
     "end": "2026-08-01T00:00:00.000Z"
   },
+  "formerHoldoutRole": "RESEARCH_ONLY_AFTER_BEING_OBSERVED",
+  "oldWindowFullyResearch": true,
+  "holdoutUsedForNewUntouchedValidation": false,
   "newUntouchedOosAvailable": false,
   "newUntouchedOosReason": "FORWARD_DATASET_NOT_CONFIGURED",
   "researchStatus": "RESEARCH_ONLY_NOT_UNTOUCHED_OOS",
@@ -1725,11 +1728,12 @@
       "candidateId": "weak_breakdown_confirmed_continuation_v1",
       "baselineReference": "old-window research baseline",
       "gates": {
-        "researchExpectancyAboveBaseline": true,
+        "metricsAvailable": false,
+        "researchExpectancyAboveBaseline": false,
         "researchProfitFactorAboveBaseline": false,
-        "drawdownMateriallyImproved": true,
-        "notDominatedByOneAsset": true,
-        "notDominatedByOneFold": true,
+        "drawdownMateriallyImproved": false,
+        "notDominatedByOneAsset": false,
+        "notDominatedByOneFold": false,
         "reasonableSampleSize": false
       },
       "allGatesPassed": false,
@@ -1741,6 +1745,7 @@
       "candidateId": "weak_breakdown_exhaustion_filtered_v1",
       "baselineReference": "old-window research baseline",
       "gates": {
+        "metricsAvailable": true,
         "researchExpectancyAboveBaseline": false,
         "researchProfitFactorAboveBaseline": false,
         "drawdownMateriallyImproved": false,
@@ -1757,11 +1762,12 @@
       "candidateId": "weak_breakdown_confirmed_market_v1",
       "baselineReference": "old-window research baseline",
       "gates": {
-        "researchExpectancyAboveBaseline": true,
+        "metricsAvailable": false,
+        "researchExpectancyAboveBaseline": false,
         "researchProfitFactorAboveBaseline": false,
-        "drawdownMateriallyImproved": true,
-        "notDominatedByOneAsset": true,
-        "notDominatedByOneFold": true,
+        "drawdownMateriallyImproved": false,
+        "notDominatedByOneAsset": false,
+        "notDominatedByOneFold": false,
         "reasonableSampleSize": false
       },
       "allGatesPassed": false,
@@ -1775,7 +1781,12 @@
     {
       "candidateId": "weak_breakdown_confirmed_continuation_v1",
       "failedGates": [
+        "metricsAvailable",
+        "researchExpectancyAboveBaseline",
         "researchProfitFactorAboveBaseline",
+        "drawdownMateriallyImproved",
+        "notDominatedByOneAsset",
+        "notDominatedByOneFold",
         "reasonableSampleSize"
       ]
     },
@@ -1790,7 +1801,12 @@
     {
       "candidateId": "weak_breakdown_confirmed_market_v1",
       "failedGates": [
+        "metricsAvailable",
+        "researchExpectancyAboveBaseline",
         "researchProfitFactorAboveBaseline",
+        "drawdownMateriallyImproved",
+        "notDominatedByOneAsset",
+        "notDominatedByOneFold",
         "reasonableSampleSize"
       ]
     }

@@ -10,9 +10,15 @@ import {
   computeM36Features,
   candidateDefinitions
 } from "../lib/validation/m3-6-strategy-redesign.js";
+import {
+  buildM36ForwardTestDecision,
+  compareM36Candidate,
+  isStrictFinite
+} from "../lib/validation/m3-6-gates.js";
 
 const ROOT = process.cwd();
 const FROZEN_BASE_SHA = "975f0d11231947c306b02e0241ca5179eed5a650";
+const M36_BASE_SHA = "68272f3ec4bd74c0bf6d6bf051bd09d4eb35900a";
 const REPORT_PATH = "artifacts/m3/m3-6-strategy-redesign.json";
 
 assert.equal(M36_CANDIDATE_DEFINITIONS.length, 3);
@@ -21,6 +27,65 @@ assert.ok(candidateDefinitions().length <= M36_MAX_CANDIDATES);
 assert.equal(new Set(candidateDefinitions().map((definition) => definition.id)).size, 3);
 assert.equal(candidateDefinitions().some((definition) => /grid|optimiz|search/i.test(JSON.stringify(definition))), false);
 assert.equal(candidateDefinitions().some((definition) => /recommendationScore|scoreGate/i.test(JSON.stringify(definition))), false);
+assert.equal(isStrictFinite(null), false);
+assert.equal(isStrictFinite(undefined), false);
+assert.equal(isStrictFinite(""), false);
+assert.equal(isStrictFinite(0), true);
+
+const gateBaseline = {
+  completeTrades: 20,
+  netExpectancyR: -0.1,
+  profitFactor: 1.5,
+  maxDrawdown: -0.5
+};
+const zeroTradeComparison = compareM36Candidate({
+  baseline: gateBaseline,
+  candidate: {
+    strategyId: "synthetic_zero_trade",
+    completeTrades: 0,
+    metrics: {
+      netExpectancyR: null,
+      profitFactor: null,
+      maxDrawdown: null,
+      maxAssetTradeShare: null,
+      maxFoldTradeShare: null
+    }
+  }
+});
+assert.equal(zeroTradeComparison.gates.metricsAvailable, false);
+assert.equal(zeroTradeComparison.gates.researchExpectancyAboveBaseline, false);
+assert.equal(zeroTradeComparison.gates.researchProfitFactorAboveBaseline, false);
+assert.equal(zeroTradeComparison.gates.drawdownMateriallyImproved, false);
+assert.equal(zeroTradeComparison.gates.reasonableSampleSize, false);
+assert.equal(zeroTradeComparison.researchStatus, "REJECTED_CANDIDATE");
+
+const syntheticPassingComparison = compareM36Candidate({
+  baseline: gateBaseline,
+  candidate: {
+    strategyId: "synthetic_passing_candidate",
+    completeTrades: 10,
+    metrics: {
+      netExpectancyR: 0,
+      profitFactor: 2,
+      maxDrawdown: -0.4,
+      maxAssetTradeShare: 0.4,
+      maxFoldTradeShare: 0.4
+    }
+  }
+});
+assert.equal(syntheticPassingComparison.researchStatus, "FORWARD_TEST_CANDIDATE");
+assert.equal(syntheticPassingComparison.promisingEdge, false);
+const withoutNewOos = buildM36ForwardTestDecision([syntheticPassingComparison], false);
+assert.equal(withoutNewOos.forwardTestCandidates.length, 1);
+assert.equal(withoutNewOos.forwardTestCandidates[0].status, "FORWARD_TEST_CANDIDATE");
+assert.equal(withoutNewOos.forwardTestCandidates[0].requiresNewUntouchedOos, true);
+assert.equal(withoutNewOos.forwardTestCandidates[0].promisingEdge, false);
+assert.equal(withoutNewOos.validationVerdict, "NOT_READY_FOR_NEW_OOS");
+const withNewOos = buildM36ForwardTestDecision([syntheticPassingComparison], true);
+assert.equal(withNewOos.forwardTestCandidates[0].status, "FORWARD_TEST_CANDIDATE");
+assert.equal(withNewOos.forwardTestCandidates[0].requiresNewUntouchedOos, false);
+assert.equal(withNewOos.forwardTestCandidates[0].promisingEdge, false);
+assert.equal(withNewOos.validationVerdict, "RESEARCH_COMPLETE_FORWARD_TEST_REQUIRED");
 
 const candles = buildCausalCandles();
 const beforeFutureMutation = computeM36Features({
@@ -81,6 +146,11 @@ assert.equal(lowScoreSignals[0].signalSelectionMode, "M3_6_CANDIDATE_RULES");
 for (const path of ["lib/config.js", "lib/strategies/dynamic-production.js"]) {
   assert.equal(gitDiffStatus(path), 0, `frozen strategy file changed: ${path}`);
 }
+assert.equal(
+  gitDiffStatus("lib/validation/m3-6-strategy-redesign.js", M36_BASE_SHA),
+  0,
+  "M3.6 candidate definitions changed"
+);
 for (const path of [
   "lib/backtest/execution-model.js",
   "lib/backtest/trade-simulator.js",
@@ -113,6 +183,9 @@ if (existsSync(REPORT_PATH)) {
   assert.equal(report.frozenBaseSha, FROZEN_BASE_SHA);
   assert.equal(report.oldWindowRole, M36_OLD_WINDOW_ROLE);
   assert.equal(report.researchStatus, M36_RESEARCH_STATUS);
+  assert.equal(report.formerHoldoutRole, "RESEARCH_ONLY_AFTER_BEING_OBSERVED");
+  assert.equal(report.oldWindowFullyResearch, true);
+  assert.equal(report.holdoutUsedForNewUntouchedValidation, false);
   assert.equal(report.candidateDefinitions.length, 3);
   assert.equal(report.baselineWeak.deploymentStatus, "NEGATIVE_EDGE_BASELINE");
   assert.equal(report.baselineWeak.deploymentMode, "SHADOW_ONLY_RESEARCH_ONLY");
@@ -129,9 +202,48 @@ if (existsSync(REPORT_PATH)) {
   assert.equal(report.flags.mergedMain, false);
   for (const comparison of Object.values(report.candidateComparison)) {
     assert.equal(comparison.promisingEdge, false);
-    assert.equal(comparison.researchStatus === "FORWARD_TEST_CANDIDATE"
-      ? report.newUntouchedOosAvailable
-      : true, true);
+  }
+  assert.equal(report.newUntouchedOosAvailable, false);
+  assert.deepEqual(report.forwardTestCandidates, []);
+  assert.equal(report.baselineWeak.researchResult.signals, 78);
+  assert.equal(report.baselineWeak.researchResult.completeTrades, 78);
+  assertClose(report.baselineWeak.researchResult.metrics.netExpectancyR, -0.18143580658297762);
+  assertClose(report.baselineWeak.researchResult.metrics.profitFactor, 0.6199643819002939);
+  const candidateExpectations = {
+    weak_breakdown_confirmed_continuation_v1: {
+      signals: 0,
+      completeTrades: 0,
+      netExpectancyR: null,
+      profitFactor: null
+    },
+    weak_breakdown_exhaustion_filtered_v1: {
+      signals: 58,
+      completeTrades: 58,
+      netExpectancyR: -0.260142143354018,
+      profitFactor: 0.5451897172328126
+    },
+    weak_breakdown_confirmed_market_v1: {
+      signals: 0,
+      completeTrades: 0,
+      netExpectancyR: null,
+      profitFactor: null
+    }
+  };
+  for (const [candidateId, expected] of Object.entries(candidateExpectations)) {
+    const result = report.researchResults[candidateId];
+    const comparison = report.candidateComparison[candidateId];
+    assert.equal(result.signals, expected.signals);
+    assert.equal(result.completeTrades, expected.completeTrades);
+    assert.equal(result.metrics.netExpectancyR, expected.netExpectancyR);
+    assert.equal(result.metrics.profitFactor, expected.profitFactor);
+    assert.equal(comparison.researchStatus, "REJECTED_CANDIDATE");
+    assert.equal(comparison.promisingEdge, false);
+    if (expected.completeTrades === 0) {
+      assert.equal(comparison.gates.researchExpectancyAboveBaseline, false);
+      assert.equal(comparison.gates.researchProfitFactorAboveBaseline, false);
+      assert.equal(comparison.gates.drawdownMateriallyImproved, false);
+      assert.equal(comparison.gates.reasonableSampleSize, false);
+    }
   }
   assert.notEqual(report.validationVerdict, "PROMISING_EDGE");
 }
@@ -176,9 +288,13 @@ function buildCausalCandles() {
   return rows;
 }
 
-function gitDiffStatus(path) {
-  return spawnSync("git", ["diff", "--quiet", FROZEN_BASE_SHA, "--", path], {
+function gitDiffStatus(path, baseSha = FROZEN_BASE_SHA) {
+  return spawnSync("git", ["diff", "--quiet", baseSha, "--", path], {
     cwd: ROOT,
     stdio: "ignore"
   }).status;
+}
+
+function assertClose(actual, expected) {
+  assert.ok(Math.abs(Number(actual) - Number(expected)) < 1e-12);
 }
