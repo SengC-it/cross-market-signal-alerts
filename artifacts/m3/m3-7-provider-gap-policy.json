@@ -33,6 +33,7 @@
     "funding_extreme_crowding_reversal_v1": 6
   },
   "unhandledProviderGapDependencies": 0,
+  "readinessRemediationBaseSha": "4a6fca3eac2d696e4614cceef0012b19b53c15fd",
   "families": [
     {
       "familyId": "cross_sectional_relative_momentum_v1",
@@ -67,14 +68,47 @@
       "complete": true
     },
     "crossSectionalIncompleteTimestamps": 76,
+    "nonProviderCrossSectionalIncompleteTimestamps": 0,
     "researchDataQualityComplete": false,
     "researchEffectiveDataQualityComplete": true,
+    "researchGateDataQualityComplete": true,
     "researchBoundaryPurgedTrades": 1052,
     "researchBoundaryPurgedByFamily": {
       "cross_sectional_relative_momentum_v1": 935,
       "atr_dislocation_mean_reversion_v1": 4,
       "funding_extreme_crowding_reversal_v1": 113
     }
+  },
+  "researchBoundaryReconciliation": {
+    "legacyDataCompletionArtifact": {
+      "path": "artifacts/m3/m3-7-data-completion-status.json",
+      "researchBoundaryPurgedTrades": 1053,
+      "researchBoundaryPurgedByFamily": {
+        "cross_sectional_relative_momentum_v1": 935,
+        "atr_dislocation_mean_reversion_v1": 4,
+        "funding_extreme_crowding_reversal_v1": 114
+      }
+    },
+    "providerGapPolicyArtifact": {
+      "researchBoundaryPurgedTrades": 1052,
+      "researchBoundaryPurgedByFamily": {
+        "cross_sectional_relative_momentum_v1": 935,
+        "atr_dislocation_mean_reversion_v1": 4,
+        "funding_extreme_crowding_reversal_v1": 113
+      }
+    },
+    "providerGapPrecedenceReclassifiedTrades": 1,
+    "providerGapPrecedenceReclassifiedByFamily": {
+      "funding_extreme_crowding_reversal_v1": 1
+    },
+    "reason": "One funding opportunity is purged by the frozen provider-gap policy before research-boundary classification."
+  },
+  "formalResearchReadiness": {
+    "rawResearchDataQualityComplete": false,
+    "researchEffectiveDataQualityComplete": true,
+    "researchGateDataQualityComplete": true,
+    "formalResearchScreeningExecuted": false,
+    "maxFullDatasetsInMemory": 1
   },
   "providerGapPolicyFrozen": true,
   "formalResearchScreeningExecuted": false,

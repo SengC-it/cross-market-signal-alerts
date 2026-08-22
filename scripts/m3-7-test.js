@@ -35,6 +35,7 @@ import {
 const ROOT = process.cwd();
 const REPORT_PATH = "artifacts/m3/m3-7-strategy-family-reset.json";
 const FORWARD_SPEC_PATH = "artifacts/m3/m3-7-forward-spec.json";
+const PROVIDER_POLICY_PATH = "artifacts/m3/m3-7-provider-gap-policy.json";
 
 assert.equal(M37_OLD_WINDOW_ROLE, "RESEARCH_ONLY_AFTER_MULTIPLE_INSPECTIONS");
 assert.deepEqual(M37_FORWARD_SPEC, {
@@ -480,6 +481,17 @@ if (existsSync(REPORT_PATH)) {
   assert.notEqual(report.formalForwardVerdict, "PROMISING_EDGE");
   assert.notEqual(report.formalForwardVerdict, "NEGATIVE_EDGE");
   assert.notEqual(report.formalForwardVerdict, "UNSTABLE");
+}
+
+if (existsSync(PROVIDER_POLICY_PATH)) {
+  const providerPolicyArtifact = JSON.parse(readFileSync(PROVIDER_POLICY_PATH, "utf8"));
+  assert.equal(providerPolicyArtifact.formalResearchReadiness.rawResearchDataQualityComplete, false);
+  assert.equal(providerPolicyArtifact.formalResearchReadiness.researchEffectiveDataQualityComplete, true);
+  assert.equal(providerPolicyArtifact.formalResearchReadiness.researchGateDataQualityComplete, true);
+  assert.equal(providerPolicyArtifact.formalResearchReadiness.formalResearchScreeningExecuted, false);
+  assert.equal(providerPolicyArtifact.formalResearchReadiness.maxFullDatasetsInMemory, 1);
+  assert.equal(providerPolicyArtifact.researchBoundaryReconciliation.providerGapPrecedenceReclassifiedTrades, 1);
+  assert.equal(providerPolicyArtifact.researchBoundaryReconciliation.providerGapPrecedenceReclassifiedByFamily.funding_extreme_crowding_reversal_v1, 1);
 }
 
 console.log(JSON.stringify({

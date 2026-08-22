@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
-import { loadM37Data } from "../lib/validation/m3-7-data.js";
+import { loadM37Data, loadM37Dataset } from "../lib/validation/m3-7-data.js";
 import {
   M37_BASE_SHA,
   M37_FORWARD_SPEC,
@@ -18,10 +18,13 @@ import {
   filterM37ResearchSignals,
   fixedForwardWindowSplit,
   formalForwardVerdict,
-  runM37FamilyBacktest,
   summarizeM37Research,
   summarizeM37ProviderGapPolicy
 } from "../lib/validation/m3-7-strategy-family-reset.js";
+import {
+  researchDataQualityGate,
+  runM37FamilyResearchByAsset
+} from "../lib/validation/m3-7-research.js";
 
 const DATA_DIR = argumentValue("--data-dir") || process.env.M3_7_DATA_DIR || ".local/m3-7-data";
 const FORWARD_DATA_DIR = argumentValue("--forward-data-dir") || process.env.M3_7_FORWARD_DATA_DIR || null;
@@ -32,7 +35,7 @@ if (!existsSync(resolve(DATA_DIR, "index.json"))) {
   failClosed("M3_7_DATA_REQUIRED");
 } else {
   try {
-    const input = await loadM37Data({ dataDir: DATA_DIR });
+    const input = await loadM37Data({ dataDir: DATA_DIR, includeLowerTimeframe: false });
     assert.equal(input.datasetId, "M37_RESEARCH_DATA_2025_08_2026_08", "M3.7 dataset mismatch");
     assert.equal(input.windowStart, M37_OLD_WINDOW.start, "M3.7 old research start mismatch");
     assert.equal(input.windowEnd, M37_OLD_WINDOW.endExclusive, "M3.7 old research end mismatch");
@@ -42,15 +45,26 @@ if (!existsSync(resolve(DATA_DIR, "index.json"))) {
     assert.equal(candidateDefinitionsHash(definitions), candidateDefinitionsHash(familyDefinitions()));
     const forwardSpec = await createOrVerifyForwardSpec(FORWARD_SPEC_PATH, definitions);
     const datasets = input.datasets;
+    const datasetDescriptors = input.datasetDescriptors;
     assert.ok(datasets.length > 0, "M3.7 requires usable historical 1h datasets");
     assert.equal(input.historicalUniverseComplete, true, "M3.7 requires the historical universe");
+    const inputDataCoverage = {
+      ...(input.dataCoverage || {}),
+      nonProviderCrossSectionalIncompleteTimestamps:
+        input.dataCoverage?.nonProviderCrossSectionalIncompleteTimestamps
+        ?? input.providerGapPolicy?.nonProviderCrossSectionalIncompleteTimestamps
+    };
+    const qualityGate = researchDataQualityGate({
+      dataCoverage: inputDataCoverage,
+      historicalUniverseComplete: input.historicalUniverseComplete
+    });
 
     const context = buildM37MarketContext({
       datasets,
       benchmarkCandles: input.benchmarkCandles,
       historicalUniverse: input.historicalUniverse,
       historicalUniverseMetadata: input.historicalUniverseMetadata,
-      preparedCoverage: input.dataCoverage,
+      preparedCoverage: inputDataCoverage,
       historicalUniverseComplete: input.historicalUniverseComplete,
       providerGapRegistry: input.providerGapRegistry,
       window: M37_OLD_WINDOW
@@ -66,16 +80,18 @@ if (!existsSync(resolve(DATA_DIR, "index.json"))) {
         window: M37_OLD_WINDOW
       });
       const signals = researchSignalPlan.eligibleSignals;
-      const replay = input.dataCoverage?.researchDataQualityComplete === true
-        ? runFamilyResearch({
+      const replay = qualityGate.complete
+        ? await runM37FamilyResearchByAsset({
           familyId: definition.id,
           signals,
-          datasets,
+          datasetDescriptors,
+          loadDataset: (descriptor) => loadM37Dataset({ dataDir: input.dataDir, descriptor }),
           lowerTimeframe: input.lowerTimeframe || "5m"
         })
         : emptyResearchReplay();
       const quality = buildResearchDataQuality({
-        inputCoverage: input.dataCoverage,
+        inputCoverage: inputDataCoverage,
+        historicalUniverseComplete: input.historicalUniverseComplete,
         familyId: definition.id,
         context,
         tradeResults: replay.tradeResults
@@ -95,7 +111,7 @@ if (!existsSync(resolve(DATA_DIR, "index.json"))) {
         researchBoundaryPurgedTrades: researchSignalPlan.researchBoundaryPurgedTrades,
         invalidResearchSignals: researchSignalPlan.invalidSignals.length,
         entryStats: replay.entryStats,
-        historicalDatasetCount: datasets.length,
+        historicalDatasetCount: datasetDescriptors.length,
         historicalUniverseSource: input.universeSource,
         lowerTimeframe: input.lowerTimeframe || "5m",
         uniqueFundingEventsEvaluated: definition.id === "funding_extreme_crowding_reversal_v1"
@@ -106,6 +122,7 @@ if (!existsSync(resolve(DATA_DIR, "index.json"))) {
           : null,
         providerGapPurgedSignals: Number(context.providerGapEvaluation.byFamily?.[definition.id]?.providerGapPurgedSignals) || 0,
         providerGapAffectedOpportunities: Number(context.providerGapEvaluation.byFamily?.[definition.id]?.providerGapAffectedOpportunities) || 0,
+        researchGateDataQualityComplete: quality.researchGateDataQualityComplete,
         providerGapPolicyFrozen: true
       };
       researchComparison[definition.id] = {
@@ -126,11 +143,11 @@ if (!existsSync(resolve(DATA_DIR, "index.json"))) {
 
     const providerGapPolicy = summarizeM37ProviderGapPolicy({
       context,
-      inputCoverage: input.dataCoverage
+      inputCoverage: inputDataCoverage
     });
     const dataCoverage = summarizeReportCoverage({
       inputCoverage: {
-        ...(input.dataCoverage || {}),
+        ...inputDataCoverage,
         rawProviderDataComplete: providerGapPolicy.rawProviderDataComplete,
         providerGapPolicyFrozen: providerGapPolicy.providerGapPolicyFrozen,
         providerConfirmedMissing1hBars: providerGapPolicy.providerConfirmedMissing1hBars,
@@ -139,6 +156,7 @@ if (!existsSync(resolve(DATA_DIR, "index.json"))) {
         providerGapPurgedOpportunities: providerGapPolicy.providerGapPurgedOpportunities,
         providerGapPurgedByFamily: providerGapPolicy.providerGapPurgedByFamily,
         unhandledProviderGapDependencies: providerGapPolicy.unhandledProviderGapDependencies,
+        nonProviderCrossSectionalIncompleteTimestamps: providerGapPolicy.nonProviderCrossSectionalIncompleteTimestamps,
         researchEffectiveDataQualityComplete: providerGapPolicy.researchEffectiveDataQualityComplete
       },
       researchResults,
@@ -186,6 +204,7 @@ if (!existsSync(resolve(DATA_DIR, "index.json"))) {
       dataCoverage,
       interimForwardDataStatus,
       formalForwardVerdict,
+      researchGateDataQualityComplete: qualityGate.complete,
       flags: {
         familyCount: 3,
         candidateCount: 3,
@@ -220,8 +239,8 @@ if (!existsSync(resolve(DATA_DIR, "index.json"))) {
         sourceDataDir: input.sourceDataDir,
         historicalUniverseSource: input.universeSource,
         historicalUniverseComplete: input.historicalUniverseComplete,
-        datasetCountLoaded: input.datasets.length,
-        datasetCountResearch: datasets.length,
+        datasetCountLoaded: input.datasetDescriptors.length,
+        datasetCountResearch: input.datasetDescriptors.length,
         interval: input.interval || "1h",
         lowerTimeframe: input.lowerTimeframe || "5m",
         execution: "TradeSpec + M2-B execution primitives"
@@ -261,39 +280,6 @@ async function createOrVerifyForwardSpec(path, definitions) {
   await mkdir(dirname(resolve(path)), { recursive: true });
   await writeFile(resolve(path), `${JSON.stringify(expected, null, 2)}\n`, "utf8");
   return expected;
-}
-
-function runFamilyResearch({ familyId, signals, datasets, lowerTimeframe }) {
-  const byAssetSide = new Map();
-  for (const signal of signals) {
-    const key = `${signal.asset}:${signal.side}`;
-    if (!byAssetSide.has(key)) byAssetSide.set(key, []);
-    byAssetSide.get(key).push(signal);
-  }
-  const tradeResults = [];
-  const missedEntries = [];
-  const entryStats = { signals: 0, planned: 0, entries: 0, noEntry: 0, missedEntry: 0 };
-  for (const dataset of datasets) {
-    for (const side of ["LONG", "SHORT"]) {
-      const sideSignals = byAssetSide.get(`${dataset.asset}:${side}`) || [];
-      if (!sideSignals.length) continue;
-      const result = runM37FamilyBacktest({
-        familyId,
-        dataset,
-        signals: sideSignals,
-        executionModel: dataset.backtestOptions?.executionModel || {},
-        fundingEvents: dataset.fundingEvents,
-        fundingCoverage: dataset.fundingCoverage,
-        lowerTimeframeCandles: dataset.lowerTimeframeCandles,
-        lowerTimeframe,
-        exchangeFilters: dataset.exchangeFilters
-      });
-      tradeResults.push(...result.tradeResults);
-      missedEntries.push(...result.missedEntries);
-      for (const key of Object.keys(entryStats)) entryStats[key] += Number(result.entryStats?.[key]) || 0;
-    }
-  }
-  return { tradeResults, missedEntries, entryStats };
 }
 
 function emptyResearchReplay() {
@@ -377,7 +363,7 @@ function compactResearchResult(result) {
   };
 }
 
-function buildResearchDataQuality({ inputCoverage, familyId, context, tradeResults }) {
+function buildResearchDataQuality({ inputCoverage, historicalUniverseComplete, familyId, context, tradeResults }) {
   const familyCoverage = inputCoverage?.byFamily?.[familyId] || {};
   const fundingIncompleteTrades = (Array.isArray(tradeResults) ? tradeResults : [])
     .filter((trade) => trade.dataQuality === "INCOMPLETE_FUNDING"
@@ -387,12 +373,19 @@ function buildResearchDataQuality({ inputCoverage, familyId, context, tradeResul
       || trade.dataQualityComponents?.intrabar === "INCOMPLETE_INTRABAR_DATA").length;
   const crossSectionalIncompleteTimestamps = context.crossSectionalDiagnostics
     .filter((diagnostic) => diagnostic.crossSectionalUniverseComplete !== true).length;
-  const researchDataQualityComplete = inputCoverage?.researchDataQualityComplete === true
+  const nonProviderCrossSectionalIncompleteTimestamps = context.crossSectionalDiagnostics
+    .filter((diagnostic) => diagnostic.crossSectionalUniverseComplete !== true
+      && diagnostic.providerGapContaminated !== true).length;
+  const qualityGate = researchDataQualityGate({
+    dataCoverage: inputCoverage,
+    historicalUniverseComplete
+  });
+  const familyResearchDataQualityComplete = qualityGate.complete
     && familyCoverage.signalRelevantFundingCoverage?.complete === true
     && familyCoverage.signalRelevantLowerTfCoverage?.complete === true
     && fundingIncompleteTrades === 0
     && incompleteIntrabarTrades === 0
-    && crossSectionalIncompleteTimestamps === 0;
+    && nonProviderCrossSectionalIncompleteTimestamps === 0;
   return {
     degradedTrades: Array.isArray(tradeResults)
       ? tradeResults.filter((trade) => trade.dataQuality !== "COMPLETE").length
@@ -403,7 +396,10 @@ function buildResearchDataQuality({ inputCoverage, familyId, context, tradeResul
     requiredHistoricalFundingAvailable: inputCoverage?.requiredHistoricalFundingAvailable === true,
     signalRelevantFundingCoverage: familyCoverage.signalRelevantFundingCoverage || null,
     signalRelevantLowerTfCoverage: familyCoverage.signalRelevantLowerTfCoverage || null,
-    researchDataQualityComplete
+    rawResearchDataQualityComplete: inputCoverage?.researchDataQualityComplete === true,
+    researchEffectiveDataQualityComplete: inputCoverage?.researchEffectiveDataQualityComplete === true,
+    researchGateDataQualityComplete: familyResearchDataQualityComplete,
+    researchDataQualityComplete: familyResearchDataQualityComplete
   };
 }
 
@@ -423,7 +419,13 @@ function summarizeReportCoverage({ inputCoverage, researchResults, context }) {
     ])),
     crossSectionalIncompleteTimestamps: context.crossSectionalDiagnostics
       .filter((diagnostic) => diagnostic.crossSectionalUniverseComplete !== true).length,
-    researchDataQualityComplete: results.length > 0 && results.every((result) => result.researchDataQualityComplete === true)
+    nonProviderCrossSectionalIncompleteTimestamps: Number(inputCoverage?.nonProviderCrossSectionalIncompleteTimestamps) || 0,
+    rawResearchDataQualityComplete: inputCoverage?.researchDataQualityComplete === true,
+    researchEffectiveDataQualityComplete: inputCoverage?.researchEffectiveDataQualityComplete === true,
+    researchGateDataQualityComplete: results.length > 0
+      && results.every((result) => result.dataQuality?.researchGateDataQualityComplete === true),
+    researchDataQualityComplete: results.length > 0
+      && results.every((result) => result.researchDataQualityComplete === true)
   };
 }
 
