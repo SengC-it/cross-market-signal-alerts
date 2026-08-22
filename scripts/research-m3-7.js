@@ -15,6 +15,7 @@ import {
   buildM37MarketContext,
   candidateDefinitionsHash,
   familyDefinitions,
+  filterM37ResearchSignals,
   fixedForwardWindowSplit,
   formalForwardVerdict,
   runM37FamilyBacktest,
@@ -55,7 +56,13 @@ if (!existsSync(resolve(DATA_DIR, "index.json"))) {
     const researchComparison = {};
 
     for (const definition of definitions) {
-      const signals = buildM37FamilySignals({ familyId: definition.id, context });
+      const rawSignals = buildM37FamilySignals({ familyId: definition.id, context });
+      const researchSignalPlan = filterM37ResearchSignals({
+        familyId: definition.id,
+        signals: rawSignals,
+        window: M37_OLD_WINDOW
+      });
+      const signals = researchSignalPlan.eligibleSignals;
       const replay = input.dataCoverage?.researchDataQualityComplete === true
         ? runFamilyResearch({
           familyId: definition.id,
@@ -80,6 +87,10 @@ if (!existsSync(resolve(DATA_DIR, "index.json"))) {
       });
       researchResults[definition.id] = {
         ...result,
+        rawSignals: rawSignals.length,
+        eligibleResearchSignals: signals.length,
+        researchBoundaryPurgedTrades: researchSignalPlan.researchBoundaryPurgedTrades,
+        invalidResearchSignals: researchSignalPlan.invalidSignals.length,
         entryStats: replay.entryStats,
         historicalDatasetCount: datasets.length,
         historicalUniverseSource: input.universeSource,
@@ -98,6 +109,7 @@ if (!existsSync(resolve(DATA_DIR, "index.json"))) {
         gates: result.researchGate.gates,
         promisingEdge: false,
         researchOnly: true,
+        researchBoundaryPurgedTrades: researchSignalPlan.researchBoundaryPurgedTrades,
         reason: result.researchGate.allGatesPassed
           ? "Research gates passed; registered for the fixed prospective forward window."
           : result.researchGate.status === "DATA_INCOMPLETE"
@@ -319,6 +331,9 @@ function formalForwardVerdictForCurrentWindow({ interimForwardDataStatus, asOf }
 function compactResearchResult(result) {
   return {
     familyId: result.familyId,
+    rawSignals: result.rawSignals,
+    eligibleResearchSignals: result.eligibleResearchSignals,
+    researchBoundaryPurgedTrades: result.researchBoundaryPurgedTrades,
     signals: result.signals,
     completeTrades: result.completeTrades,
     degradedTrades: result.degradedTrades,
@@ -370,10 +385,16 @@ function summarizeReportCoverage({ inputCoverage, researchResults, context }) {
   const results = Object.values(researchResults);
   const fundingIncompleteTrades = results.reduce((sum, result) => sum + Number(result.dataQuality?.fundingIncompleteTrades || 0), 0);
   const incompleteIntrabarTrades = results.reduce((sum, result) => sum + Number(result.dataQuality?.incompleteIntrabarTrades || 0), 0);
+  const researchBoundaryPurgedTrades = results.reduce((sum, result) => sum + Number(result.researchBoundaryPurgedTrades || 0), 0);
   return {
     ...(inputCoverage || {}),
     fundingIncompleteTrades,
     incompleteIntrabarTrades,
+    researchBoundaryPurgedTrades,
+    researchBoundaryPurgedByFamily: Object.fromEntries(results.map((result) => [
+      result.familyId,
+      Number(result.researchBoundaryPurgedTrades || 0)
+    ])),
     crossSectionalIncompleteTimestamps: context.crossSectionalDiagnostics
       .filter((diagnostic) => diagnostic.crossSectionalUniverseComplete !== true).length,
     researchDataQualityComplete: results.length > 0 && results.every((result) => result.researchDataQualityComplete === true)

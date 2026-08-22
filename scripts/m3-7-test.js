@@ -20,6 +20,7 @@ import {
   formalForwardVerdict,
   historicalUniverseAssetsAt
 } from "../lib/validation/m3-7-strategy-family-reset.js";
+import { buildM37ResearchSpanPlan } from "../lib/validation/m3-7-data.js";
 
 const ROOT = process.cwd();
 const REPORT_PATH = "artifacts/m3/m3-7-strategy-family-reset.json";
@@ -51,6 +52,47 @@ assert.equal(forwardSpec.split.finalHoldoutStart, "2026-11-06T15:00:00.000Z");
 assert.equal(forwardSpec.split.finalHoldoutEndExclusive, "2026-12-01T00:00:00.000Z");
 assert.equal(forwardSpec.split.splitAlignedToInterval, true);
 assert.equal(candidateDefinitionsHash(), "d368c1f83680d7b30418ff279af9e706e6486a4ba45415896aedbeb40908e3ff");
+
+const oldResearchEnd = Date.parse(M37_FORWARD_SPEC.start);
+const researchHour = 3600 * 1000;
+const boundarySignal = {
+  familyId: "cross_sectional_relative_momentum_v1",
+  asset: "BOUNDARYUSDT",
+  side: "LONG",
+  signalCandleOpenTime: oldResearchEnd - 2 * researchHour,
+  signalCandleCloseTime: oldResearchEnd - researchHour,
+  signalAvailableAt: oldResearchEnd,
+  entryEligibleAt: oldResearchEnd,
+  referencePrice: 100
+};
+const crossingSignal = {
+  ...boundarySignal,
+  signalCandleOpenTime: oldResearchEnd - 2 * researchHour,
+  signalCandleCloseTime: oldResearchEnd - researchHour,
+  signalAvailableAt: oldResearchEnd - researchHour,
+  entryEligibleAt: oldResearchEnd - researchHour,
+  maxHoldingTime: oldResearchEnd + 3 * researchHour
+};
+const eligibleSignal = {
+  ...boundarySignal,
+  asset: "ELIGIBLEUSDT",
+  signalCandleOpenTime: oldResearchEnd - 10 * researchHour,
+  signalCandleCloseTime: oldResearchEnd - 9 * researchHour,
+  signalAvailableAt: oldResearchEnd - 9 * researchHour,
+  entryEligibleAt: oldResearchEnd - 9 * researchHour,
+  maxHoldingHours: 8,
+  maxHoldingTime: null
+};
+const boundarySpanPlan = buildM37ResearchSpanPlan({
+  cross_sectional_relative_momentum_v1: [boundarySignal, crossingSignal, eligibleSignal]
+});
+assert.equal(boundarySpanPlan.researchBoundaryPurgedByFamily.cross_sectional_relative_momentum_v1.length, 2);
+assert.equal(boundarySpanPlan.researchBoundaryPurgedByFamily.cross_sectional_relative_momentum_v1.every((row) => row.reason), true);
+assert.deepEqual(boundarySpanPlan.spansByFamily.cross_sectional_relative_momentum_v1.get("ELIGIBLEUSDT"), [{
+  start: oldResearchEnd - 9 * researchHour,
+  end: oldResearchEnd - researchHour
+}]);
+assert.equal(boundarySpanPlan.spansByFamily.cross_sectional_relative_momentum_v1.has("BOUNDARYUSDT"), false);
 
 assert.equal(crossSectionalPercentile(1, [1, 2, 3]), 0);
 assert.equal(crossSectionalPercentile(3, [1, 2, 3]), 1);
