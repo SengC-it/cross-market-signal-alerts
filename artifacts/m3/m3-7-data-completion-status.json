@@ -1,0 +1,43 @@
+{
+  "generatedAt": "2026-08-22T08:23:32.067Z",
+  "baseSha": "153a655bacafd2449b166401727948215d044c98",
+  "candidateDefinitionsHash": "d368c1f83680d7b30418ff279af9e706e6486a4ba45415896aedbeb40908e3ff",
+  "historicalUniverseAssetCount": 805,
+  "missing5mAssets": 0,
+  "missing5mSpans": 0,
+  "missing5mMonths": [],
+  "signalRelevantLowerTfCoverage": "COMPLETE",
+  "signalRelevantFundingCoverage": "COMPLETE",
+  "crossSectionalIncompleteTimestamps": 28,
+  "providerMissing1h": [
+    {
+      "asset": "LITUSDT",
+      "start": "2025-12-23T00:00:00.000Z",
+      "end": "2025-12-23T17:00:00.000Z",
+      "barsMissing": 17,
+      "visionBars": 0,
+      "restBars": 0,
+      "status": "PROVIDER_DATA_MISSING"
+    },
+    {
+      "asset": "AIAUSDT",
+      "start": "2026-01-20T00:00:00.000Z",
+      "end": "2026-01-20T11:00:00.000Z",
+      "barsMissing": 11,
+      "visionBars": 0,
+      "restBars": 0,
+      "status": "PROVIDER_DATA_MISSING"
+    }
+  ],
+  "researchBoundaryPurgedTrades": 1053,
+  "researchBoundaryPurgedByFamily": {
+    "cross_sectional_relative_momentum_v1": 935,
+    "atr_dislocation_mean_reversion_v1": 4,
+    "funding_extreme_crowding_reversal_v1": 114
+  },
+  "latestRequired5mTimestamp": "2026-08-01T00:00:00.000Z",
+  "researchDataQualityComplete": false,
+  "formalResearchScreeningExecuted": false,
+  "formalForwardVerdict": "PENDING_FORWARD_WINDOW",
+  "enteredM4": false
+}
