@@ -19,7 +19,8 @@ import {
   fixedForwardWindowSplit,
   formalForwardVerdict,
   runM37FamilyBacktest,
-  summarizeM37Research
+  summarizeM37Research,
+  summarizeM37ProviderGapPolicy
 } from "../lib/validation/m3-7-strategy-family-reset.js";
 
 const DATA_DIR = argumentValue("--data-dir") || process.env.M3_7_DATA_DIR || ".local/m3-7-data";
@@ -50,6 +51,8 @@ if (!existsSync(resolve(DATA_DIR, "index.json"))) {
       historicalUniverse: input.historicalUniverse,
       historicalUniverseMetadata: input.historicalUniverseMetadata,
       preparedCoverage: input.dataCoverage,
+      historicalUniverseComplete: input.historicalUniverseComplete,
+      providerGapRegistry: input.providerGapRegistry,
       window: M37_OLD_WINDOW
     });
     const researchResults = {};
@@ -100,7 +103,10 @@ if (!existsSync(resolve(DATA_DIR, "index.json"))) {
           : null,
         duplicateFundingEventSignals: definition.id === "funding_extreme_crowding_reversal_v1"
           ? context.fundingEvaluation.duplicateFundingEventSignals
-          : null
+          : null,
+        providerGapPurgedSignals: Number(context.providerGapEvaluation.byFamily?.[definition.id]?.providerGapPurgedSignals) || 0,
+        providerGapAffectedOpportunities: Number(context.providerGapEvaluation.byFamily?.[definition.id]?.providerGapAffectedOpportunities) || 0,
+        providerGapPolicyFrozen: true
       };
       researchComparison[definition.id] = {
         familyId: definition.id,
@@ -118,7 +124,26 @@ if (!existsSync(resolve(DATA_DIR, "index.json"))) {
       };
     }
 
-    const dataCoverage = summarizeReportCoverage({ inputCoverage: input.dataCoverage, researchResults, context });
+    const providerGapPolicy = summarizeM37ProviderGapPolicy({
+      context,
+      inputCoverage: input.dataCoverage
+    });
+    const dataCoverage = summarizeReportCoverage({
+      inputCoverage: {
+        ...(input.dataCoverage || {}),
+        rawProviderDataComplete: providerGapPolicy.rawProviderDataComplete,
+        providerGapPolicyFrozen: providerGapPolicy.providerGapPolicyFrozen,
+        providerConfirmedMissing1hBars: providerGapPolicy.providerConfirmedMissing1hBars,
+        providerGapContaminatedCrossSectionalTimestamps: providerGapPolicy.providerGapContaminatedCrossSectionalTimestamps,
+        providerGapAffectedOpportunities: providerGapPolicy.providerGapAffectedOpportunities,
+        providerGapPurgedOpportunities: providerGapPolicy.providerGapPurgedOpportunities,
+        providerGapPurgedByFamily: providerGapPolicy.providerGapPurgedByFamily,
+        unhandledProviderGapDependencies: providerGapPolicy.unhandledProviderGapDependencies,
+        researchEffectiveDataQualityComplete: providerGapPolicy.researchEffectiveDataQualityComplete
+      },
+      researchResults,
+      context
+    });
 
     const forwardTestCandidates = Object.values(researchComparison)
       .filter((comparison) => comparison.researchStatus === "FORWARD_TEST_CANDIDATE")
@@ -155,6 +180,7 @@ if (!existsSync(resolve(DATA_DIR, "index.json"))) {
       researchResults,
       researchComparison,
       researchGate: M37_RESEARCH_GATE,
+      providerGapPolicy,
       forwardTestCandidates,
       rejectedCandidates,
       dataCoverage,

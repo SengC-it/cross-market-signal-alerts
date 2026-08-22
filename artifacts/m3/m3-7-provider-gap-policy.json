@@ -1,0 +1,84 @@
+{
+  "policyVersion": "M3_7_PROVIDER_GAP_POLICY_V1",
+  "baseSha": "dbe88c31b0fb622c0d941c84f04847cc512835b1",
+  "candidateDefinitionsHash": "d368c1f83680d7b30418ff279af9e706e6486a4ba45415896aedbeb40908e3ff",
+  "providerGapRegistry": [
+    {
+      "asset": "LITUSDT",
+      "start": "2025-12-23T00:00:00.000Z",
+      "endExclusive": "2025-12-23T17:00:00.000Z",
+      "missingBars": 17,
+      "primarySource": "BINANCE_VISION_MONTHLY_1H",
+      "fallbackSource": "BINANCE_FUTURES_REST_1H",
+      "status": "PROVIDER_DATA_MISSING"
+    },
+    {
+      "asset": "AIAUSDT",
+      "start": "2026-01-20T00:00:00.000Z",
+      "endExclusive": "2026-01-20T11:00:00.000Z",
+      "missingBars": 11,
+      "primarySource": "BINANCE_VISION_MONTHLY_1H",
+      "fallbackSource": "BINANCE_FUTURES_REST_1H",
+      "status": "PROVIDER_DATA_MISSING"
+    }
+  ],
+  "rawProviderDataComplete": false,
+  "providerConfirmedMissing1hBars": 28,
+  "providerGapContaminatedCrossSectionalTimestamps": 76,
+  "providerGapAffectedOpportunities": 47102,
+  "providerGapPurgedOpportunities": 47102,
+  "providerGapPurgedByFamily": {
+    "cross_sectional_relative_momentum_v1": 47066,
+    "atr_dislocation_mean_reversion_v1": 30,
+    "funding_extreme_crowding_reversal_v1": 6
+  },
+  "unhandledProviderGapDependencies": 0,
+  "families": [
+    {
+      "familyId": "cross_sectional_relative_momentum_v1",
+      "rawSignals": 766583,
+      "providerGapPurgedSignals": 47066,
+      "boundaryPurgedSignals": 935,
+      "eligibleSignals": 765648
+    },
+    {
+      "familyId": "atr_dislocation_mean_reversion_v1",
+      "rawSignals": 40220,
+      "providerGapPurgedSignals": 30,
+      "boundaryPurgedSignals": 4,
+      "eligibleSignals": 40216
+    },
+    {
+      "familyId": "funding_extreme_crowding_reversal_v1",
+      "rawSignals": 108046,
+      "providerGapPurgedSignals": 6,
+      "boundaryPurgedSignals": 113,
+      "eligibleSignals": 107933
+    }
+  ],
+  "coverage": {
+    "historicalUniverseAssetCount": 805,
+    "signalRelevantLowerTfCoverage": {
+      "status": "COMPLETE",
+      "complete": true
+    },
+    "signalRelevantFundingCoverage": {
+      "status": "COMPLETE",
+      "complete": true
+    },
+    "crossSectionalIncompleteTimestamps": 76,
+    "researchDataQualityComplete": false,
+    "researchEffectiveDataQualityComplete": true,
+    "researchBoundaryPurgedTrades": 1052,
+    "researchBoundaryPurgedByFamily": {
+      "cross_sectional_relative_momentum_v1": 935,
+      "atr_dislocation_mean_reversion_v1": 4,
+      "funding_extreme_crowding_reversal_v1": 113
+    }
+  },
+  "providerGapPolicyFrozen": true,
+  "formalResearchScreeningExecuted": false,
+  "validationVerdict": "READY_FOR_FORMAL_M37_RESEARCH",
+  "enteredM4": false,
+  "mergedMain": false
+}

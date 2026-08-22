@@ -18,9 +18,19 @@ import {
   familyDefinitions,
   fixedForwardWindowSplit,
   formalForwardVerdict,
-  historicalUniverseAssetsAt
+  historicalUniverseAssetsAt,
+  summarizeM37ProviderGapPolicy,
+  summarizeM37Research
 } from "../lib/validation/m3-7-strategy-family-reset.js";
 import { buildM37ResearchSpanPlan } from "../lib/validation/m3-7-data.js";
+import {
+  M37_PROVIDER_GAP_POLICY_VERSION,
+  M37_PROVIDER_GAP_REGISTRY,
+  PURGED_PROVIDER_DATA_GAP,
+  normalizeProviderGapRegistry,
+  providerGapDependency,
+  providerGapRegistryMissingBars
+} from "../lib/validation/m3-7-provider-gaps.js";
 
 const ROOT = process.cwd();
 const REPORT_PATH = "artifacts/m3/m3-7-strategy-family-reset.json";
@@ -131,6 +141,81 @@ const missingDiagnostic = missingActiveContext.crossSectionalUniverseAt(25 * lif
 assert.equal(missingDiagnostic.crossSectionalUniverseComplete, false);
 assert.deepEqual(missingDiagnostic.missingActiveAssets, ["MISSINGUSDT"]);
 
+assert.equal(M37_PROVIDER_GAP_POLICY_VERSION, "M3_7_PROVIDER_GAP_POLICY_V1");
+assert.equal(normalizeProviderGapRegistry(M37_PROVIDER_GAP_REGISTRY).length, 2);
+assert.equal(providerGapRegistryMissingBars(M37_PROVIDER_GAP_REGISTRY), 28);
+const providerGapStart = 10 * lifecycleHour;
+const providerGapEnd = 11 * lifecycleHour;
+const fixtureProviderGaps = [{
+  asset: "GAPUSDT",
+  start: providerGapStart,
+  endExclusive: providerGapEnd,
+  missingBars: 1,
+  primarySource: "FIXTURE_PRIMARY",
+  fallbackSource: "FIXTURE_FALLBACK",
+  status: "PROVIDER_DATA_MISSING"
+}];
+const directProviderDependency = providerGapDependency(fixtureProviderGaps, {
+  asset: "GAPUSDT",
+  start: providerGapStart,
+  endExclusive: providerGapEnd
+});
+assert.equal(directProviderDependency.affected, true);
+assert.equal(directProviderDependency.gaps[0].status, "PROVIDER_DATA_MISSING");
+
+const providerGapContext = buildM37MarketContext({
+  datasets: [
+    { asset: "GAPUSDT", candles: buildFlatCandles(40, 0) },
+    { asset: "OTHERUSDT", candles: buildFlatCandles(40, 0) }
+  ],
+  historicalUniverse: [{ time: 0, assets: ["GAPUSDT", "OTHERUSDT"] }],
+  historicalUniverseComplete: true,
+  providerGapRegistry: fixtureProviderGaps,
+  benchmarkCandles: buildBenchmarkCandles(),
+  window: { start: 0, endExclusive: 40 * lifecycleHour }
+});
+const currentProviderGapDiagnostic = providerGapContext.crossSectionalUniverseAt(providerGapStart);
+assert.equal(currentProviderGapDiagnostic.crossSectionalUniverseComplete, false);
+assert.equal(currentProviderGapDiagnostic.providerGapContaminated, true);
+assert.deepEqual(currentProviderGapDiagnostic.providerGapMissingAssets, ["GAPUSDT"]);
+const lookbackProviderGapDiagnostic = providerGapContext.crossSectionalUniverseAt(20 * lifecycleHour);
+assert.equal(lookbackProviderGapDiagnostic.providerGapContaminated, true);
+const beforeProviderGapDiagnostic = providerGapContext.crossSectionalUniverseAt(9 * lifecycleHour);
+assert.equal(beforeProviderGapDiagnostic.providerGapContaminated, false);
+const recoveredProviderGapDiagnostic = providerGapContext.crossSectionalUniverseAt(36 * lifecycleHour);
+assert.equal(recoveredProviderGapDiagnostic.providerGapContaminated, false);
+buildM37FamilySignals({
+  familyId: "cross_sectional_relative_momentum_v1",
+  context: providerGapContext
+});
+const crossProviderPurges = providerGapContext.providerGapPurgeRecords
+  .filter((record) => record.familyId === "cross_sectional_relative_momentum_v1");
+assert.equal(crossProviderPurges.some((record) => record.scope === "timestamp"
+  && record.affectedAssets.includes("GAPUSDT")
+  && record.affectedAssets.includes("OTHERUSDT")
+  && record.status === PURGED_PROVIDER_DATA_GAP), true);
+assert.equal(providerGapContext.providerGapEvaluation.byFamily.cross_sectional_relative_momentum_v1.providerGapPurgedSignals > 0, true);
+
+const lifecycleWarmupProviderContext = buildM37MarketContext({
+  datasets: [{ asset: "NEWUSDT", candles: buildFlatCandles(20, 20) }],
+  historicalUniverse: [{ time: 20 * lifecycleHour, assets: ["NEWUSDT"] }],
+  historicalUniverseMetadata: [{ asset: "NEWUSDT", firstSeen: 20 * lifecycleHour }],
+  historicalUniverseComplete: true,
+  providerGapRegistry: [{
+    asset: "NEWUSDT",
+    start: 0,
+    endExclusive: lifecycleHour,
+    missingBars: 1,
+    primarySource: "FIXTURE_PRIMARY",
+    fallbackSource: "FIXTURE_FALLBACK",
+    status: "PROVIDER_DATA_MISSING"
+  }],
+  window: { start: 0, endExclusive: 40 * lifecycleHour }
+});
+const lifecycleWarmupDiagnostic = lifecycleWarmupProviderContext.crossSectionalUniverseAt(20 * lifecycleHour);
+assert.equal(lifecycleWarmupDiagnostic.crossSectionalUniverseComplete, true);
+assert.equal(lifecycleWarmupDiagnostic.providerGapContaminated, false);
+
 const dislocationCandles = buildDislocationCandles();
 const dislocationContext = buildM37MarketContext({
   datasets: [{ asset: "DELISTEDUSDT", candles: dislocationCandles }],
@@ -154,6 +239,47 @@ const dislocationPlan = buildM37TradePlan({
 assert.equal(dislocationPlan.tradeSpec.entryEligibleAt, dislocationSignals[0].signalCandleCloseTime);
 assert.equal(dislocationPlan.tradeSpec.maxHoldingHours, 4);
 assert.equal(dislocationPlan.tradeSpec.rewardRiskRatio, 1.5);
+
+const atrProviderGapContext = buildM37MarketContext({
+  datasets: [{ asset: "DELISTEDUSDT", candles: dislocationCandles }],
+  historicalUniverse: [{ time: 0, assets: ["DELISTEDUSDT"] }],
+  historicalUniverseComplete: true,
+  providerGapRegistry: [{
+    asset: "DELISTEDUSDT",
+    start: 24 * lifecycleHour,
+    endExclusive: 25 * lifecycleHour,
+    missingBars: 1,
+    primarySource: "FIXTURE_PRIMARY",
+    fallbackSource: "FIXTURE_FALLBACK",
+    status: "PROVIDER_DATA_MISSING"
+  }],
+  window: { start: 0, endExclusive: 31 * lifecycleHour }
+});
+const atrProviderGapSignals = buildM37FamilySignals({
+  familyId: "atr_dislocation_mean_reversion_v1",
+  context: atrProviderGapContext
+});
+assert.equal(atrProviderGapSignals.length, 0);
+assert.equal(atrProviderGapContext.providerGapEvaluation.byFamily.atr_dislocation_mean_reversion_v1.providerGapPurgedSignals > 0, true);
+const atrUnrelatedProviderGapContext = buildM37MarketContext({
+  datasets: [{ asset: "DELISTEDUSDT", candles: dislocationCandles }],
+  historicalUniverse: [{ time: 0, assets: ["DELISTEDUSDT"] }],
+  historicalUniverseComplete: true,
+  providerGapRegistry: [{
+    asset: "OTHERUSDT",
+    start: 24 * lifecycleHour,
+    endExclusive: 25 * lifecycleHour,
+    missingBars: 1,
+    primarySource: "FIXTURE_PRIMARY",
+    fallbackSource: "FIXTURE_FALLBACK",
+    status: "PROVIDER_DATA_MISSING"
+  }],
+  window: { start: 0, endExclusive: 31 * lifecycleHour }
+});
+assert.equal(buildM37FamilySignals({
+  familyId: "atr_dislocation_mean_reversion_v1",
+  context: atrUnrelatedProviderGapContext
+}).length > 0, true);
 
 const futureMutation = structuredClone(dislocationCandles);
 futureMutation[31] = { ...futureMutation[31], close: 1000, high: 1200, low: 1, volume: 999999 };
@@ -192,6 +318,64 @@ assert.equal(fundingSignals.length >= 2, true);
 assert.equal(fundingSignals.every((signal) => signal.details.fundingEventTime < signal.signalAvailableAt), true);
 assert.equal(new Set(fundingSignals.map((signal) => `${signal.asset}:${signal.details.fundingEventTime}`)).size, fundingSignals.length);
 assert.equal(fundingContext.fundingEvaluation.duplicateFundingEventSignals, 0);
+const fundingProviderGapContext = buildM37MarketContext({
+  datasets: [
+    { asset: "AUSDT", candles: fundingCandlesA, fundingEvents: fundingEventsA },
+    { asset: "BUSDT", candles: fundingCandlesB, fundingEvents: fundingEventsB }
+  ],
+  historicalUniverse: [{ time: 0, assets: ["AUSDT", "BUSDT"] }],
+  historicalUniverseComplete: true,
+  providerGapRegistry: [{
+    asset: "AUSDT",
+    start: 25 * lifecycleHour,
+    endExclusive: 26 * lifecycleHour,
+    missingBars: 1,
+    primarySource: "FIXTURE_PRIMARY",
+    fallbackSource: "FIXTURE_FALLBACK",
+    status: "PROVIDER_DATA_MISSING"
+  }],
+  window: { start: 0, endExclusive: 31 * 3600 * 1000 }
+});
+const fundingProviderGapSignals = buildM37FamilySignals({
+  familyId: "funding_extreme_crowding_reversal_v1",
+  context: fundingProviderGapContext
+});
+assert.equal(fundingProviderGapSignals.some((signal) => signal.asset === "AUSDT"), false);
+const unaffectedFundingSignal = fundingProviderGapSignals.find((signal) => signal.asset === "BUSDT");
+assert.ok(unaffectedFundingSignal);
+assert.equal(unaffectedFundingSignal.details.fundingPercentile, 1);
+assert.equal(fundingProviderGapContext.providerGapEvaluation.byFamily.funding_extreme_crowding_reversal_v1.providerGapPurgedSignals, 1);
+assert.equal(fundingProviderGapContext.fundingEvaluation.duplicateFundingEventSignals, 0);
+const providerPolicySummary = summarizeM37ProviderGapPolicy({
+  context: fundingProviderGapContext,
+  inputCoverage: {
+    requiredHistoricalFundingAvailable: true,
+    signalRelevantFundingCoverage: { complete: true },
+    signalRelevantLowerTfCoverage: { complete: true }
+  }
+});
+assert.equal(providerPolicySummary.rawProviderDataComplete, false);
+assert.equal(providerPolicySummary.providerConfirmedMissing1hBars, 1);
+assert.equal(providerPolicySummary.providerGapPolicyFrozen, true);
+assert.equal(providerPolicySummary.providerGapPurgedOpportunities, 1);
+assert.equal(providerPolicySummary.unhandledProviderGapDependencies, 0);
+assert.equal(providerPolicySummary.researchEffectiveDataQualityComplete, true);
+const providerPurgeSummary = summarizeM37Research({
+  familyId: "funding_extreme_crowding_reversal_v1",
+  signals: [],
+  tradeResults: [{
+    asset: "AUSDT",
+    side: "LONG",
+    dataQuality: PURGED_PROVIDER_DATA_GAP,
+    ambiguousIntrabar: false
+  }],
+  dataQuality: {
+    researchDataQualityComplete: false,
+    researchEffectiveDataQualityComplete: true
+  }
+});
+assert.equal(providerPurgeSummary.completeTrades, 0);
+assert.equal(providerPurgeSummary.metrics.profitFactor, null);
 const futureFundingContext = buildM37MarketContext({
   datasets: [
     { asset: "AUSDT", candles: fundingCandlesA, fundingEvents: [...fundingEventsA, { time: 31 * 3600 * 1000, rate: 0.9 }] },
@@ -306,6 +490,18 @@ console.log(JSON.stringify({
   reportChecked: existsSync(REPORT_PATH),
   forwardSpecChecked: existsSync(FORWARD_SPEC_PATH)
 }, null, 2));
+
+function buildBenchmarkCandles() {
+  const fourHours = 4 * 3600 * 1000;
+  return Array.from({ length: 10 }, (_, index) => ({
+    openTime: index * fourHours,
+    open: 100 + index,
+    high: 101 + index,
+    low: 99 + index,
+    close: 100 + index,
+    volume: 10
+  }));
+}
 
 function buildDislocationCandles() {
   const hour = 3600 * 1000;
