@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node scripts/smoke-test.js && node scripts/m2b-test.js && node scripts/m3-test.js && node scripts/m3-production-test.js && node scripts/m3-real-data-test.js && node scripts/m3-5-test.js && node scripts/m3-6-test.js",
+    "test": "node scripts/smoke-test.js && node scripts/m2b-test.js && node scripts/m3-test.js && node scripts/m3-production-test.js && node scripts/m3-real-data-test.js && node scripts/m3-5-test.js && node scripts/m3-6-test.js && node scripts/m3-7-test.js",
     "test:m3-production": "node scripts/m3-production-test.js",
     "validate:m3": "node scripts/m3-validation.js",
     "validate:m3:sample": "node scripts/m3-validation-sample.js",
@@ -15,6 +15,8 @@
     "test:m3-5": "node scripts/m3-5-test.js",
     "research:m3-6": "node scripts/research-m3-6.js",
     "test:m3-6": "node scripts/m3-6-test.js",
+    "research:m3-7": "node scripts/research-m3-7.js",
+    "test:m3-7": "node scripts/m3-7-test.js",
     "inverse-report": "node scripts/inverse-signal-report.js",
     "backtest:tiered": "node scripts/backtest-tiered-dynamic.js",
     "search:tiered": "node scripts/search-tiered-policy.js",

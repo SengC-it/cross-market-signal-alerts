@@ -1,0 +1,38 @@
+{
+  "datasetId": "M37_FORWARD_2026_08_2026_12",
+  "start": "2026-08-01T00:00:00.000Z",
+  "endExclusive": "2026-12-01T00:00:00.000Z",
+  "candidateIds": [
+    "cross_sectional_relative_momentum_v1",
+    "atr_dislocation_mean_reversion_v1",
+    "funding_extreme_crowding_reversal_v1"
+  ],
+  "candidateDefinitionsHash": "d368c1f83680d7b30418ff279af9e706e6486a4ba45415896aedbeb40908e3ff",
+  "researchGate": {
+    "minCompleteTrades": 30,
+    "netExpectancyRGreaterThan": 0,
+    "profitFactorAtLeast": 1.1,
+    "positiveResearchFoldsAtLeast": 3,
+    "researchFoldCount": 5,
+    "maxAssetTradeShare": 0.25,
+    "maxFoldTradeShare": 0.4,
+    "maxSideTradeShare": 0.85,
+    "grossExpectancyRGreaterThan": 0
+  },
+  "formalForwardGate": {
+    "minCompleteOosTrades": 60,
+    "aggregateExpectancyRGreaterThan": 0,
+    "aggregateProfitFactorAtLeast": 1.2,
+    "majorityPositiveFolds": true,
+    "concentrationControls": true
+  },
+  "split": {
+    "walkForwardStart": "2026-08-01T00:00:00.000Z",
+    "walkForwardEndExclusive": "2026-11-06T14:24:00.000Z",
+    "finalHoldoutStart": "2026-11-06T14:24:00.000Z",
+    "finalHoldoutEndExclusive": "2026-12-01T00:00:00.000Z",
+    "finalHoldoutPct": 0.2
+  },
+  "createdBeforeFormalForwardEvaluation": true,
+  "candidateDefinitionsFrozen": true
+}
