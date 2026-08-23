@@ -8,6 +8,7 @@ import {
 import { isDashboardAuthorizedRequest, setPrivateResponseHeaders } from "../lib/api-auth.js";
 import { FUNDING_CARRY_V2_MODEL, FUNDING_CARRY_V2_MODEL_METADATA } from "../lib/funding-carry-v2-paper.js";
 import { SIGNAL_ONLY_RELEASE } from "../lib/production-signal-policy.js";
+import { buildSignalDensityKpi } from "../lib/signal-density.js";
 
 const EXPECTED_GROUPS = [
   "dynamic-spot",
@@ -46,6 +47,7 @@ export default async function handler(req, res) {
     const paperModelRuns = unwrapResult(paperRunsResult, "cr_paper_model_runs", warnings);
     const paperEmailRuns = unwrapResult(paperEmailRunsResult, "cr_paper_email_history", warnings);
     const emailNotifications = buildEmailNotifications(sentAlerts, paperEmailRuns);
+    const signalDensity = buildSignalDensityKpi({ sentAlerts, runLogs });
 
     if ([runLogsResult, sentAlertsResult, paperRunsResult, paperEmailRunsResult].every((result) => result.status === "rejected")) {
       throw new Error(warnings.map((warning) => `${warning.source}: ${warning.message}`).join("; "));
@@ -55,7 +57,7 @@ export default async function handler(req, res) {
       ok: true,
       generatedAt: new Date().toISOString(),
       warnings,
-      summary: buildSummary(runLogs, sentAlerts, emailNotifications, paperModelRuns),
+      summary: buildSummary(runLogs, sentAlerts, emailNotifications, paperModelRuns, signalDensity),
       runLogs,
       sentAlerts,
       paperModelRuns,
@@ -73,7 +75,8 @@ export default async function handler(req, res) {
         universeSize: FUNDING_CARRY_V2_MODEL.universe.length,
         paperRunCount: paperModelRuns.filter((run) => run.model_id === FUNDING_CARRY_V2_MODEL.id).length
       },
-      emailNotifications
+      emailNotifications,
+      signalDensity
     });
   } catch (error) {
     console.error(error);
@@ -109,7 +112,7 @@ function unwrapResult(result, source, warnings) {
   return [];
 }
 
-function buildSummary(runLogs, sentAlerts, emailNotifications = [], paperModelRuns = []) {
+function buildSummary(runLogs, sentAlerts, emailNotifications = [], paperModelRuns = [], signalDensity = null) {
   const sentAlertKeys = new Set(sentAlerts.map((alert) => alert.signal_key).filter(Boolean));
   const groups = new Map();
   for (const group of EXPECTED_GROUPS) {
@@ -158,6 +161,7 @@ function buildSummary(runLogs, sentAlerts, emailNotifications = [], paperModelRu
     latestAlertAt: latestAlert?.sent_at || null,
     totalRunsReturned: runLogs.length,
     totalAlertsReturned: emailNotifications.length,
+    signalDensity: signalDensity || buildSignalDensityKpi({ sentAlerts, runLogs }),
     paperModel: latestPaperRun ? {
       modelId: latestPaperRun.model_id,
       modelVersion: latestPaperRun.model_version || "V3.1 PAPER",

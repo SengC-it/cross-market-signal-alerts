@@ -373,6 +373,13 @@
         <div class="metric"><span>是否发送邮件</span><strong id="latestEmail">--</strong></div>
       </section>
 
+      <section class="section" aria-label="信号密度 KPI">
+        <div class="section-head">
+          <h2>信号密度 KPI（人工决策辅助）</h2>
+        </div>
+        <div class="grid metrics" id="signalDensityKpi"></div>
+      </section>
+
       <section class="section">
         <div class="section-head">
           <h2>分组状态</h2>
@@ -460,7 +467,8 @@
         groupCount: document.querySelector("#groupCount"),
         runCount: document.querySelector("#runCount"),
         alertCount: document.querySelector("#alertCount"),
-        policyFlags: document.querySelector("#policyFlags")
+        policyFlags: document.querySelector("#policyFlags"),
+        signalDensityKpi: document.querySelector("#signalDensityKpi")
       };
 
       const savedSecret = sessionStorage.getItem("signal-dashboard-secret");
@@ -519,9 +527,26 @@
         const emailNotifications = data.emailNotifications || data.sentAlerts || [];
         els.alertCount.textContent = `${emailNotifications.length} 条`;
         renderReleasePolicy(data.signalOnly || {});
+        renderSignalDensity(data.signalDensity || summary.signalDensity || {});
         renderGroupsV2(summary.groups || []);
         renderRuns(data.runLogs || []);
         renderAlertsV2(emailNotifications);
+      }
+
+      function renderSignalDensity(kpi) {
+        const fields = [
+          ["近 7 天信号", kpi.signalsLast7d],
+          ["近 30 天信号", kpi.signalsLast30d],
+          ["近 30 天 TRADE_WATCH", kpi.tradeWatchLast30d],
+          ["近 30 天 Strong OBSERVATION", kpi.strongObservationLast30d],
+          ["近 30 天 SHADOW_ONLY", kpi.shadowLast30d],
+          ["近 30 天研究阻断", kpi.researchBlockedLast30d],
+          ["Strong rank 1–10", kpi.strongRank1To10Last30d],
+          ["Strong rank 11–25", kpi.strongRank11To25Last30d]
+        ];
+        els.signalDensityKpi.innerHTML = fields
+          .map(([label, value]) => `<div class="metric"><span>${escapeHtml(label)}</span><strong>${escapeHtml(String(Number(value) || 0))}</strong></div>`)
+          .join("");
       }
 
       function renderAlertsV2(alerts) {
