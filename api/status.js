@@ -7,6 +7,7 @@ import {
 } from "../lib/storage.js";
 import { isDashboardAuthorizedRequest, setPrivateResponseHeaders } from "../lib/api-auth.js";
 import { FUNDING_CARRY_V2_MODEL, FUNDING_CARRY_V2_MODEL_METADATA } from "../lib/funding-carry-v2-paper.js";
+import { SIGNAL_ONLY_RELEASE } from "../lib/production-signal-policy.js";
 
 const EXPECTED_GROUPS = [
   "dynamic-spot",
@@ -59,6 +60,7 @@ export default async function handler(req, res) {
       sentAlerts,
       paperModelRuns,
       paperEmailRuns,
+      signalOnly: SIGNAL_ONLY_RELEASE,
       fundingCarryV2: {
         modelId: FUNDING_CARRY_V2_MODEL.id,
         modelVersion: FUNDING_CARRY_V2_MODEL.version,
@@ -178,7 +180,7 @@ function buildSummary(runLogs, sentAlerts, emailNotifications = [], paperModelRu
 
 export function buildEmailNotifications(sentAlerts = [], paperModelRuns = []) {
   const legacyNotifications = sentAlerts
-    .filter((alert) => !isSuppressedPaperSignal(alert))
+    .filter((alert) => !isSuppressedPaperSignal(alert) && alert?.payload?.signalTier !== "RESEARCH_ONLY")
     .map((alert) => ({
       ...alert,
       model_version: inferLegacyModelVersion(alert)

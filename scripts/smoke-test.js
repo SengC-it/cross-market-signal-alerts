@@ -2249,7 +2249,10 @@ for (const required of ["BTCUSDT", "方向：做多观察", "推荐指数：94/1
     throw new Error(`Compact spot email missing: ${required}`);
   }
 }
-for (const removed of ["历史样本", "推荐指数拆解", "为什么提醒你", "你可以怎么处理"]) {
+if (!spotEmail.text.includes("历史样本状态：")) {
+  throw new Error("Compact spot email should show the historical sample status required by the SIGNAL-ONLY release");
+}
+for (const removed of ["历史样本表现", "推荐指数拆解", "为什么提醒你", "你可以怎么处理"]) {
   if (spotEmail.text.includes(removed)) {
     throw new Error(`Compact spot email still contains verbose section: ${removed}`);
   }

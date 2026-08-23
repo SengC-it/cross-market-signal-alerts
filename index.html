@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>跨市场信号提醒运行面板</title>
+    <title>合约市场信号提醒与人工决策辅助</title>
     <style>
       :root {
         color-scheme: light;
@@ -195,6 +195,24 @@
         overflow: hidden;
       }
 
+      .release-policy {
+        padding: 18px;
+        background: var(--teal-soft);
+      }
+
+      .release-policy p {
+        margin: 8px 0 0;
+        color: var(--ink);
+        line-height: 1.6;
+      }
+
+      .policy-flags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 12px;
+      }
+
       .section-head {
         display: flex;
         justify-content: space-between;
@@ -326,8 +344,8 @@
     <main class="shell">
       <header class="topbar">
         <div class="title">
-          <h1>跨市场信号提醒运行面板</h1>
-          <p class="subtitle">查看每小时扫描、合约套利、策略触发、邮件发送、数据源警告和系统错误。</p>
+          <h1>合约市场信号提醒与人工决策辅助</h1>
+          <p class="subtitle">扫描市场、发现机会、记录信号与后续表现；所有交易决定均由用户人工完成。</p>
         </div>
         <form class="controls" id="statusForm">
           <input class="secret" id="secretInput" type="password" autocomplete="current-password" placeholder="输入查询密码" />
@@ -341,6 +359,12 @@
         <span id="lastRefresh">尚未刷新</span>
         <span id="warningText"></span>
       </div>
+
+      <section class="section release-policy" aria-label="Signal-only policy">
+        <strong>Signal-only 运行边界</strong>
+        <p>本系统仅提供市场信号和数据分析，不自动开仓、不自动下单、不自动设置仓位或平仓。是否交易、仓位、止盈止损和平仓均由用户自行人工决定。</p>
+        <div class="policy-flags" id="policyFlags"></div>
+      </section>
 
       <section class="grid metrics" aria-label="运行概览">
         <div class="metric"><span>最近执行</span><strong id="latestRun">--</strong></div>
@@ -372,7 +396,7 @@
 
       <section class="section">
         <div class="section-head">
-          <h2>最近邮件提醒</h2>
+          <h2>最近信号记录</h2>
           <span class="pill" id="alertCount">0 条</span>
         </div>
         <div id="sentAlerts"></div>
@@ -435,7 +459,8 @@
         sentAlerts: document.querySelector("#sentAlerts"),
         groupCount: document.querySelector("#groupCount"),
         runCount: document.querySelector("#runCount"),
-        alertCount: document.querySelector("#alertCount")
+        alertCount: document.querySelector("#alertCount"),
+        policyFlags: document.querySelector("#policyFlags")
       };
 
       const savedSecret = sessionStorage.getItem("signal-dashboard-secret");
@@ -493,6 +518,7 @@
         els.runCount.textContent = `${data.runLogs?.length || 0} 条`;
         const emailNotifications = data.emailNotifications || data.sentAlerts || [];
         els.alertCount.textContent = `${emailNotifications.length} 条`;
+        renderReleasePolicy(data.signalOnly || {});
         renderGroupsV2(summary.groups || []);
         renderRuns(data.runLogs || []);
         renderAlertsV2(emailNotifications);
@@ -504,22 +530,42 @@
           return;
         }
         els.sentAlerts.innerHTML = table(
-          ["发送时间", "资产", "市场", "周期", "策略", "模型版本", "推荐指数", "执行计划", "评分拆解", "已发复盘", "历史表现", "触发时间"],
-          alerts.map((alert) => [
-            formatDate(alert.sent_at),
-            alert.asset || "--",
-            alert.payload?.market || "--",
-            alert.interval || "--",
-            `${tierText(alert.payload)} / ${alert.payload?.strategyName || alert.strategy_id || "--"}`,
-            alert.model_version || alert.payload?.modelVersion || "旧版信号模型",
-            alert.recommendation_score == null ? "--" : Math.round(Number(alert.recommendation_score)),
-            executionPlanText(alert.payload?.executionPlan),
-            scoringBreakdownText(alert.payload?.scoringBreakdown),
-            reviewText(alert.payload?.review),
-            historyPerformanceText(alert.payload?.livePerformance),
-            formatDate(alert.trigger_time)
-          ])
+          ["记录时间", "资产", "方向", "信号级别", "生成时间", "模型版本", "参考价", "当前价", "价格漂移", "触发原因", "失效条件", "历史样本状态", "投递", "参考风险", "复盘"],
+          alerts.map((alert) => {
+            const payload = alert.payload || {};
+            return [
+              formatDate(alert.sent_at || alert.trigger_time),
+              alert.asset || "--",
+              directionText(payload),
+              tierText(payload),
+              formatDate(payload.signalAvailableAt || alert.trigger_time),
+              alert.model_version || payload.modelVersion || "--",
+              formatNumber(payload.tradeSpec?.referencePrice ?? payload.close),
+              formatNumber(payload.currentPrice),
+              pct(payload.priceDriftPct),
+              payload.triggerReason || "--",
+              payload.invalidCondition || "--",
+              payload.historicalSampleStatus || "仅供参考，未构成盈利保证",
+              deliveryText(alert, payload),
+              referenceRiskText(payload),
+              reviewText(payload.review)
+            ];
+          })
         );
+      }
+
+      function renderReleasePolicy(policy) {
+        const flags = [
+          ["自动交易", policy.autoTrading === false ? "关闭" : "需核验", policy.autoTrading === false],
+          ["下单路径", policy.orderPlacement === false ? "关闭" : "需核验", policy.orderPlacement === false],
+          ["仓位管理", policy.positionManagement === false ? "关闭" : "需核验", policy.positionManagement === false],
+          ["重复信号保护", policy.duplicateSignalProtection ? "开启" : "需核验", policy.duplicateSignalProtection],
+          ["已处理 K 线保护", policy.processedCandleProtection ? "开启" : "需核验", policy.processedCandleProtection],
+          ["当前价漂移保护", policy.currentPriceGuard ? "开启" : "需核验", policy.currentPriceGuard]
+        ];
+        els.policyFlags.innerHTML = flags
+          .map(([label, value, ok]) => `<span class="pill ${ok ? "ok" : "bad"}">${escapeHtml(label)}：${escapeHtml(value)}</span>`)
+          .join("");
       }
 
       function renderGroupsV2(groups) {
@@ -764,11 +810,33 @@
       }
 
       function tierText(payload) {
-        if (!payload) return "交易级";
+        if (!payload) return "TRADE_WATCH / 高质量人工关注";
+        if (payload.signalTierLabel) return payload.signalTierLabel;
         if (payload.alertTierLabel) return payload.alertTierLabel;
         if (payload.alertTier === "risk") return "风险级";
         if (payload.alertTier === "watch") return "观察级";
-        return "交易级";
+        return "TRADE_WATCH / 高质量人工关注";
+      }
+
+      function directionText(payload) {
+        const value = `${payload?.direction || ""} ${payload?.strategyId || ""}`;
+        if (value.includes("做空") || value.includes("SHORT") || value.includes("空") || value.includes("下跌")) return "SHORT observation";
+        if (value.includes("做多") || value.includes("LONG") || value.includes("多") || value.includes("上涨")) return "LONG observation";
+        return payload?.direction || "观察";
+      }
+
+      function deliveryText(alert, payload) {
+        const mode = payload?.delivery?.mode || alert?.delivery_mode || "EMAIL";
+        if (mode === "EMAIL") return "Email + Web";
+        if (mode === "WEB") return "Web only";
+        if (mode === "SHADOW_ONLY") return "Shadow record only";
+        return mode;
+      }
+
+      function referenceRiskText(payload) {
+        const spec = payload?.tradeSpec;
+        if (!spec) return "REFERENCE ONLY / 用户人工决定";
+        return `SL ${formatNumber(spec.stopLoss)} / TP ${formatNumber(spec.takeProfit)} / REFERENCE ONLY`;
       }
 
       function executionPlanText(plan) {
