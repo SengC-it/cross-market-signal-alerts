@@ -18,6 +18,7 @@ import {
   fixedM3Window,
   loadM3RealInput,
   normalizeKlineRows,
+  sha256CanonicalTextFile,
   sha256File,
   summarizeExecutionCostModel,
   validateCandleSeries,
@@ -257,7 +258,7 @@ assert.equal(
 );
 assert.equal(buildManifest(manifestArgs).sources.spotVision, M3_REAL_DATA_SOURCES.spotVision);
 assert.equal(
-  await sha256File("artifacts/m3/manifest.json"),
+  await sha256CanonicalTextFile("artifacts/m3/manifest.json"),
   M3_REAL_MANIFEST_SHA256,
   "the committed manifest must remain frozen"
 );
@@ -298,6 +299,21 @@ for (const strategyId of DYNAMIC_STRATEGY_IDS) {
 
 const temp = await mkdtemp(join(tmpdir(), "m3-real-data-test-"));
 try {
+  const lfManifestPath = join(temp, "manifest-lf.json");
+  const crlfManifestPath = join(temp, "manifest-crlf.json");
+  await writeFile(lfManifestPath, '{"a":1}\n', "utf8");
+  await writeFile(crlfManifestPath, '{"a":1}\r\n', "utf8");
+  assert.equal(
+    await sha256CanonicalTextFile(lfManifestPath),
+    await sha256CanonicalTextFile(crlfManifestPath),
+    "canonical manifest hashes must be stable across LF and CRLF"
+  );
+  assert.notEqual(
+    await sha256File(lfManifestPath),
+    await sha256File(crlfManifestPath),
+    "raw file hashes must remain sensitive to line endings"
+  );
+
   const checksumPath = join(temp, "checksum.txt");
   await writeFile(checksumPath, "m3-real-data\n", "utf8");
   assert.equal((await sha256File(checksumPath)).length, 64);

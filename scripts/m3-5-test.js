@@ -1,16 +1,19 @@
 import assert from "node:assert/strict";
-import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { spawnSync } from "node:child_process";
 import { buildFailureDecompositionReport, decomposeFrozenValidation } from "../lib/validation/failure-decomposition.js";
 import { CONFIG } from "../lib/config.js";
-import { M3_REAL_DATA_WINDOW, M3_REAL_MANIFEST_SHA256 } from "../lib/validation/real-data.js";
+import {
+  M3_REAL_DATA_WINDOW,
+  M3_REAL_MANIFEST_SHA256,
+  sha256CanonicalTextFile
+} from "../lib/validation/real-data.js";
 
 const ROOT = process.cwd();
 const FROZEN_BASE_SHA = "f8a6f5c4f1b8b129dd866cd29638db8b57d228f0";
 
 const manifestBytes = await readFile("artifacts/m3/manifest.json");
-assert.equal(createHash("sha256").update(manifestBytes).digest("hex"), M3_REAL_MANIFEST_SHA256);
+assert.equal(await sha256CanonicalTextFile("artifacts/m3/manifest.json"), M3_REAL_MANIFEST_SHA256);
 const manifest = JSON.parse(manifestBytes);
 assert.equal(manifest.windowStart, M3_REAL_DATA_WINDOW.start);
 assert.equal(manifest.windowEnd, M3_REAL_DATA_WINDOW.end);
