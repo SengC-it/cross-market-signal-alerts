@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node scripts/smoke-test.js && node scripts/m2b-test.js && node scripts/m3-test.js && node scripts/m3-production-test.js && node scripts/m3-real-data-test.js && node scripts/m3-5-test.js && node scripts/m3-6-test.js && node scripts/m3-7-test.js && node scripts/m3-7-readiness-test.js",
+    "test": "node scripts/smoke-test.js && node scripts/m2b-test.js && node scripts/m3-test.js && node scripts/m3-production-test.js && node scripts/m3-real-data-test.js && node scripts/m3-5-test.js && node scripts/m3-6-test.js && node scripts/m3-7-test.js && node scripts/m3-7-readiness-test.js && node scripts/m3-7-postmortem-test.js",
     "test:m3-production": "node scripts/m3-production-test.js",
     "validate:m3": "node scripts/m3-validation.js",
     "validate:m3:sample": "node scripts/m3-validation-sample.js",
@@ -16,6 +16,7 @@
     "research:m3-6": "node scripts/research-m3-6.js",
     "test:m3-6": "node scripts/m3-6-test.js",
     "research:m3-7": "node scripts/research-m3-7.js",
+    "postmortem:m3-7": "node scripts/m3-7-postmortem.js",
     "test:m3-7": "node scripts/m3-7-test.js",
     "prepare:m3-7-data": "node scripts/prepare-m3-7-data.js",
     "inverse-report": "node scripts/inverse-signal-report.js",
