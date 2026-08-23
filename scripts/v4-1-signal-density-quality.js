@@ -5,8 +5,9 @@ import { evaluateDynamicProductionSignal, resolveDynamicPoolExistingAssets } fro
 import { rankDynamicPoolTickerDetails } from "../lib/signal-density-pool.js";
 import { SIGNAL_DENSITY_CONFIG } from "../lib/signal-density-config.js";
 import { directionalReturn, summarizeRankQuality, classifyRank11To25 } from "../lib/validation/signal-density-quality.js";
+import { loadHistoricalDataset, loadHistoricalUniverseIndex } from "../lib/validation/historical-universe.js";
 
-const CACHE_ROOT = process.env.V4_1_SIGNAL_CACHE_DIR || ".backtest-cache/binance-vision-futures-1h";
+const CACHE_ROOT = process.env.V4_1_SIGNAL_CACHE_DIR || ".local/m3-data";
 const START = Date.parse("2026-01-01T00:00:00.000Z");
 const END = Date.parse("2026-07-01T00:00:00.000Z");
 const MONTHS = ["2026-01", "2026-02", "2026-03", "2026-04", "2026-05", "2026-06"];
@@ -20,21 +21,27 @@ console.log(JSON.stringify(result, null, 2));
 
 function runQualityCheck() {
   const manifestPath = "production_dynamic_backtest.json";
-  if (!existsSync(CACHE_ROOT) || !existsSync(manifestPath)) {
-    throw new Error("V4_1_SIGNAL_DENSITY_DATA_REQUIRED: fixed local historical cache and manifest are required");
-  }
-  JSON.parse(readFileSync(manifestPath, "utf8"));
   const excluded = resolveDynamicPoolExistingAssets({ group: "all" });
-  const cacheAssets = readdirSync(CACHE_ROOT, { withFileTypes: true })
-    .filter((entry) => entry.isDirectory() && entry.name.endsWith("USDT"))
-    .map((entry) => entry.name)
-    .filter((asset) => asset === "BTCUSDT" || !excluded.has(asset))
-    .sort();
-  const requestedSymbols = [
-    "BTCUSDT",
-    ...cacheAssets.filter((asset) => asset !== "BTCUSDT").slice(0, 250)
-  ];
-  const datasets = requestedSymbols.map(loadDataset).filter(Boolean);
+  const usesHistoricalUniverse = existsSync(join(CACHE_ROOT, "index.json"));
+  let datasets;
+  if (usesHistoricalUniverse) {
+    const historicalIndex = loadHistoricalUniverseIndex({ dataDir: CACHE_ROOT });
+    datasets = historicalIndex.datasets
+      .map((descriptor) => loadM3Dataset(descriptor))
+      .filter(Boolean);
+  } else {
+    if (!existsSync(CACHE_ROOT) || !existsSync(manifestPath)) {
+      throw new Error("V4_1_SIGNAL_DENSITY_DATA_REQUIRED: fixed local historical cache and manifest are required");
+    }
+    JSON.parse(readFileSync(manifestPath, "utf8"));
+    const cacheAssets = readdirSync(CACHE_ROOT, { withFileTypes: true })
+      .filter((entry) => entry.isDirectory() && entry.name.endsWith("USDT"))
+      .map((entry) => entry.name)
+      .filter((asset) => asset === "BTCUSDT" || !excluded.has(asset))
+      .sort();
+    const requestedSymbols = ["BTCUSDT", ...cacheAssets.filter((asset) => asset !== "BTCUSDT")];
+    datasets = requestedSymbols.map(loadDataset).filter(Boolean);
+  }
   const benchmark = datasets.find((dataset) => dataset.asset === "BTCUSDT");
   if (!benchmark || datasets.length < 3) {
     throw new Error("V4_1_SIGNAL_DENSITY_DATA_REQUIRED: BTCUSDT and a multi-asset fixed universe are required");
@@ -149,6 +156,28 @@ function loadDataset(asset) {
   if (candles.length < 48) return null;
   return {
     asset,
+    candles,
+    byTime: new Map(candles.map((candle, index) => [candle.openTime, { ...candle, index }]))
+  };
+}
+
+function loadM3Dataset(descriptor) {
+  const raw = loadHistoricalDataset({ dataDir: CACHE_ROOT, descriptor });
+  const rows = (raw.candles || [])
+    .map((candle) => ({
+      openTime: Number(candle.openTime),
+      close: Number(candle.close),
+      high: Number(candle.high),
+      low: Number(candle.low),
+      volume: Number(candle.volume),
+      quoteVolume: Number(candle.quoteVolume)
+    }))
+    .filter((candle) => Number.isFinite(candle.openTime) && Number.isFinite(candle.close) && candle.close > 0)
+    .sort((left, right) => left.openTime - right.openTime);
+  const candles = rows.filter((candle) => candle.openTime >= START - 36 * 3600 * 1000 && candle.openTime < END + 9 * 3600 * 1000);
+  if (candles.length < 48) return null;
+  return {
+    asset: raw.asset || descriptor.asset,
     candles,
     byTime: new Map(candles.map((candle, index) => [candle.openTime, { ...candle, index }]))
   };
