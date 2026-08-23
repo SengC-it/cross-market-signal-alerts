@@ -1,5 +1,5 @@
-import { existsSync, readFileSync, readdirSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { CONFIG } from "../lib/config.js";
 import { evaluateDynamicProductionSignal, resolveDynamicPoolExistingAssets } from "../lib/strategies/dynamic-production.js";
 import { rankDynamicPoolTickerDetails } from "../lib/signal-density-pool.js";
@@ -11,8 +11,11 @@ const START = Date.parse("2026-01-01T00:00:00.000Z");
 const END = Date.parse("2026-07-01T00:00:00.000Z");
 const MONTHS = ["2026-01", "2026-02", "2026-03", "2026-04", "2026-05", "2026-06"];
 const ROUND_TRIP_COST = 0.0012;
+const ARTIFACT_PATH = "artifacts/v4/v4-1-signal-density-quality.json";
 
 const result = runQualityCheck();
+mkdirSync(dirname(ARTIFACT_PATH), { recursive: true });
+writeFileSync(ARTIFACT_PATH, `${JSON.stringify(result, null, 2)}\n`, "utf8");
 console.log(JSON.stringify(result, null, 2));
 
 function runQualityCheck() {
@@ -87,6 +90,7 @@ function runQualityCheck() {
 
   const rank1To10 = summarizeRankQuality(samplesByBand["1-10"], { tradingCost: ROUND_TRIP_COST });
   const rank11To25 = summarizeRankQuality(samplesByBand["11-25"], { tradingCost: ROUND_TRIP_COST });
+  const rank11To25Policy = classifyRank11To25(rank11To25);
   return {
     schemaVersion: "v4.1-signal-density-quality-v1",
     dataSource: "fixed local Binance Vision USD-M 1h cache; no network fetch",
@@ -112,7 +116,11 @@ function runQualityCheck() {
     },
     rank1To10,
     rank11To25,
-    rank11To25Policy: classifyRank11To25(rank11To25),
+    rank11To25Policy,
+    estimatedHumanVisibleSignalsPerMonth: rank1To10.signalsPerMonth
+      + (rank11To25Policy.classification === "STRONG_OBSERVATION_EMAIL"
+        ? rank11To25.signalsPerMonth
+        : 0),
     parameterSearchPerformed: false,
     thresholdsChanged: false
   };

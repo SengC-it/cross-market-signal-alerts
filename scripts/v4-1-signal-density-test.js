@@ -21,6 +21,13 @@ import { rankDynamicPoolTickerDetails } from "../lib/signal-density-pool.js";
 import { SIGNAL_DENSITY_CONFIG } from "../lib/signal-density-config.js";
 import { buildSignalDensityKpi } from "../lib/signal-density.js";
 import { classifyRank11To25, summarizeRankQuality } from "../lib/validation/signal-density-quality.js";
+import { CONFIG } from "../lib/config.js";
+import {
+  FROZEN_RANK_11_TO_25_QUALITY_POLICY,
+  RANK_11_TO_25_EMAIL_CLASSIFICATION,
+  RANK_11_TO_25_SHADOW_CLASSIFICATION,
+  resolveRank11To25QualityPolicy
+} from "../lib/signal-density-quality-policy.js";
 
 const scannerSource = readFileSync(new URL("../lib/scanner.js", import.meta.url), "utf8");
 const dashboardSource = readFileSync(new URL("../index.html", import.meta.url), "utf8");
@@ -73,12 +80,59 @@ assert.equal(genericObservation.emailEligibleSignals.length, 0);
 assert.equal(genericObservation.webSignals.length, 1);
 
 const strongObservation = routeSignalsByProductionPolicy({
-  candidates: [fixture("strong-observation", "dynamic_relative_strength_breakout", "watch", 95)],
+  candidates: [{
+    ...fixture("strong-observation", "dynamic_relative_strength_breakout", "watch", 95),
+    dynamicPoolRank: 1,
+    dynamicPoolRankBand: "1-10"
+  }],
   strengthObservationEmailEnabled: true,
   limit: 4
 });
 assert.equal(strongObservation.emailEligibleSignals.length, 1);
 assert.equal(strongObservation.emailEligibleSignals[0].signalTier, SIGNAL_TIERS.OBSERVATION);
+
+const rank11Email = routeSignalsByProductionPolicy({
+  candidates: [{
+    ...fixture("rank11-email", "dynamic_relative_strength_breakout", "watch", 95),
+    dynamicPoolRank: 11,
+    dynamicPoolRankBand: "11-25"
+  }],
+  strengthObservationEmailEnabled: true,
+  rank11To25QualityPolicy: {
+    classification: RANK_11_TO_25_EMAIL_CLASSIFICATION,
+    failClosed: false
+  },
+  limit: 4
+});
+assert.equal(rank11Email.emailEligibleSignals.length, 1);
+
+for (const [name, policy] of [
+  ["rank11-fail", { classification: RANK_11_TO_25_SHADOW_CLASSIFICATION, failClosed: false }],
+  ["rank11-missing", resolveRank11To25QualityPolicy(null)]
+]) {
+  const route = routeSignalsByProductionPolicy({
+    candidates: [{
+      ...fixture(name, "dynamic_relative_strength_breakout", "watch", 95),
+      dynamicPoolRank: 11,
+      dynamicPoolRankBand: "11-25"
+    }],
+    strengthObservationEmailEnabled: true,
+    rank11To25QualityPolicy: policy,
+    limit: 4
+  });
+  assert.equal(route.emailEligibleSignals.length, 0);
+  assert.equal(route.webSignals.length, 1);
+}
+
+assert.equal(FROZEN_RANK_11_TO_25_QUALITY_POLICY.classification, RANK_11_TO_25_SHADOW_CLASSIFICATION);
+assert.equal(CONFIG.relativeStrengthMinMomentum24h, 0.08);
+assert.equal(CONFIG.relativeStrengthMaxMomentum24h, 0.10);
+assert.equal(CONFIG.relativeStrengthMinRelativeStrength24h, 0.12);
+assert.equal(CONFIG.relativeStrengthMinVolumeMultiple, 1.5);
+assert.equal(CONFIG.relativeStrengthMaxVolumeMultiple, 2);
+assert.equal(CONFIG.dynamicSpotPoolMinQuoteVolume, 50_000_000);
+assert.equal(CONFIG.assetSignalCooldownHours, 24);
+assert.equal(CONFIG.dynamicTradeMinRecommendationScore, 85);
 
 const capacityInput = Array.from({ length: 6 }, (_, index) => applyProductionSignalPolicy(
   fixture(`capacity-${index}`, "existing_strategy", "trade", 100 - index)
