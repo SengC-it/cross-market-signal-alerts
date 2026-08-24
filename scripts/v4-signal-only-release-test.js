@@ -31,15 +31,16 @@ const strengthObservation = classifyProductionSignal({
 });
 assert.equal(strengthObservation.tier, SIGNAL_TIERS.OBSERVATION);
 assert.equal(strengthObservation.emailEligible, false);
-assert.match(strengthObservation.historicalSampleStatus, /NOT_VALIDATED/);
+assert.match(strengthObservation.historicalSampleStatus, /LEGACY_OR_NON_EXTENSION/);
 
 const strengthTradeWatch = classifyProductionSignal({
   strategyId: "dynamic_relative_strength_breakout",
   alertTier: "trade"
 });
-assert.equal(strengthTradeWatch.tier, SIGNAL_TIERS.TRADE_WATCH);
-assert.equal(strengthTradeWatch.emailEligible, true);
-assert.match(strengthTradeWatch.reason, /不宣称已验证盈利/);
+assert.equal(strengthTradeWatch.tier, SIGNAL_TIERS.OBSERVATION);
+assert.equal(strengthTradeWatch.emailEligible, false);
+assert.equal(strengthTradeWatch.webRecorded, true);
+assert.match(strengthTradeWatch.reason, /legacy\/non-extension.*仅后台观察/);
 
 const weakness = classifyProductionSignal({
   strategyId: "dynamic_relative_weakness_breakdown",
@@ -83,10 +84,11 @@ const optionalObservation = routeSignalsByProductionPolicy({
   observationEmailEnabled: true,
   limit: 2
 });
-assert.equal(optionalObservation.emailCandidates.length, 1);
-assert.equal(optionalObservation.emailCandidates[0].signalTier, SIGNAL_TIERS.OBSERVATION);
-assert.equal(optionalObservation.emailCandidates[0].delivery.mode, "EMAIL");
-assert.equal(optionalObservation.emailCandidates[0].delivery.emailSuppressed, false);
+assert.equal(optionalObservation.emailCandidates.length, 0);
+assert.equal(optionalObservation.webSignals.length, 1);
+assert.equal(optionalObservation.webSignals[0].signalTier, SIGNAL_TIERS.OBSERVATION);
+assert.equal(optionalObservation.webSignals[0].delivery.mode, "WEB");
+assert.equal(optionalObservation.webSignals[0].delivery.emailSuppressed, true);
 
 const decorated = applyProductionSignalPolicy(fixture("manual-only", "dynamic_relative_strength_breakout"));
 assert.equal(decorated.referenceRiskOnly, true);

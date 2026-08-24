@@ -88,8 +88,10 @@ const strongObservation = routeSignalsByProductionPolicy({
   strengthObservationEmailEnabled: true,
   limit: 4
 });
-assert.equal(strongObservation.emailEligibleSignals.length, 1);
-assert.equal(strongObservation.emailEligibleSignals[0].signalTier, SIGNAL_TIERS.OBSERVATION);
+assert.equal(strongObservation.emailEligibleSignals.length, 0);
+assert.equal(strongObservation.webSignals.length, 1);
+assert.equal(strongObservation.webSignals[0].signalTier, SIGNAL_TIERS.OBSERVATION);
+assert.equal(strongObservation.webSignals[0].delivery.mode, "WEB");
 
 const rank11Email = routeSignalsByProductionPolicy({
   candidates: [{
@@ -104,7 +106,10 @@ const rank11Email = routeSignalsByProductionPolicy({
   },
   limit: 4
 });
-assert.equal(rank11Email.emailEligibleSignals.length, 1);
+assert.equal(rank11Email.emailEligibleSignals.length, 0);
+assert.equal(rank11Email.webSignals.length, 1);
+assert.equal(rank11Email.webSignals[0].signalTier, SIGNAL_TIERS.OBSERVATION);
+assert.equal(rank11Email.webSignals[0].delivery.mode, "WEB");
 
 for (const [name, policy] of [
   ["rank11-fail", { classification: RANK_11_TO_25_SHADOW_CLASSIFICATION, failClosed: false }],

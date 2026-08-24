@@ -14,6 +14,7 @@ import {
 import {
   evaluateStrongExtensionOpportunity,
   STRONG_CORE_PROFILE,
+  STRONG_CORE_VARIANT,
   STRONG_EXTENSION_PROFILE,
   STRONG_EXTENSION_VARIANT,
   isStrongExtensionPoolCandidate
@@ -130,15 +131,57 @@ assert.equal(missingExtension.shadowOnlySignals.length, 1);
 const coreSignal = {
   ...extensionSignal,
   signalKey: "core-test",
-  signalVariant: STRONG_CORE_PROFILE.variant,
+  signalVariant: STRONG_CORE_VARIANT,
   dynamicPoolRank: 1
 };
 const coreRouted = routeSignalsByProductionPolicy({
   candidates: [coreSignal],
-  strengthObservationEmailEnabled: true,
-  rank11To25QualityPolicy: { classification: "SHADOW_OBSERVATION_ONLY", failClosed: false }
+  strengthObservationEmailEnabled: true
 });
-assert.equal(coreRouted.emailCandidates.length, 1);
+assert.equal(coreRouted.emailCandidates.length, 0);
+assert.equal(coreRouted.observationSignals.length, 1);
+assert.equal(coreRouted.observationSignals[0].signalTier, SIGNAL_TIERS.OBSERVATION);
+assert.equal(coreRouted.observationSignals[0].delivery.mode, "WEB");
+assert.equal(coreRouted.observationSignals[0].delivery.emailSuppressed, true);
+
+const combinedRouted = routeSignalsByProductionPolicy({
+  candidates: [coreSignal, extensionSignal],
+  strengthObservationEmailEnabled: true,
+  strongExtensionQualityPolicy: passPolicy
+});
+assert.equal(combinedRouted.emailCandidates.length, 1);
+assert.equal(combinedRouted.emailCandidates[0].signalVariant, STRONG_EXTENSION_VARIANT);
+assert.equal(combinedRouted.observationSignals.length, 1);
+assert.equal(combinedRouted.observationSignals[0].signalVariant, STRONG_CORE_VARIANT);
+assert.equal(combinedRouted.observationSignals[0].delivery.mode, "WEB");
+assert.equal(combinedRouted.observationSignals[0].delivery.emailSuppressed, true);
+
+const legacyStrengthTrade = {
+  ...extensionSignal,
+  signalKey: "legacy-strength-trade",
+  signalVariant: undefined,
+  alertTier: "trade"
+};
+const legacyRouted = routeSignalsByProductionPolicy({
+  candidates: [legacyStrengthTrade],
+  strengthObservationEmailEnabled: true,
+  strongExtensionQualityPolicy: passPolicy
+});
+assert.equal(legacyRouted.emailCandidates.length, 0);
+assert.equal(legacyRouted.webSignals.length, 1);
+assert.equal(legacyRouted.webSignals[0].delivery.mode, "WEB");
+assert.equal(legacyRouted.webSignals[0].delivery.emailSuppressed, true);
+
+const allStrengthRouted = routeSignalsByProductionPolicy({
+  candidates: [legacyStrengthTrade, coreSignal, extensionSignal],
+  strengthObservationEmailEnabled: true,
+  strongExtensionQualityPolicy: passPolicy
+});
+assert.equal(allStrengthRouted.emailCandidates.length, 1);
+assert.equal(allStrengthRouted.emailCandidates[0].signalVariant, STRONG_EXTENSION_VARIANT);
+assert.equal(allStrengthRouted.webSignals.length, 2);
+assert.ok(allStrengthRouted.webSignals.some((signal) => signal.signalVariant === STRONG_CORE_VARIANT));
+assert.ok(allStrengthRouted.webSignals.some((signal) => signal.signalVariant === undefined));
 
 const weakRouted = routeSignalsByProductionPolicy({
   candidates: [{ ...extensionSignal, signalKey: "weak-test", strategyId: "dynamic_relative_weakness_breakdown" }],
