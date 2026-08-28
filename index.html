@@ -294,6 +294,191 @@
         display: none;
       }
 
+      .signal-feed {
+        background: var(--panel);
+      }
+
+      .signal-item {
+        border-bottom: 1px solid var(--line);
+      }
+
+      .signal-item:last-child {
+        border-bottom: 0;
+      }
+
+      .signal-item[open] {
+        background: #fbfdfc;
+      }
+
+      .signal-summary {
+        display: grid;
+        grid-template-columns: minmax(240px, 1.25fr) 104px minmax(230px, 1fr) minmax(150px, 0.7fr) auto;
+        grid-template-areas: "identity time prices review more";
+        gap: 14px;
+        align-items: center;
+        padding: 14px 18px;
+        cursor: pointer;
+        list-style: none;
+      }
+
+      .signal-summary::-webkit-details-marker {
+        display: none;
+      }
+
+      .signal-identity {
+        grid-area: identity;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 7px;
+        min-width: 0;
+      }
+
+      .signal-asset {
+        font-weight: 800;
+        letter-spacing: 0.01em;
+        overflow-wrap: anywhere;
+      }
+
+      .signal-tag {
+        display: inline-flex;
+        align-items: center;
+        min-height: 24px;
+        padding: 2px 8px;
+        border-radius: 999px;
+        font-size: 11px;
+        line-height: 1.25;
+        font-weight: 800;
+      }
+
+      .signal-tag.long {
+        color: #18794e;
+        background: #e5f4eb;
+      }
+
+      .signal-tag.short {
+        color: var(--red);
+        background: var(--red-soft);
+      }
+
+      .signal-tag.neutral {
+        color: var(--muted);
+        background: #edf1ef;
+      }
+
+      .signal-tag.tier-watch {
+        color: #48637e;
+        background: #edf3f8;
+      }
+
+      .signal-tag.tier-observation {
+        color: #716342;
+        background: #f4f0e7;
+      }
+
+      .signal-tag.tier-muted {
+        color: #626c68;
+        background: #eff2f1;
+      }
+
+      .signal-time {
+        grid-area: time;
+        color: var(--muted);
+        font-size: 12px;
+        white-space: nowrap;
+      }
+
+      .signal-prices {
+        grid-area: prices;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: baseline;
+        gap: 5px 9px;
+        min-width: 0;
+        font-size: 13px;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .signal-price-flow {
+        color: var(--ink);
+      }
+
+      .signal-drift {
+        color: var(--muted);
+        font-weight: 700;
+      }
+
+      .signal-review {
+        grid-area: review;
+        font-size: 13px;
+        font-weight: 800;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .signal-review.positive {
+        color: #18794e;
+      }
+
+      .signal-review.negative {
+        color: var(--red);
+      }
+
+      .signal-review.neutral {
+        color: var(--muted);
+      }
+
+      .signal-more {
+        grid-area: more;
+        justify-self: end;
+        color: var(--teal);
+        font-size: 12px;
+        font-weight: 800;
+        white-space: nowrap;
+      }
+
+      .signal-more::after {
+        content: "›";
+        display: inline-block;
+        margin-left: 4px;
+        transition: transform 0.16s ease;
+      }
+
+      .signal-item[open] .signal-more::after {
+        transform: rotate(90deg);
+      }
+
+      .signal-detail {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 14px 18px;
+        padding: 14px 18px 18px;
+        border-top: 1px solid #e8eeeb;
+      }
+
+      .signal-detail-item {
+        min-width: 0;
+      }
+
+      .signal-detail-item.wide {
+        grid-column: 1 / -1;
+      }
+
+      .signal-detail-label {
+        display: block;
+        margin-bottom: 4px;
+        color: var(--muted);
+        font-size: 11px;
+        font-weight: 700;
+      }
+
+      .signal-detail-value {
+        display: block;
+        font-size: 13px;
+        line-height: 1.55;
+        overflow-wrap: anywhere;
+        white-space: pre-wrap;
+      }
+
       @media (max-width: 840px) {
         .topbar {
           align-items: stretch;
@@ -305,6 +490,19 @@
         }
 
         .metrics {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .signal-summary {
+          grid-template-columns: minmax(0, 1fr) auto;
+          grid-template-areas:
+            "identity time"
+            "prices prices"
+            "review more";
+          row-gap: 9px;
+        }
+
+        .signal-detail {
           grid-template-columns: repeat(2, minmax(0, 1fr));
         }
       }
@@ -336,6 +534,34 @@
           padding: 12px;
           display: grid;
           gap: 8px;
+        }
+
+        .signal-summary {
+          grid-template-areas:
+            "identity time"
+            "prices prices"
+            "review review"
+            "more more";
+          column-gap: 8px;
+          padding: 13px 12px;
+        }
+
+        .signal-time {
+          justify-self: end;
+          font-size: 11px;
+        }
+
+        .signal-more {
+          margin-top: 1px;
+        }
+
+        .signal-detail {
+          grid-template-columns: 1fr;
+          padding: 13px 12px 16px;
+        }
+
+        .signal-detail-item.wide {
+          grid-column: auto;
         }
       }
     </style>
@@ -551,32 +777,100 @@
 
       function renderAlertsV2(alerts) {
         if (!alerts.length) {
-          els.sentAlerts.innerHTML = `<div class="empty">最近没有邮件提醒记录。</div>`;
+          els.sentAlerts.innerHTML = `<div class="empty">最近没有信号记录。</div>`;
           return;
         }
-        els.sentAlerts.innerHTML = table(
-          ["记录时间", "资产", "方向", "信号级别", "生成时间", "模型版本", "参考价", "当前价", "价格漂移", "触发原因", "失效条件", "历史样本状态", "投递", "参考风险", "复盘"],
-          alerts.map((alert) => {
-            const payload = alert.payload || {};
-            return [
-              formatDate(alert.sent_at || alert.trigger_time),
-              alert.asset || "--",
-              directionText(payload),
-              tierText(payload),
-              formatDate(payload.signalAvailableAt || alert.trigger_time),
-              alert.model_version || payload.modelVersion || "--",
-              formatNumber(payload.tradeSpec?.referencePrice ?? payload.close),
-              formatNumber(payload.currentPrice),
-              pct(payload.priceDriftPct),
-              payload.triggerReason || "--",
-              payload.invalidCondition || "--",
-              payload.historicalSampleStatus || "仅供参考，未构成盈利保证",
-              deliveryText(alert, payload),
-              referenceRiskText(payload),
-              reviewText(payload.review)
-            ];
-          })
-        );
+        els.sentAlerts.innerHTML = `<div class="signal-feed">${alerts.map(renderAlertCard).join("")}</div>`;
+      }
+
+      function renderAlertCard(alert) {
+        const payload = alert.payload || {};
+        const direction = directionText(payload);
+        const tier = tierText(payload);
+        const review = reviewSummary(payload.review);
+        const tradeSpec = payload.tradeSpec || payload.executionPlan || {};
+        const referencePrice = tradeSpec.referencePrice ?? payload.close;
+        const detailItems = [
+          ["信号生成时间", formatDate(payload.signalAvailableAt || alert.trigger_time)],
+          ["模型版本", alert.model_version || payload.modelVersion || "--"],
+          ["触发原因", payload.triggerReason || "--", true],
+          ["失效条件", payload.invalidCondition || "--", true],
+          ["历史样本状态", payload.historicalSampleStatus || "仅供参考，未构成盈利保证", true],
+          ["投递", deliveryText(alert, payload)],
+          ["止损", formatNumber(tradeSpec.stopLoss)],
+          ["止盈", formatNumber(tradeSpec.takeProfit)],
+          ["参考风险", referenceRiskText(payload), true],
+          ["完整复盘", reviewText(payload.review), true]
+        ];
+
+        return `<details class="signal-item">
+          <summary class="signal-summary">
+            <span class="signal-identity">
+              <span class="signal-asset">${escapeHtml(displayText(alert.asset))}</span>
+              <span class="signal-tag ${directionClass(direction)}">${escapeHtml(direction)}</span>
+              <span class="signal-tag ${tierClass(tier)}" aria-label="信号级别">${escapeHtml(tier)}</span>
+            </span>
+            <span class="signal-time">${escapeHtml(formatDate(alert.sent_at || alert.trigger_time))}</span>
+            <span class="signal-prices">
+              <span class="signal-price-flow">参考 ${escapeHtml(formatNumber(referencePrice))} → 当前 ${escapeHtml(formatNumber(payload.currentPrice))}</span>
+              <span class="signal-drift" aria-label="价格漂移">${escapeHtml(pct(payload.priceDriftPct))}</span>
+            </span>
+            <span class="signal-review ${review.tone}">${escapeHtml(review.text)}</span>
+            <span class="signal-more">查看详情</span>
+          </summary>
+          <div class="signal-detail">${detailItems.map(([label, value, wide]) => `
+            <div class="signal-detail-item${wide ? " wide" : ""}">
+              <span class="signal-detail-label">${escapeHtml(label)}</span>
+              <span class="signal-detail-value">${escapeHtml(displayText(value))}</span>
+            </div>`).join("")}
+          </div>
+        </details>`;
+      }
+
+      function reviewSummary(review) {
+        if (review?.status === "reviewed") {
+          if (isFiniteValue(review.returnPct)) {
+            return returnSummary("已复盘", review.returnPct);
+          }
+          return { text: "已复盘", tone: "neutral" };
+        }
+        if (review?.status === "pending" && isFiniteValue(review.returnPct)) {
+          return returnSummary("监控中", review.returnPct);
+        }
+        if (review?.status === "pending" && isFiniteValue(review.latestMarkedReturn)) {
+          return returnSummary("组合监控中", review.latestMarkedReturn);
+        }
+        return { text: "待复盘", tone: "neutral" };
+      }
+
+      function returnSummary(label, value) {
+        const number = Number(value);
+        return {
+          text: `${label} ${signedPct(number)}`,
+          tone: number > 0 ? "positive" : number < 0 ? "negative" : "neutral"
+        };
+      }
+
+      function isFiniteValue(value) {
+        return value != null && Number.isFinite(Number(value));
+      }
+
+      function signedPct(value) {
+        const formatted = pct(value);
+        return Number(value) > 0 ? `+${formatted}` : formatted;
+      }
+
+      function directionClass(direction) {
+        if (direction === "LONG") return "long";
+        if (direction === "SHORT") return "short";
+        return "neutral";
+      }
+
+      function tierClass(tier) {
+        const value = String(tier).toUpperCase();
+        if (value.includes("TRADE_WATCH") || value.includes("TRADE WATCH")) return "tier-watch";
+        if (value.includes("OBSERVATION") || value.includes("观察")) return "tier-observation";
+        return "tier-muted";
       }
 
       function renderReleasePolicy(policy) {
@@ -836,22 +1130,22 @@
 
       function tierText(payload) {
         if (!payload) return "TRADE_WATCH / 高质量人工关注";
-        if (payload.signalTierLabel) return payload.signalTierLabel;
-        if (payload.alertTierLabel) return payload.alertTierLabel;
+        if (payload.signalTierLabel) return displayText(payload.signalTierLabel);
+        if (payload.alertTierLabel) return displayText(payload.alertTierLabel);
         if (payload.alertTier === "risk") return "风险级";
         if (payload.alertTier === "watch") return "观察级";
         return "TRADE_WATCH / 高质量人工关注";
       }
 
       function directionText(payload) {
-        const value = `${payload?.direction || ""} ${payload?.strategyId || ""}`;
-        if (value.includes("做空") || value.includes("SHORT") || value.includes("空") || value.includes("下跌")) return "SHORT observation";
-        if (value.includes("做多") || value.includes("LONG") || value.includes("多") || value.includes("上涨")) return "LONG observation";
-        return payload?.direction || "观察";
+        const value = `${displayText(payload?.direction, "")} ${displayText(payload?.strategyId, "")}`.toUpperCase();
+        if (value.includes("做空") || value.includes("SHORT") || value.includes("空") || value.includes("下跌")) return "SHORT";
+        if (value.includes("做多") || value.includes("LONG") || value.includes("多") || value.includes("上涨")) return "LONG";
+        return "观察";
       }
 
       function deliveryText(alert, payload) {
-        const mode = payload?.delivery?.mode || alert?.delivery_mode || "EMAIL";
+        const mode = displayText(payload?.delivery?.mode || alert?.delivery_mode || "EMAIL");
         if (mode === "EMAIL") return "Email + Web";
         if (mode === "WEB") return "Web only";
         if (mode === "SHADOW_ONLY") return "Shadow record only";
@@ -859,9 +1153,19 @@
       }
 
       function referenceRiskText(payload) {
-        const spec = payload?.tradeSpec;
+        const spec = payload?.tradeSpec || payload?.executionPlan;
         if (!spec) return "REFERENCE ONLY / 用户人工决定";
         return `SL ${formatNumber(spec.stopLoss)} / TP ${formatNumber(spec.takeProfit)} / REFERENCE ONLY`;
+      }
+
+      function displayText(value, fallback = "--") {
+        if (value == null || value === "") return fallback;
+        if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") return String(value);
+        try {
+          return JSON.stringify(value);
+        } catch {
+          return fallback;
+        }
       }
 
       function executionPlanText(plan) {
