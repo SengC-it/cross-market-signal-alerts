@@ -479,6 +479,21 @@
         white-space: pre-wrap;
       }
 
+      @media (max-width: 920px) {
+        .signal-summary {
+          grid-template-columns: minmax(0, 1fr) auto;
+          grid-template-areas:
+            "identity time"
+            "prices prices"
+            "review more";
+          row-gap: 9px;
+        }
+
+        .signal-detail {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+
       @media (max-width: 840px) {
         .topbar {
           align-items: stretch;
@@ -490,19 +505,6 @@
         }
 
         .metrics {
-          grid-template-columns: repeat(2, minmax(0, 1fr));
-        }
-
-        .signal-summary {
-          grid-template-columns: minmax(0, 1fr) auto;
-          grid-template-areas:
-            "identity time"
-            "prices prices"
-            "review more";
-          row-gap: 9px;
-        }
-
-        .signal-detail {
           grid-template-columns: repeat(2, minmax(0, 1fr));
         }
       }
@@ -788,8 +790,18 @@
         const direction = directionText(payload);
         const tier = tierText(payload);
         const review = reviewSummary(payload.review);
-        const tradeSpec = payload.tradeSpec || payload.executionPlan || {};
-        const referencePrice = tradeSpec.referencePrice ?? payload.close;
+        const tradeSpec = payload.tradeSpec;
+        const executionPlan = payload.executionPlan;
+        const referencePrice = tradeSpec?.referencePrice ?? executionPlan?.referencePrice ?? payload.close;
+        const riskDetails = executionPlan?.kind === "v3_paper_position"
+          ? [["执行计划与参考风险", executionPlanText(executionPlan), true]]
+          : tradeSpec
+            ? [
+                ["止损", formatNumber(tradeSpec.stopLoss)],
+                ["止盈", formatNumber(tradeSpec.takeProfit)],
+                ["参考风险", referenceRiskText(payload), true]
+              ]
+            : [["参考风险", referenceRiskText(payload), true]];
         const detailItems = [
           ["信号生成时间", formatDate(payload.signalAvailableAt || alert.trigger_time)],
           ["模型版本", alert.model_version || payload.modelVersion || "--"],
@@ -797,9 +809,7 @@
           ["失效条件", payload.invalidCondition || "--", true],
           ["历史样本状态", payload.historicalSampleStatus || "仅供参考，未构成盈利保证", true],
           ["投递", deliveryText(alert, payload)],
-          ["止损", formatNumber(tradeSpec.stopLoss)],
-          ["止盈", formatNumber(tradeSpec.takeProfit)],
-          ["参考风险", referenceRiskText(payload), true],
+          ...riskDetails,
           ["完整复盘", reviewText(payload.review), true]
         ];
 
@@ -1153,7 +1163,7 @@
       }
 
       function referenceRiskText(payload) {
-        const spec = payload?.tradeSpec || payload?.executionPlan;
+        const spec = payload?.tradeSpec;
         if (!spec) return "REFERENCE ONLY / 用户人工决定";
         return `SL ${formatNumber(spec.stopLoss)} / TP ${formatNumber(spec.takeProfit)} / REFERENCE ONLY`;
       }
