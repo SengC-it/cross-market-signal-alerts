@@ -1,4 +1,6 @@
 import {
+  fetchAllPaperEmailRuns,
+  fetchAllSentAlerts,
   fetchRecentPaperModelRuns,
   fetchRecentPaperEmailRuns,
   fetchRecentRunLogs,
@@ -9,6 +11,7 @@ import { isDashboardAuthorizedRequest, setPrivateResponseHeaders } from "../lib/
 import { FUNDING_CARRY_V2_MODEL, FUNDING_CARRY_V2_MODEL_METADATA } from "../lib/funding-carry-v2-paper.js";
 import { SIGNAL_ONLY_RELEASE } from "../lib/production-signal-policy.js";
 import { buildSignalDensityKpi } from "../lib/signal-density.js";
+import { buildPerformanceSummary } from "../lib/performance-summary.js";
 
 const EXPECTED_GROUPS = [
   "dynamic-spot",
@@ -35,19 +38,39 @@ export default async function handler(req, res) {
     const limit = clampLimit(req.query?.limit, 10, 100, 50);
     const alertLimit = clampLimit(req.query?.alertLimit, 5, 200, 100);
     const paperLimit = clampLimit(req.query?.paperLimit, 1, 52, 12);
-    const [runLogsResult, sentAlertsResult, paperRunsResult, paperEmailRunsResult] = await Promise.allSettled([
+    const [
+      runLogsResult,
+      sentAlertsResult,
+      paperRunsResult,
+      paperEmailRunsResult,
+      historicalSentAlertsResult,
+      historicalPaperEmailRunsResult
+    ] = await Promise.allSettled([
       fetchRecentRunLogs(limit),
       fetchRecentSentAlerts(alertLimit),
       fetchRecentPaperModelRuns(paperLimit),
-      fetchRecentPaperEmailRuns(alertLimit)
+      fetchRecentPaperEmailRuns(alertLimit),
+      fetchAllSentAlerts(),
+      fetchAllPaperEmailRuns()
     ]);
     const warnings = [];
     const runLogs = normalizeRunLogs(unwrapResult(runLogsResult, "cr_run_logs", warnings));
     const sentAlerts = unwrapResult(sentAlertsResult, "cr_sent_alerts", warnings);
     const paperModelRuns = unwrapResult(paperRunsResult, "cr_paper_model_runs", warnings);
     const paperEmailRuns = unwrapResult(paperEmailRunsResult, "cr_paper_email_history", warnings);
+    const historicalSentAlerts = unwrapResult(historicalSentAlertsResult, "cr_sent_alerts_history", warnings);
+    const historicalPaperEmailRuns = unwrapResult(historicalPaperEmailRunsResult, "cr_paper_email_history_full", warnings);
     const emailNotifications = buildEmailNotifications(sentAlerts, paperEmailRuns);
     const signalDensity = buildSignalDensityKpi({ sentAlerts, runLogs });
+    const generatedAt = new Date().toISOString();
+    const performanceSummary = historicalSentAlertsResult.status === "fulfilled"
+      && historicalPaperEmailRunsResult.status === "fulfilled"
+      ? buildPerformanceSummary({
+          emailNotifications: buildEmailNotifications(historicalSentAlerts, historicalPaperEmailRuns),
+          paperModelRuns: historicalPaperEmailRuns,
+          calculatedAt: generatedAt
+        })
+      : null;
 
     if ([runLogsResult, sentAlertsResult, paperRunsResult, paperEmailRunsResult].every((result) => result.status === "rejected")) {
       throw new Error(warnings.map((warning) => `${warning.source}: ${warning.message}`).join("; "));
@@ -55,7 +78,7 @@ export default async function handler(req, res) {
 
     res.status(200).json({
       ok: true,
-      generatedAt: new Date().toISOString(),
+      generatedAt,
       warnings,
       summary: buildSummary(runLogs, sentAlerts, emailNotifications, paperModelRuns, signalDensity),
       runLogs,
@@ -76,7 +99,8 @@ export default async function handler(req, res) {
         paperRunCount: paperModelRuns.filter((run) => run.model_id === FUNDING_CARRY_V2_MODEL.id).length
       },
       emailNotifications,
-      signalDensity
+      signalDensity,
+      performanceSummary
     });
   } catch (error) {
     console.error(error);

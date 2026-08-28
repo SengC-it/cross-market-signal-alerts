@@ -4,7 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node scripts/smoke-test.js && node scripts/m2b-test.js && node scripts/m3-test.js && node scripts/m3-production-test.js && node scripts/m3-real-data-test.js && node scripts/m3-5-test.js && node scripts/m3-6-test.js && node scripts/m3-7-test.js && node scripts/m3-7-readiness-test.js && node scripts/m3-7-postmortem-test.js && node scripts/v4-signal-only-release-test.js && node scripts/v4-1-signal-density-test.js && node scripts/v4-2-strong-extension-test.js",
+    "test": "node scripts/smoke-test.js && node scripts/m2b-test.js && node scripts/m3-test.js && node scripts/m3-production-test.js && node scripts/m3-real-data-test.js && node scripts/m3-5-test.js && node scripts/m3-6-test.js && node scripts/m3-7-test.js && node scripts/m3-7-readiness-test.js && node scripts/m3-7-postmortem-test.js && node scripts/v4-signal-only-release-test.js && node scripts/v4-1-signal-density-test.js && node scripts/v4-2-strong-extension-test.js && node scripts/performance-summary-test.js",
+    "test:performance-summary": "node scripts/performance-summary-test.js",
     "test:signal-only": "node scripts/v4-signal-only-release-test.js",
     "test:v4-1-signal-density": "node scripts/v4-1-signal-density-test.js",
     "quality:v4-1": "node scripts/v4-1-signal-density-quality.js",

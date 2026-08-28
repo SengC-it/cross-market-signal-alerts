@@ -298,6 +298,97 @@
         background: var(--panel);
       }
 
+      .performance-summary {
+        padding: 16px 18px 18px;
+        background: var(--panel);
+      }
+
+      .performance-core,
+      .performance-secondary {
+        display: grid;
+        grid-template-columns: repeat(6, minmax(0, 1fr));
+      }
+
+      .performance-core {
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        overflow: hidden;
+      }
+
+      .performance-card {
+        min-width: 0;
+        padding: 14px;
+        border-right: 1px solid var(--line);
+      }
+
+      .performance-card:last-child {
+        border-right: 0;
+      }
+
+      .performance-label,
+      .performance-meta,
+      .performance-note,
+      .performance-calculated-at {
+        color: var(--muted);
+      }
+
+      .performance-label {
+        display: block;
+        font-size: 12px;
+        font-weight: 700;
+      }
+
+      .performance-value {
+        display: block;
+        margin-top: 8px;
+        font-size: 24px;
+        line-height: 1;
+        font-weight: 800;
+        overflow-wrap: anywhere;
+      }
+
+      .performance-meta {
+        display: block;
+        margin-top: 7px;
+        font-size: 11px;
+        line-height: 1.35;
+      }
+
+      .performance-value.positive {
+        color: var(--teal);
+      }
+
+      .performance-value.negative {
+        color: var(--red);
+      }
+
+      .performance-secondary {
+        margin-top: 12px;
+        background: #f7f9f8;
+        border-radius: 8px;
+      }
+
+      .performance-secondary-item {
+        min-width: 0;
+        padding: 11px 12px;
+      }
+
+      .performance-secondary-item .performance-value {
+        margin-top: 5px;
+        font-size: 17px;
+      }
+
+      .performance-note {
+        margin: 12px 0 0;
+        font-size: 12px;
+        line-height: 1.5;
+      }
+
+      .performance-calculated-at {
+        font-size: 12px;
+        white-space: nowrap;
+      }
+
       .signal-item {
         border-bottom: 1px solid var(--line);
       }
@@ -480,6 +571,19 @@
       }
 
       @media (max-width: 920px) {
+        .performance-core,
+        .performance-secondary {
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+
+        .performance-card:nth-child(3n) {
+          border-right: 0;
+        }
+
+        .performance-card:nth-child(-n + 3) {
+          border-bottom: 1px solid var(--line);
+        }
+
         .signal-summary {
           grid-template-columns: minmax(0, 1fr) auto;
           grid-template-areas:
@@ -517,6 +621,36 @@
 
         .metrics {
           grid-template-columns: 1fr;
+        }
+
+        .performance-summary {
+          padding: 12px;
+        }
+
+        .performance-core,
+        .performance-secondary {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .performance-card:nth-child(3n) {
+          border-right: 1px solid var(--line);
+        }
+
+        .performance-card:nth-child(2n) {
+          border-right: 0;
+        }
+
+        .performance-card:nth-child(-n + 4) {
+          border-bottom: 1px solid var(--line);
+        }
+
+        .performance-secondary-item {
+          padding: 10px;
+        }
+
+        .performance-calculated-at {
+          white-space: normal;
+          text-align: right;
         }
 
         .desktop-table {
@@ -631,6 +765,16 @@
 
       <section class="section">
         <div class="section-head">
+          <h2>历史复盘汇总</h2>
+          <span class="performance-calculated-at" id="performanceCalculatedAt">--</span>
+        </div>
+        <div id="performanceSummary">
+          <div class="empty">查询后显示全部历史信号的复盘汇总。</div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-head">
           <h2>最近信号记录</h2>
           <span class="pill" id="alertCount">0 条</span>
         </div>
@@ -692,6 +836,8 @@
         groupSummary: document.querySelector("#groupSummary"),
         runLogs: document.querySelector("#runLogs"),
         sentAlerts: document.querySelector("#sentAlerts"),
+        performanceSummary: document.querySelector("#performanceSummary"),
+        performanceCalculatedAt: document.querySelector("#performanceCalculatedAt"),
         groupCount: document.querySelector("#groupCount"),
         runCount: document.querySelector("#runCount"),
         alertCount: document.querySelector("#alertCount"),
@@ -758,7 +904,101 @@
         renderSignalDensity(data.signalDensity || summary.signalDensity || {});
         renderGroupsV2(summary.groups || []);
         renderRuns(data.runLogs || []);
+        renderPerformanceSummary(data.performanceSummary);
         renderAlertsV2(emailNotifications);
+      }
+
+      function renderPerformanceSummary(summary) {
+        if (!summary || typeof summary !== "object") {
+          els.performanceCalculatedAt.textContent = "--";
+          els.performanceSummary.innerHTML = `<div class="empty">历史复盘汇总暂不可用。</div>`;
+          return;
+        }
+
+        els.performanceCalculatedAt.textContent = summary.calculatedAt
+          ? `计算于 ${formatDate(summary.calculatedAt)}`
+          : "--";
+        const primary = [
+          ["总信号", summaryCount(summary.totalSignals), "", ""],
+          ["已复盘", summaryCount(summary.reviewedSignals), summaryPercent(summary.reviewRate), ""],
+          ["盈利", summaryCount(summary.profitSignals), "", "positive"],
+          ["亏损", summaryCount(summary.lossSignals), "", "negative"],
+          ["胜率", summaryPercent(summary.winRate), "", ""],
+          ["总体盈亏", summaryReturn(summary.netSignalReturn), "等权信号累计", returnTone(summary.netSignalReturn)]
+        ];
+        const secondary = [
+          ["待复盘", summaryCount(summary.pendingSignals), "", ""],
+          ["盈利币种", summaryCount(summary.profitableAssets), "", "positive"],
+          ["总币种", summaryCount(summary.totalAssets), "", ""],
+          ["平均每笔", summaryReturn(summary.averageSignalReturn), "", returnTone(summary.averageSignalReturn)],
+          ["PF", summaryProfitFactor(summary.profitFactor), "", profitFactorTone(summary.profitFactor)],
+          [
+            "PAPER 组合",
+            summaryReturn(summary.paperPortfolioReturn),
+            `${summaryCount(summary.reviewedPaperRuns)} 已复盘 / ${summaryCount(summary.profitablePaperRuns)} 盈利 / ${summaryCount(summary.losingPaperRuns)} 亏损`,
+            returnTone(summary.paperPortfolioReturn)
+          ]
+        ];
+
+        els.performanceSummary.innerHTML = `<div class="performance-summary">
+          <div class="performance-core">${primary.map(renderPerformanceCard).join("")}</div>
+          <div class="performance-secondary">${secondary.map(renderPerformanceSecondary).join("")}</div>
+          <p class="performance-note">等权信号收益用于衡量信号整体质量，不代表真实账户资金曲线。PAPER 组合数据为“PAPER 组合周期累计”，按唯一模型与调仓周期统计，不与单笔信号收益混算。</p>
+        </div>`;
+      }
+
+      function renderPerformanceCard([label, value, meta, tone]) {
+        return `<div class="performance-card">
+          <span class="performance-label">${escapeHtml(label)}</span>
+          <strong class="performance-value ${escapeHtml(tone)}">${escapeHtml(value)}</strong>
+          ${meta ? `<span class="performance-meta">${escapeHtml(meta)}</span>` : ""}
+        </div>`;
+      }
+
+      function renderPerformanceSecondary([label, value, meta, tone]) {
+        return `<div class="performance-secondary-item">
+          <span class="performance-label">${escapeHtml(label)}</span>
+          <strong class="performance-value ${escapeHtml(tone)}">${escapeHtml(value)}</strong>
+          ${meta ? `<span class="performance-meta">${escapeHtml(meta)}</span>` : ""}
+        </div>`;
+      }
+
+      function summaryCount(value) {
+        const number = summaryNumber(value);
+        return number != null && number >= 0 ? String(number) : "--";
+      }
+
+      function summaryPercent(value) {
+        const number = summaryNumber(value);
+        return number != null ? `${(number * 100).toFixed(2)}%` : "--";
+      }
+
+      function summaryReturn(value) {
+        const number = summaryNumber(value);
+        if (number == null) return "--";
+        const sign = number > 0 ? "+" : "";
+        return `${sign}${(number * 100).toFixed(2)}%`;
+      }
+
+      function summaryProfitFactor(value) {
+        const number = summaryNumber(value);
+        return number != null ? number.toFixed(3) : "--";
+      }
+
+      function returnTone(value) {
+        const number = summaryNumber(value);
+        return number != null ? (number > 0 ? "positive" : number < 0 ? "negative" : "") : "";
+      }
+
+      function profitFactorTone(value) {
+        const number = summaryNumber(value);
+        return number != null ? (number >= 1 ? "positive" : "negative") : "";
+      }
+
+      function summaryNumber(value) {
+        if (value == null || value === "") return null;
+        const number = Number(value);
+        return Number.isFinite(number) ? number : null;
       }
 
       function renderSignalDensity(kpi) {
