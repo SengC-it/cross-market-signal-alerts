@@ -384,6 +384,114 @@
         line-height: 1.5;
       }
 
+      .strategy-performance {
+        margin-top: 16px;
+        border-top: 1px solid var(--line);
+        padding-top: 14px;
+      }
+
+      .strategy-performance-head {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        gap: 6px 12px;
+        margin-bottom: 10px;
+      }
+
+      .strategy-performance-head strong {
+        font-size: 14px;
+      }
+
+      .strategy-performance-head span,
+      .strategy-scope,
+      .strategy-period {
+        color: var(--muted);
+        font-size: 11px;
+      }
+
+      .strategy-performance-list {
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        overflow: hidden;
+      }
+
+      .strategy-performance-item {
+        padding: 13px 14px;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .strategy-performance-item:last-child {
+        border-bottom: 0;
+      }
+
+      .strategy-performance-title {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 5px 12px;
+      }
+
+      .strategy-performance-title strong {
+        font-size: 13px;
+      }
+
+      .strategy-performance-metrics {
+        display: grid;
+        grid-template-columns: repeat(6, minmax(0, 1fr));
+        gap: 9px 12px;
+        margin-top: 10px;
+      }
+
+      .strategy-performance-metric {
+        min-width: 0;
+      }
+
+      .strategy-performance-metric span {
+        display: block;
+        color: var(--muted);
+        font-size: 10px;
+      }
+
+      .strategy-performance-metric strong {
+        display: block;
+        margin-top: 3px;
+        font-size: 13px;
+        font-variant-numeric: tabular-nums;
+        overflow-wrap: anywhere;
+      }
+
+      .strategy-performance-metric strong.positive {
+        color: var(--teal);
+      }
+
+      .strategy-performance-metric strong.negative {
+        color: var(--red);
+      }
+
+      .strategy-gate {
+        display: inline-flex;
+        max-width: 100%;
+        margin-top: 9px;
+        padding: 4px 8px;
+        border-radius: 999px;
+        color: var(--muted);
+        background: #edf1ef;
+        font-size: 10px;
+        font-weight: 800;
+        overflow-wrap: anywhere;
+      }
+
+      .strategy-gate.positive {
+        color: var(--teal);
+        background: var(--teal-soft);
+      }
+
+      .strategy-gate.negative {
+        color: var(--red);
+        background: var(--red-soft);
+      }
+
       .performance-calculated-at {
         font-size: 12px;
         white-space: nowrap;
@@ -584,6 +692,10 @@
           border-bottom: 1px solid var(--line);
         }
 
+        .strategy-performance-metrics {
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+
         .signal-summary {
           grid-template-columns: minmax(0, 1fr) auto;
           grid-template-areas:
@@ -651,6 +763,10 @@
         .performance-calculated-at {
           white-space: normal;
           text-align: right;
+        }
+
+        .strategy-performance-metrics {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
         }
 
         .desktop-table {
@@ -944,7 +1060,61 @@
           <div class="performance-core">${primary.map(renderPerformanceCard).join("")}</div>
           <div class="performance-secondary">${secondary.map(renderPerformanceSecondary).join("")}</div>
           <p class="performance-note">等权信号收益用于衡量信号整体质量，不代表真实账户资金曲线。PAPER 组合数据为“PAPER 组合周期累计”，按唯一模型与调仓周期统计，不与单笔信号收益混算。</p>
+          ${renderStrategyPerformance(summary.strategyPerformance, summary.forwardPromotionGate)}
         </div>`;
+      }
+
+      function renderStrategyPerformance(groups, gate) {
+        if (!groups || typeof groups !== "object") return "";
+        const order = ["legacyProduction", "v42Forward", "v34ForwardPaper", "fundingCarryV2ForwardPaper"];
+        const rows = order.map((key) => groups[key]).filter(Boolean);
+        if (!rows.length) return "";
+        return `<div class="strategy-performance">
+          <div class="strategy-performance-head">
+            <strong>策略表现</strong>
+            <span>历史验证 ≠ Forward 实际表现；以下仅统计生产数据库真实记录。</span>
+          </div>
+          <div class="strategy-performance-list">${rows.map((group) => renderStrategyPerformanceItem(group, group.id === "v4_2_forward" ? gate : null)).join("")}</div>
+        </div>`;
+      }
+
+      function renderStrategyPerformanceItem(group, gate) {
+        const volume = group.unit === "periods"
+          ? `${summaryCount(group.signals)} signals / ${summaryCount(group.periods)} periods`
+          : `${summaryCount(group.signals)} signals`;
+        const metrics = [
+          ["样本", volume, ""],
+          ["已复盘 / 待复盘", `${summaryCount(group.reviewed)} / ${summaryCount(group.pending)}`, ""],
+          ["盈利 / 亏损", `${summaryCount(group.wins)} / ${summaryCount(group.losses)}`, ""],
+          ["胜率", summaryPercent(group.winRate), ""],
+          ["平均净收益", summaryReturn(group.averageNetReturn), returnTone(group.averageNetReturn)],
+          ["累计净收益", summaryReturn(group.netReturn), returnTone(group.netReturn)],
+          ["PF", summaryProfitFactor(group.profitFactor), profitFactorTone(group.profitFactor)],
+          ["最大回撤", summaryReturn(group.maxDrawdown), returnTone(group.maxDrawdown)],
+          ["数据完整率", summaryPercent(group.dataCompleteness), ""],
+          ["首笔", summaryDate(group.firstSignalAt), ""],
+          ["最新", summaryDate(group.latestSignalAt), ""]
+        ];
+        const gateTone = gate?.status === "FORWARD_GATE_PASS"
+          ? "positive"
+          : gate?.status === "FORWARD_GATE_FAIL" ? "negative" : "";
+        return `<div class="strategy-performance-item">
+          <div class="strategy-performance-title">
+            <strong>${escapeHtml(group.label || group.id || "--")}</strong>
+            <span class="strategy-scope">${escapeHtml(group.scope || "")}</span>
+          </div>
+          <div class="strategy-performance-metrics">${metrics.map(([label, value, tone]) => `<div class="strategy-performance-metric">
+            <span>${escapeHtml(label)}</span>
+            <strong class="${escapeHtml(tone)}">${escapeHtml(value)}</strong>
+          </div>`).join("")}</div>
+          ${gate ? `<span class="strategy-gate ${escapeHtml(gateTone)}">V4.2 Forward Gate · ${escapeHtml(gate.status || "--")} · ${summaryCount(gate.reviewedSignals)}/${summaryCount(gate.minimumReviewedSignals)} reviewed · 只读</span>` : ""}
+        </div>`;
+      }
+
+      function summaryDate(value) {
+        if (!value) return "--";
+        const date = new Date(value);
+        return Number.isFinite(date.getTime()) ? date.toLocaleDateString("zh-CN", { month: "2-digit", day: "2-digit" }) : "--";
       }
 
       function renderPerformanceCard([label, value, meta, tone]) {
