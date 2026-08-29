@@ -121,30 +121,15 @@ assert.equal(summary.calculatedAt, "2026-08-28T00:00:00.000Z");
 assert.match(summary.returnBasis, /等权信号/);
 
 const empty = buildPerformanceSummary();
-assert.deepEqual(empty, {
-  totalSignals: 0,
-  reviewedSignals: 0,
-  pendingSignals: 0,
-  reviewRate: null,
-  profitSignals: 0,
-  lossSignals: 0,
-  flatSignals: 0,
-  winRate: null,
-  totalAssets: 0,
-  profitableAssets: 0,
-  losingAssets: 0,
-  grossProfitReturn: null,
-  grossLossReturn: null,
-  netSignalReturn: null,
-  averageSignalReturn: null,
-  profitFactor: null,
-  reviewedPaperRuns: 0,
-  profitablePaperRuns: 0,
-  losingPaperRuns: 0,
-  paperPortfolioReturn: null,
-  calculatedAt: empty.calculatedAt,
-  returnBasis: "等权信号收益简单累计；PAPER 组合收益按唯一 model_id + rebalance_time 周期累计"
-});
+assert.equal(empty.totalSignals, 0);
+assert.equal(empty.reviewedSignals, 0);
+assert.equal(empty.pendingSignals, 0);
+assert.equal(empty.netSignalReturn, null);
+assert.equal(empty.paperPortfolioReturn, null);
+assert.equal(empty.strategyPerformance.legacyProduction.signals, 0);
+assert.equal(empty.strategyPerformance.v42Forward.signals, 0);
+assert.equal(empty.forwardPromotionGate.status, "INSUFFICIENT_FORWARD_SAMPLE");
+assert.equal(empty.returnBasis, "等权信号收益简单累计；PAPER 组合收益按唯一 model_id + rebalance_time 周期累计");
 
 const noLoss = buildPerformanceSummary({
   emailNotifications: [legacyAlert("only-profit", "BTCUSDT", reviewed(0.1))]

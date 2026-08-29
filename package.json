@@ -4,8 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node scripts/smoke-test.js && node scripts/m2b-test.js && node scripts/m3-test.js && node scripts/m3-production-test.js && node scripts/m3-real-data-test.js && node scripts/m3-5-test.js && node scripts/m3-6-test.js && node scripts/m3-7-test.js && node scripts/m3-7-readiness-test.js && node scripts/m3-7-postmortem-test.js && node scripts/v4-signal-only-release-test.js && node scripts/v4-1-signal-density-test.js && node scripts/v4-2-strong-extension-test.js && node scripts/performance-summary-test.js",
+    "test": "node scripts/smoke-test.js && node scripts/m2b-test.js && node scripts/m3-test.js && node scripts/m3-production-test.js && node scripts/m3-real-data-test.js && node scripts/m3-5-test.js && node scripts/m3-6-test.js && node scripts/m3-7-test.js && node scripts/m3-7-readiness-test.js && node scripts/m3-7-postmortem-test.js && node scripts/v4-signal-only-release-test.js && node scripts/v4-1-signal-density-test.js && node scripts/v4-2-strong-extension-test.js && node scripts/performance-summary-test.js && node scripts/review-integrity-forward-performance-test.js",
     "test:performance-summary": "node scripts/performance-summary-test.js",
+    "test:review-integrity": "node scripts/review-integrity-forward-performance-test.js",
     "test:signal-only": "node scripts/v4-signal-only-release-test.js",
     "test:v4-1-signal-density": "node scripts/v4-1-signal-density-test.js",
     "quality:v4-1": "node scripts/v4-1-signal-density-quality.js",
@@ -36,6 +37,7 @@
     "backtest:funding-carry-perp-v2": "node scripts/backtest-funding-carry-perp-v2.js",
     "evaluate:funding-carry-paper": "node scripts/evaluate-funding-carry-paper.js",
     "evaluate:funding-carry-v2-paper": "node scripts/evaluate-funding-carry-v2-paper.js",
+    "backfill:funding-carry-v2-reviews": "node scripts/backfill-funding-carry-v2-reviews.js",
     "v3.2-backtest": "node scripts/backtest-v3-2-exits.js",
     "v3.3-backtest": "node scripts/backtest-v3-3-risk-controls.js",
     "dev": "vercel dev",
