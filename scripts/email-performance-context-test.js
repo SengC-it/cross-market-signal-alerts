@@ -116,6 +116,14 @@ const emptyLines = performanceEmailLines({ modelLabel: "V4.2 Dynamic Strength", 
 assert.ok(emptyLines.includes("已完成周期：0"));
 assert.ok(emptyLines.includes("已完成周期复合收益：暂无"));
 assert.ok(!emptyLines.some((line) => /0\.00%/.test(line)));
+const emptyPaperLines = performanceEmailLines({
+  modelLabel: "Funding Carry V2",
+  completedPeriods: 0,
+  compoundedReturn: null,
+  basis: "Production PAPER 已完成周期"
+});
+assert.ok(emptyPaperLines.includes("统计口径：Production PAPER 已完成周期（暂无已完成样本）"));
+assert.ok(!emptyPaperLines.some((line) => /Forward/.test(line)));
 
 const dynamicEmail = renderSignalEmail([
   {
