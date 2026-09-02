@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node scripts/smoke-test.js && node scripts/m2b-test.js && node scripts/m3-test.js && node scripts/m3-production-test.js && node scripts/m3-real-data-test.js && node scripts/m3-5-test.js && node scripts/m3-6-test.js && node scripts/m3-7-test.js && node scripts/m3-7-readiness-test.js && node scripts/m3-7-postmortem-test.js && node scripts/v4-signal-only-release-test.js && node scripts/v4-1-signal-density-test.js && node scripts/v4-2-strong-extension-test.js && node scripts/performance-summary-test.js && node scripts/review-integrity-forward-performance-test.js",
+    "test": "node scripts/smoke-test.js && node scripts/m2b-test.js && node scripts/m3-test.js && node scripts/m3-production-test.js && node scripts/m3-real-data-test.js && node scripts/m3-5-test.js && node scripts/m3-6-test.js && node scripts/m3-7-test.js && node scripts/m3-7-readiness-test.js && node scripts/m3-7-postmortem-test.js && node scripts/v4-signal-only-release-test.js && node scripts/v4-1-signal-density-test.js && node scripts/v4-2-strong-extension-test.js && node scripts/performance-summary-test.js && node scripts/review-integrity-forward-performance-test.js && node scripts/email-performance-history-test.js && node scripts/email-performance-context-test.js",
     "test:performance-summary": "node scripts/performance-summary-test.js",
     "test:review-integrity": "node scripts/review-integrity-forward-performance-test.js",
     "test:signal-only": "node scripts/v4-signal-only-release-test.js",
