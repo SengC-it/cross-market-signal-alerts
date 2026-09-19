@@ -1,20 +1,20 @@
 {
-  "sourceBranch": "main",
-  "sourceCommit": "990a23044f883d7d586549e652fab1051c7b6645",
+  "sourceBranch": "origin/main",
+  "sourceCommit": "9e3c6566dddf2370362e4aa0f12fd695c0a1b75c",
   "files": {
-    "lib/config.js": "748f040eb0454640ae92716372bc49027e58cfbc",
-    "lib/funding-carry-v2-paper.js": "b57fdfb73c0cc20080c8c42da4afd5a6f6011fba",
-    "lib/model-metadata.js": "f45dd02b4fe9808e03bce7a6ef89c8b023ff8d89",
-    "lib/signal-density-config.js": "3f407b8191c772cacc73ba17e209831e64685b4e",
-    "lib/signal-density-quality-policy.js": "abdc5162202b1d93ef4401a3bb81a978c55385a9",
-    "lib/signal-density.js": "a2b23c91c76ceacbf7682752be9c88d68a3921e1",
-    "lib/strategies.js": "67cf11e3114f4b220276c1adbd32af96d2e2c6e1",
-    "lib/strategies/dynamic-production.js": "6fa752765d7f4f9c90ddc63d2e6739e7a42d8f1a",
-    "lib/strategies/strong-extension.js": "4b2da4a76f707e04520380dc0b664eea5961098b",
-    "lib/trading/trade-plan.js": "0712aeead329060dba1a3df2052c0368edc63f86",
-    "lib/trading/trade-spec.js": "8272aea80bde02705e27a053bc85ae0c82a34b9e",
-    "lib/v3-3-paper.js": "33cdabb6c7b8401f996cd11100f14c1a9b7c3185",
-    "lib/v3-4-paper.js": "610ae3cb560928206ed2d3eaa5998857daed71a4",
-    "lib/v3-paper.js": "da5c26e100b162c0c17d9e0b5aa32719f1ec9e22"
+    "lib/config.js": "9c3fed61747acdb6972b8198e025a08648e10de7967f0d1075d6bd6c9485a3f1",
+    "lib/funding-carry-v2-paper.js": "b53c0a22c18d4a7c02ba437518554cdccae2d6cec399a6b926fc44fac9d5d93b",
+    "lib/model-metadata.js": "b6e18350cc6a3215f9df634d3bce1f4598873befd54b3988b2da9955d39e6616",
+    "lib/signal-density-config.js": "4ac6949495498d5cde0590eeb949873273ae2c42b96c95eca65e80770eb8a1f0",
+    "lib/signal-density-quality-policy.js": "7ef09d3964ef7d0721cdb419d6979c40ccc9a6a28d611d7e84b8c03d06165d22",
+    "lib/signal-density.js": "cd7466f948402b525db504241c1330c342238947db0b6f756cc40b2f782c74b9",
+    "lib/strategies.js": "d4b184a4e5da59d0b0337557b6366f50ec7146495cfa4d6b7476ca18712d4187",
+    "lib/strategies/dynamic-production.js": "bded8dde56a33a4bc9399dc99f5492576322eea2efdd36e616974fb92057c2e9",
+    "lib/strategies/strong-extension.js": "736d34f22bb0e3fb05a669cd5de052e5f082c078b148cf3bbb3ef9951cb90cc9",
+    "lib/trading/trade-plan.js": "35f4d23d1a38143b9eccb16d96624e078269095198938d134a34196f41c4952d",
+    "lib/trading/trade-spec.js": "d150071c09a8779ceda5612e4e699f27d830a7d77994c3947b9b127c26344c65",
+    "lib/v3-3-paper.js": "fc10a67dc177444afe41c304cfe7b05082edecba47b432782a52058900dc483f",
+    "lib/v3-4-paper.js": "ef18dcb9fa18897a69a1e1a1b03ba8572cedbd7392b79bc0849fccaefd51c53f",
+    "lib/v3-paper.js": "abd2be894d1a27f4f9ca85ec9fc7548a237bab47e86143175e5fa26bee26af57"
   }
 }

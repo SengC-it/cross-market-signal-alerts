@@ -284,5 +284,5 @@ const strategyFiles = [
   "lib/v3-4-paper.js",
   "lib/v3-paper.js"
 ];
-execFileSync("git", ["diff", "--quiet", "main", "--", ...strategyFiles], { cwd: process.cwd(), stdio: "ignore" });
+execFileSync("git", ["diff", "--quiet", "origin/main", "--", ...strategyFiles], { cwd: process.cwd(), stdio: "ignore" });
 console.log("review-recovery-test: all assertions passed");
