@@ -10,6 +10,8 @@ import {
   runReviewRecovery
 } from "../lib/review-recovery.js";
 import { run as runAlertBackfill } from "./backfill-alert-reviews.js";
+import { run as runFundingCarryV2Backfill } from "./backfill-funding-carry-v2-reviews.js";
+import { FUNDING_CARRY_V2_MODEL } from "../lib/funding-carry-v2-paper.js";
 
 const NOW = Date.parse("2026-09-19T00:00:00.000Z");
 
@@ -91,6 +93,47 @@ const isolated = await runReviewRecovery({
 });
 assert.equal(isolated.reviewRecovery.ordinarySignals.failed, 1, "one bad row is recorded as failed");
 assert.equal(isolated.reviewRecovery.ordinarySignals.reviewed, 1, "later healthy rows continue after a failure");
+assert.equal(isolated.reviewRecovery.health, "degraded");
+assert.deepEqual(isolated.reviewRecovery.hasMore, { ordinary: false, paper: false });
+
+const healthy = await runReviewRecovery({
+  dryRun: true,
+  now: NOW,
+  timeBudgetMs: 3000,
+  isConfigured: () => true,
+  fetchAlerts: ({ excludeSignalKeys = [] } = {}) => [
+    { signal_key: "healthy", sent_at: "2026-08-03T00:00:00.000Z", payload: { review: { status: "pending" } } }
+  ].filter((alert) => !excludeSignalKeys.includes(alert.signal_key)),
+  fetchPaperRuns: () => [],
+  processAlert: async (alert) => ({ key: alert.signal_key, status: "reviewed", failed: false })
+});
+assert.equal(healthy.reviewRecovery.health, "healthy");
+
+const backlog = await runReviewRecovery({
+  dryRun: true,
+  now: NOW,
+  timeBudgetMs: 1000,
+  isConfigured: () => true,
+  fetchAlerts: ({ excludeSignalKeys = [] } = {}) => [
+    { signal_key: "backlog", sent_at: "2026-08-04T00:00:00.000Z", payload: { review: { status: "pending" } } }
+  ].filter((alert) => !excludeSignalKeys.includes(alert.signal_key)),
+  fetchPaperRuns: () => [],
+  processAlert: async (alert) => {
+    await new Promise((resolve) => setTimeout(resolve, 1100));
+    return { key: alert.signal_key, status: "reviewed", failed: false };
+  }
+});
+assert.equal(backlog.reviewRecovery.health, "backlog");
+assert.equal(backlog.reviewRecovery.hasMore.ordinary, true);
+
+const degraded = await runReviewRecovery({
+  dryRun: true,
+  timeBudgetMs: 1000,
+  isConfigured: () => true,
+  fetchAlerts: () => Promise.reject(new Error("Supabase review queue unavailable")),
+  fetchPaperRuns: () => []
+});
+assert.equal(degraded.reviewRecovery.health, "degraded", "queue errors surface degraded recovery health");
 
 const v2Rows = ["bad-1", "bad-2", "good-3"].map((key, index) => ({
   model_id: "funding-carry-v2",
@@ -122,6 +165,7 @@ const v2Recovery = await runReviewRecovery({
 });
 assert.equal(v2Recovery.reviewRecovery.paperRuns.failed, 2, "Funding Carry V2 failures receive independent retry slots");
 assert.equal(v2Recovery.reviewRecovery.paperRuns.reviewed, 1, "Funding Carry V2 later rows are not head-of-line blocked");
+assert.equal(v2Recovery.reviewRecovery.health, "degraded");
 
 const originalFetch = globalThis.fetch;
 let retryCalls = 0;
@@ -219,6 +263,11 @@ historicalRows.push({
   sent_at: "2024-01-01T00:00:00.000Z",
   payload: { review: { status: "pending" } }
 });
+historicalRows.push({
+  signal_key: "old-pending-2",
+  sent_at: "2024-01-02T00:00:00.000Z",
+  payload: { review: { status: "pending" } }
+});
 const originalLog = console.log;
 console.log = () => {};
 let backfillFetches = 0;
@@ -226,6 +275,7 @@ const backfillResult = await runAlertBackfill({
   apply: false,
   now: NOW,
   pageSize: 100,
+  maxRecords: 1,
   configured: () => true,
   fetchPage: ({ limit, offset }) => {
     backfillFetches++;
@@ -240,9 +290,50 @@ const backfillResult = await runAlertBackfill({
 });
 console.log = originalLog;
 assert.ok(backfillFetches >= 5, "backfill paginates through the full history");
-assert.equal(backfillResult.before.total, 401, "a pending signal older than the latest 400 remains discoverable");
+assert.equal(backfillResult.before.total, 402, "pending signals older than the latest 400 remain discoverable");
 assert.equal(backfillResult.recovery.checked, 1);
 assert.equal(backfillResult.recovery.stillPending, 1);
+assert.equal(backfillResult.maxRecords, 1);
+assert.equal(backfillResult.truncated, true, "max-records caps the selected due rows");
+
+const fundingRows = ["funding-1", "funding-2"].map((_key, index) => ({
+  model_id: FUNDING_CARRY_V2_MODEL.id,
+  rebalance_time: new Date(NOW - (index + 1) * 3600000).toISOString(),
+  targets: [{ symbol: "BTCUSDT" }],
+  review: { status: "pending" }
+}));
+const fundingBackfillResult = await runFundingCarryV2Backfill({
+  apply: false,
+  now: NOW,
+  maxRecords: 1,
+  isConfigured: () => true,
+  fetchPage: () => fundingRows,
+  fetchEmailRuns: () => [],
+  processReview: async () => ({
+    status: "reviewed",
+    failed: false,
+    review: { status: "reviewed", outcome: "flat" }
+  })
+});
+assert.equal(fundingBackfillResult.recovery.checked, 1);
+assert.equal(fundingBackfillResult.maxRecords, 1);
+assert.equal(fundingBackfillResult.truncated, true, "Funding Carry V2 backfill honors max-records");
+
+const previousConfirmation = process.env.CONFIRM_REVIEW_BACKFILL;
+delete process.env.CONFIRM_REVIEW_BACKFILL;
+try {
+  await assert.rejects(
+    () => runAlertBackfill({ apply: true, configured: () => true }),
+    { message: "Refusing to apply review backfill without CONFIRM_REVIEW_BACKFILL=YES" }
+  );
+  await assert.rejects(
+    () => runFundingCarryV2Backfill({ apply: true, isConfigured: () => true }),
+    { message: "Refusing to apply review backfill without CONFIRM_REVIEW_BACKFILL=YES" }
+  );
+} finally {
+  if (previousConfirmation === undefined) delete process.env.CONFIRM_REVIEW_BACKFILL;
+  else process.env.CONFIRM_REVIEW_BACKFILL = previousConfirmation;
+}
 
 globalThis.fetch = originalFetch;
 process.env.CRON_SECRET = "review-test-secret";

@@ -16,6 +16,7 @@ import { buildForwardStrategyPerformance } from "../lib/performance-summary.js";
 
 const APPLY = process.argv.includes("--apply");
 const PAGE_SIZE = readPositiveInteger("--page-size", 100);
+const MAX_RECORDS = readOptionalPositiveInteger("--max-records");
 
 if (process.argv[1] && process.argv[1].endsWith("backfill-funding-carry-v2-reviews.js")) {
   run().catch((error) => {
@@ -27,17 +28,22 @@ if (process.argv[1] && process.argv[1].endsWith("backfill-funding-carry-v2-revie
 export async function run({
   apply = APPLY,
   pageSize = PAGE_SIZE,
+  maxRecords = MAX_RECORDS,
   now = Date.now(),
   isConfigured = isSupabaseConfigured,
   fetchPage = fetchPaperModelRunsPage,
   fetchEmailRuns = fetchAllPaperEmailRuns,
   processReview = processFundingCarryV2Review
 } = {}) {
+  if (apply && process.env.CONFIRM_REVIEW_BACKFILL !== "YES") {
+    throw new Error("Refusing to apply review backfill without CONFIRM_REVIEW_BACKFILL=YES");
+  }
   if (!isConfigured()) {
     throw new Error("Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY before running the Funding Carry V2 review backfill");
   }
 
   const normalizedPageSize = Math.min(500, Math.max(1, Math.trunc(Number(pageSize) || 100)));
+  const normalizedMaxRecords = normalizeMaxRecords(maxRecords);
   const beforeRows = await fetchAllRuns(normalizedPageSize, fetchPage);
   const beforeEmailRuns = await fetchEmailRuns();
   const before = fundingSummary(beforeEmailRuns);
@@ -49,8 +55,11 @@ export async function run({
       && state.due
       && runRow?.review?.status !== "reviewed";
   });
+  const selectedDueRows = normalizedMaxRecords == null
+    ? dueRows
+    : dueRows.slice(0, normalizedMaxRecords);
 
-  const results = await mapLimit(dueRows, 4, async (runRow) => {
+  const results = await mapLimit(selectedDueRows, 2, async (runRow) => {
     try {
       const result = await processReview(runRow, { now, dryRun: !apply });
       return {
@@ -74,13 +83,13 @@ export async function run({
   });
 
   const recovery = {
-    checked: dueRows.length,
+    checked: selectedDueRows.length,
     reviewed: results.filter((result) => result.status === "reviewed").length,
     newlyReviewed: results.filter((result) => result.status === "reviewed").length,
     pending: results.filter((result) => result.status === "pending").length,
     stillPending: results.filter((result) => result.status === "pending").length,
     failed: results.filter((result) => result.failed || result.status === "error").length,
-    skipped: beforeRows.length - dueRows.length,
+    skipped: beforeRows.length - selectedDueRows.length,
     reasons: {},
     results
   };
@@ -109,6 +118,8 @@ export async function run({
 
   const output = {
     mode: apply ? "apply" : "dry-run",
+    maxRecords: normalizedMaxRecords,
+    truncated: selectedDueRows.length < dueRows.length,
     modelId: FUNDING_CARRY_V2_MODEL.id,
     calculatedAt: new Date(now).toISOString(),
     before,
@@ -216,6 +227,15 @@ function readPositiveInteger(flag, fallback) {
   if (index < 0) return fallback;
   const value = Number(process.argv[index + 1]);
   return Number.isInteger(value) && value > 0 ? value : fallback;
+}
+
+function readOptionalPositiveInteger(flag) {
+  return readPositiveInteger(flag, null);
+}
+
+function normalizeMaxRecords(value) {
+  const number = Number(value);
+  return Number.isInteger(number) && number > 0 ? number : null;
 }
 
 async function mapLimit(items, limit, fn) {

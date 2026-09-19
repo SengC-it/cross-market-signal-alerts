@@ -9,6 +9,7 @@ import {
 
 const APPLY = process.argv.includes("--apply");
 const PAGE_SIZE = readPositiveInteger("--page-size", 100);
+const MAX_RECORDS = readOptionalPositiveInteger("--max-records");
 
 if (process.argv[1] && process.argv[1].endsWith("backfill-alert-reviews.js")) {
   run().catch((error) => {
@@ -20,33 +21,40 @@ if (process.argv[1] && process.argv[1].endsWith("backfill-alert-reviews.js")) {
 export async function run({
   apply = APPLY,
   pageSize = PAGE_SIZE,
+  maxRecords = MAX_RECORDS,
   now = Date.now(),
   configured = isSupabaseConfigured,
   fetchPage = fetchSentAlertsForReviewPage,
   processAlert = processOrdinaryReviewAlert
 } = {}) {
+  if (apply && process.env.CONFIRM_REVIEW_BACKFILL !== "YES") {
+    throw new Error("Refusing to apply review backfill without CONFIRM_REVIEW_BACKFILL=YES");
+  }
   if (!configured()) {
     throw new Error("Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY before running the alert review backfill");
   }
 
   const beforeRows = await fetchAllSentAlerts(pageSize, fetchPage);
   const before = summarizeRows(beforeRows, now);
+  const normalizedMaxRecords = normalizeMaxRecords(maxRecords);
+  const dueRows = beforeRows.filter((alert) => {
+    const state = classifyReviewState(alert?.payload?.review, now);
+    return state.due && alert?.payload?.review?.status !== "reviewed";
+  });
+  const selectedRows = normalizedMaxRecords == null
+    ? dueRows
+    : dueRows.slice(0, normalizedMaxRecords);
   const recovery = {
     checked: 0,
     newlyReviewed: 0,
     stillPending: 0,
     failed: 0,
-    skipped: 0,
+    skipped: beforeRows.length - selectedRows.length,
     reasons: {}
   };
 
-  for (const alert of beforeRows) {
+  for (const alert of selectedRows) {
     const previousStatus = alert?.payload?.review?.status;
-    const state = classifyReviewState(alert?.payload?.review, now);
-    if (!state.due || previousStatus === "reviewed") {
-      recovery.skipped++;
-      continue;
-    }
     recovery.checked++;
     const result = await processAlert(alert, { now, dryRun: !apply });
     if (result.failed) recovery.failed++;
@@ -60,6 +68,8 @@ export async function run({
   const after = apply ? summarizeRows(await fetchAllSentAlerts(pageSize, fetchPage), now) : null;
   const output = {
     mode: apply ? "apply" : "dry-run",
+    maxRecords: normalizedMaxRecords,
+    truncated: selectedRows.length < dueRows.length,
     before,
     recovery,
     after,
@@ -120,4 +130,13 @@ function readPositiveInteger(flag, fallback) {
   if (index < 0) return fallback;
   const value = Number(process.argv[index + 1]);
   return Number.isInteger(value) && value > 0 ? value : fallback;
+}
+
+function readOptionalPositiveInteger(flag) {
+  return readPositiveInteger(flag, null);
+}
+
+function normalizeMaxRecords(value) {
+  const number = Number(value);
+  return Number.isInteger(number) && number > 0 ? number : null;
 }
