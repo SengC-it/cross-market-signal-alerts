@@ -2,9 +2,21 @@ name: Signal Cron
 
 on:
   workflow_dispatch:
+    inputs:
+      job:
+        description: "Job to run"
+        required: true
+        default: signal
+        type: choice
+        options:
+          - review
+          - signal
+  schedule:
+    - cron: "30 19 * * *"
 
 jobs:
   dynamic-spot-scan:
+    if: github.event_name == 'workflow_dispatch' && (inputs.job == 'signal' || inputs.job == '')
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -20,3 +32,21 @@ jobs:
             --get "$APP_URL/api/cron" \
             --data-urlencode "secret=${{ secrets.CRON_SECRET }}" \
             --data-urlencode "groups=dynamic-spot,dynamic-weak-spot"
+
+  review-recovery:
+    if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.job == 'review')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Call review recovery
+        run: |
+          APP_URL="${{ secrets.VERCEL_APP_URL }}"
+          APP_URL="${APP_URL%/}"
+          if [ -z "$APP_URL" ]; then
+            APP_URL="https://cross-market-signal-alerts.vercel.app"
+          fi
+
+          curl --fail --show-error --silent \
+            --get "$APP_URL/api/cron" \
+            --data-urlencode "secret=${{ secrets.CRON_SECRET }}" \
+            --data-urlencode "group=review"
