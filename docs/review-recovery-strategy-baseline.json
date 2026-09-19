@@ -1,0 +1,20 @@
+{
+  "sourceBranch": "main",
+  "sourceCommit": "990a23044f883d7d586549e652fab1051c7b6645",
+  "files": {
+    "lib/config.js": "748f040eb0454640ae92716372bc49027e58cfbc",
+    "lib/funding-carry-v2-paper.js": "b57fdfb73c0cc20080c8c42da4afd5a6f6011fba",
+    "lib/model-metadata.js": "f45dd02b4fe9808e03bce7a6ef89c8b023ff8d89",
+    "lib/signal-density-config.js": "3f407b8191c772cacc73ba17e209831e64685b4e",
+    "lib/signal-density-quality-policy.js": "abdc5162202b1d93ef4401a3bb81a978c55385a9",
+    "lib/signal-density.js": "a2b23c91c76ceacbf7682752be9c88d68a3921e1",
+    "lib/strategies.js": "67cf11e3114f4b220276c1adbd32af96d2e2c6e1",
+    "lib/strategies/dynamic-production.js": "6fa752765d7f4f9c90ddc63d2e6739e7a42d8f1a",
+    "lib/strategies/strong-extension.js": "4b2da4a76f707e04520380dc0b664eea5961098b",
+    "lib/trading/trade-plan.js": "0712aeead329060dba1a3df2052c0368edc63f86",
+    "lib/trading/trade-spec.js": "8272aea80bde02705e27a053bc85ae0c82a34b9e",
+    "lib/v3-3-paper.js": "33cdabb6c7b8401f996cd11100f14c1a9b7c3185",
+    "lib/v3-4-paper.js": "610ae3cb560928206ed2d3eaa5998857daed71a4",
+    "lib/v3-paper.js": "da5c26e100b162c0c17d9e0b5aa32719f1ec9e22"
+  }
+}

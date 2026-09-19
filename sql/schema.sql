@@ -88,8 +88,15 @@ alter table cr_paper_model_runs add column if not exists review jsonb;
 create index if not exists cr_sent_alerts_asset_time_idx on cr_sent_alerts (asset, trigger_time desc);
 create index if not exists cr_sent_alerts_model_family_version_time_idx on cr_sent_alerts (signal_family, model_version, sent_at desc);
 create index if not exists cr_sent_alerts_strategy_version_time_idx on cr_sent_alerts (strategy_id, model_version, sent_at desc);
+create index if not exists cr_sent_alerts_review_queue_idx
+  on cr_sent_alerts (sent_at asc, signal_key)
+  where delivery_status = 'sent'
+    and (payload->'review' is null or payload->'review'->>'status' = 'pending');
 create index if not exists cr_run_logs_created_at_idx on cr_run_logs (created_at desc);
 create index if not exists cr_paper_model_runs_rebalance_idx on cr_paper_model_runs (rebalance_time desc);
+create index if not exists cr_paper_model_runs_review_queue_idx
+  on cr_paper_model_runs (rebalance_time asc, model_id)
+  where review is null or review->>'status' = 'pending';
 
 alter table cr_sent_alerts enable row level security;
 alter table cr_run_logs enable row level security;

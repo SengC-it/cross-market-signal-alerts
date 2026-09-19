@@ -1509,6 +1509,7 @@
           return `${outcome}${value}${exitReason}${price}`;
         }
         if (review?.status === "pending") {
+          const displayStatus = reviewDisplayStatus(review);
           const hasPositionReturn = review.returnPct != null
             && Number.isFinite(Number(review.returnPct));
           const hasPortfolioReturn = review.portfolioReturnPct != null
@@ -1527,7 +1528,7 @@
             const expectedExit = review.expectedExitTime
               ? ` / 预计结束 ${formatDate(review.expectedExitTime)}`
               : "";
-            return `${outcome} ${pct(review.returnPct)}${portfolio}${markPrice}${markTime}${expectedExit} / 未最终：${review.reason || "持仓监控中"}`;
+            return `${displayStatus} ${outcome} ${pct(review.returnPct)}${portfolio}${markPrice}${markTime}${expectedExit} / 未最终：${review.reason || "持仓监控中"}`;
           }
           if (hasLatestPortfolioReturn) {
             const outcome = Number(review.latestMarkedReturn) >= 0 ? "组合浮动盈利" : "组合浮动亏损";
@@ -1535,10 +1536,25 @@
             const expectedExit = review.expectedExitTime
               ? ` / 预计结束 ${formatDate(review.expectedExitTime)}`
               : "";
-            return `${outcome} ${pct(review.latestMarkedReturn)}${markTime}${expectedExit} / 未最终：${review.reason || "持仓监控中"}`;
+            return `${displayStatus} ${outcome} ${pct(review.latestMarkedReturn)}${markTime}${expectedExit} / 未最终：${review.reason || "持仓监控中"}`;
           }
-          return review.reason || "待复盘";
+          return `${displayStatus}${review.reason ? ` / ${review.reason}` : ""}`;
         }
+        return "历史待补录";
+      }
+
+      function reviewDisplayStatus(review) {
+        if (!review) return "历史待补录";
+        if (review.displayStatus) return review.displayStatus;
+        const diagnosticsStatus = review.diagnostics?.status;
+        const retryAt = review.diagnostics?.nextRetryAt || review.reviewAfter;
+        if (diagnosticsStatus === "data_error") {
+          return retryAt && new Date(retryAt).getTime() > Date.now() ? "复盘重试中" : "复盘数据异常";
+        }
+        if (diagnosticsStatus === "retrying") return "复盘重试中";
+        if (retryAt && new Date(retryAt).getTime() > Date.now()) return "等待复盘窗口";
+        if (review.returnPct != null || review.latestMarkedReturn != null) return "监控中";
+        if (diagnosticsStatus === "history_pending") return "历史待补录";
         return "待复盘";
       }
 

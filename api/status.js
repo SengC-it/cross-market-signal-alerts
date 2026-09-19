@@ -10,6 +10,7 @@ import {
 import { isDashboardAuthorizedRequest, setPrivateResponseHeaders } from "../lib/api-auth.js";
 import { FUNDING_CARRY_V2_MODEL, FUNDING_CARRY_V2_MODEL_METADATA } from "../lib/funding-carry-v2-paper.js";
 import { SIGNAL_ONLY_RELEASE } from "../lib/production-signal-policy.js";
+import { reviewStatusLabel } from "../lib/review-recovery.js";
 import { buildSignalDensityKpi } from "../lib/signal-density.js";
 import { buildPerformanceSummary } from "../lib/performance-summary.js";
 
@@ -171,6 +172,9 @@ function buildSummary(runLogs, sentAlerts, emailNotifications = [], paperModelRu
   const latestRun = runLogs[0] || null;
   const latestAlert = emailNotifications[0] || null;
   const latestPaperRun = paperModelRuns[0] || null;
+  const latestReviewRecovery = runLogs.find((log) =>
+    log.scan_group === "review" && log.email_result?.reviewRecovery
+  )?.email_result?.reviewRecovery || null;
   const newestRunMs = latestRun?.created_at ? Date.now() - new Date(latestRun.created_at).getTime() : null;
 
   return {
@@ -182,6 +186,7 @@ function buildSummary(runLogs, sentAlerts, emailNotifications = [], paperModelRu
     latestRunEmailConsistency: latestRun ? emailConsistency(latestRun, sentAlertKeys) : { status: "none" },
     latestRunErrors: Array.isArray(latestRun?.errors) ? latestRun.errors.length : 0,
     latestRunWarnings: Array.isArray(latestRun?.warnings) ? latestRun.warnings.length : 0,
+    reviewRecovery: latestReviewRecovery,
     latestAlertAt: latestAlert?.sent_at || null,
     totalRunsReturned: runLogs.length,
     totalAlertsReturned: emailNotifications.length,
@@ -320,7 +325,8 @@ function buildPaperTargetReview(review, target, modelVersion) {
     if (!review) {
       return {
         status: "pending",
-        reason: "持仓周期未结束"
+        reason: "历史记录尚未补录复盘",
+        displayStatus: "历史待补录"
       };
     }
     if (!position) return review;
@@ -341,7 +347,9 @@ function buildPaperTargetReview(review, target, modelVersion) {
       tradingCost: position.tradingCost,
       returnPct: position.returnPct,
       netOfCosts: review.netOfCosts === true,
-      portfolioReturnPct: review.returnPct ?? review.latestMarkedReturn
+      portfolioReturnPct: review.returnPct ?? review.latestMarkedReturn,
+      diagnostics: review.diagnostics,
+      displayStatus: reviewStatusLabel(review)
     };
   }
 
@@ -364,7 +372,9 @@ function buildPaperTargetReview(review, target, modelVersion) {
     tradingCost: position.tradingCost,
     returnPct: position.returnPct,
     netOfCosts: true,
-    portfolioReturnPct: review.returnPct
+    portfolioReturnPct: review.returnPct,
+    diagnostics: review.diagnostics,
+    displayStatus: reviewStatusLabel(review)
   };
 }
 
