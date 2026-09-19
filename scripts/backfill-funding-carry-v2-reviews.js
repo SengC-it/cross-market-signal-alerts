@@ -100,7 +100,7 @@ export async function run({
     .filter((runRow) => runRow.review?.status !== "reviewed")
     .map((runRow) => ({
       rebalanceTime: runRow.rebalance_time,
-      targets: runRow.targets.map((target) => target.symbol),
+      targets: Array.isArray(runRow.targets) ? runRow.targets.map((target) => target.symbol) : [],
       reason: runRow.review?.diagnostics?.lastError
         || runRow.review?.diagnostics?.retryReason
         || runRow.review?.reason
