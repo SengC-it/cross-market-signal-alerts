@@ -8,7 +8,7 @@ async (page) => {
       firstSignalAt: "2026-05-19T00:00:00Z",
       latestSignalAt: "2026-08-28T00:00:00Z"
     });
-    renderPerformanceSummary({
+    const performanceFixture = {
       totalSignals: 283, reviewedSignals: 276, pendingSignals: 7, reviewRate: 276 / 283,
       profitSignals: 104, lossSignals: 172, flatSignals: 0, winRate: 104 / 276,
       totalAssets: 132, profitableAssets: 63, netSignalReturn: -0.07,
@@ -26,7 +26,54 @@ async (page) => {
         fundingCarryV2ForwardPaper: metrics("funding_carry_v2_forward_paper", "FUNDING CARRY V2 FORWARD PAPER", "funding_carry_perp_reversion_ema100_v2", "periods", 10, 10, 10, 0, 3, 7, 0.000034, 0.000344, 1.275, -0.000888)
       },
       forwardPromotionGate: { status: "INSUFFICIENT_FORWARD_SAMPLE", reviewedSignals: 0, minimumReviewedSignals: 30 }
-    });
+    };
+    renderPerformanceSummary(performanceFixture);
+
+    const emptyV4ForwardFixture = {
+      ...performanceFixture,
+      strategyPerformance: {
+        ...performanceFixture.strategyPerformance,
+        v4Forward: metrics(
+          "v4_forward", "V4 FORWARD", "dynamic_relative_strength_breakout / current V4 production forward",
+          "signals", 0, null, 0, 0, 0, 0, null, null, null, null
+        )
+      }
+    };
+    renderPerformanceSummary(emptyV4ForwardFixture);
+    const emptyV4ForwardLabels = [...document.querySelectorAll(".strategy-performance-title strong")]
+      .map((item) => item.textContent.trim());
+    if (emptyV4ForwardLabels.includes("V4 FORWARD")) {
+      throw new Error("empty V4 FORWARD strategy card should be hidden");
+    }
+
+    const firstV4ForwardFixture = {
+      ...emptyV4ForwardFixture,
+      strategyPerformance: {
+        ...emptyV4ForwardFixture.strategyPerformance,
+        v4Forward: metrics(
+          "v4_forward", "V4 FORWARD", "dynamic_relative_strength_breakout / current V4 production forward",
+          "signals", 1, null, 0, 1, 0, 0, null, null, null, null
+        )
+      }
+    };
+    renderPerformanceSummary(firstV4ForwardFixture);
+    const firstV4ForwardLabels = [...document.querySelectorAll(".strategy-performance-title strong")]
+      .map((item) => item.textContent.trim());
+    const expectedFirstV4ForwardLabels = [
+      "V4.2 FORWARD",
+      "V4 FORWARD",
+      "V4 SHADOW",
+      "FUNDING CARRY V2 FORWARD PAPER",
+      "V3.4 FORWARD PAPER",
+      "V3.3 FORWARD PAPER",
+      "V3.1 FORWARD PAPER",
+      "LEGACY PRODUCTION"
+    ];
+    if (JSON.stringify(firstV4ForwardLabels) !== JSON.stringify(expectedFirstV4ForwardLabels)) {
+      throw new Error(`one-signal V4 FORWARD order mismatch: ${JSON.stringify(firstV4ForwardLabels)}`);
+    }
+    renderPerformanceSummary(performanceFixture);
+
     renderAlertsV2([
       {
         signal_key: "long", asset: "BTCUSDT", sent_at: "2026-08-29T09:15:00Z",
