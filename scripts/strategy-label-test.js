@@ -39,6 +39,16 @@ const cases = [
     model_version: "DYNAMIC_SPOT_V2_2026-08-01",
     payload: { signalVariant: "STRONG_EXTENSION_10_15" }
   }, "V4.2 FORWARD"],
+  ["V4 Strong Core", {
+    strategy_id: "dynamic_relative_strength_breakout",
+    model_version: "DYNAMIC_SPOT_V2_2026-08-01",
+    payload: { signalVariant: "STRONG_CORE_8_10" }
+  }, "V4 FORWARD"],
+  ["V4 current strength without variant", {
+    strategy_id: "dynamic_relative_strength_breakout",
+    model_version: "DYNAMIC_SPOT_V2_2026-08-01",
+    payload: {}
+  }, "V4 FORWARD"],
   ["V3.1", { model_version: "V3.1 PAPER", payload: { delivery: { mode: "PAPER" } } }, "V3.1 FORWARD PAPER"],
   ["V3.3", { model_version: "V3.3 PAPER", payload: { delivery: { mode: "PAPER" } } }, "V3.3 FORWARD PAPER"],
   ["V3.4", { model_version: "V3.4 PAPER", payload: { delivery: { mode: "PAPER" } } }, "V3.4 FORWARD PAPER"],
@@ -55,21 +65,26 @@ for (const [name, signal, expectedLabel] of cases) {
 }
 assert.equal(
   strategyGroupForSignal({
-    strategy_id: "dynamic_relative_strength_breakout",
+    strategy_id: "dynamic_relative_weakness_breakdown",
     model_version: "DYNAMIC_SPOT_V2_2026-08-01",
-    payload: { signalVariant: "STRONG_CORE_8_10" }
-  }),
-  null,
-  "unlisted V4 core must not be relabeled as legacy production"
+    payload: { delivery: { mode: "SHADOW_ONLY" } }
+  })?.label,
+  "V4 SHADOW",
+  "current V4 SHADOW metadata must use the shared V4 shadow label"
 );
 assert.equal(
-  strategyGroupForSignal({ payload: { delivery: { mode: "SHADOW_ONLY" } } })?.label,
-  "V4 SHADOW",
-  "SHADOW_ONLY delivery must use the shared V4 shadow label"
+  strategyGroupForSignal({
+    strategy_id: "future_strategy",
+    model_version: "FUTURE_MODEL",
+    payload: { delivery: { mode: "SHADOW_ONLY" } }
+  }),
+  null,
+  "future SHADOW_ONLY metadata must not be relabeled as V4 shadow"
 );
 
 const expectedLabels = [
   "V4.2 FORWARD",
+  "V4 FORWARD",
   "V4 SHADOW",
   "FUNDING CARRY V2 FORWARD PAPER",
   "V3.4 FORWARD PAPER",
@@ -115,5 +130,10 @@ assert.deepEqual(
   expectedLabels,
   "performance groups must render in fixed newest-first order"
 );
+const performanceLabels = new Set(orderedStrategyGroups(performance).map((group) => group.label));
+for (const [, signal, expectedLabel] of cases) {
+  assert.ok(performanceLabels.has(strategyGroupLabelForSignal(signal)), `${expectedLabel} must exist in performance groups`);
+  assert.equal(strategyGroupLabelForSignal(signal), expectedLabel, `${expectedLabel} recent/performance label consistency`);
+}
 
 console.log(`strategy group consistency tests passed (${cases.length} mappings, ${expectedLabels.length} ordered groups)`);
