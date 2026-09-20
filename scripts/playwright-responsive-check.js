@@ -26,8 +26,10 @@ async (page) => {
     renderAlertsV2([
       {
         signal_key: "long", asset: "BTCUSDT", sent_at: "2026-08-29T09:15:00Z",
+        strategy_id: "dynamic_relative_strength_breakout",
         model_version: "DYNAMIC_SPOT_V2_2026-08-01",
         payload: {
+          signalVariant: "STRONG_EXTENSION_10_15",
           signalTier: "OBSERVATION", alertTierLabel: "STRONG EXTENSION / OBSERVATION", direction: "LONG",
           referencePrice: 112450, currentPrice: 111980, priceDriftPct: -0.0042,
           triggerReason: "极长原因 ".repeat(100), invalidCondition: "极长失效条件 ".repeat(100),
@@ -42,6 +44,14 @@ async (page) => {
           executionPlan: { kind: "v3_paper_position", targetWeight: -0.2, referencePrice: 4000, catastropheStopPct: 0.12, maxHoldingHours: 168, takeProfit: null },
           review: { status: "reviewed", returnPct: 0.02, outcome: "盈利" }
         }
+      },
+      {
+        signal_key: "funding", asset: "SOLUSDT", sent_at: "2026-08-27T09:15:00Z",
+        model_version: "FUNDING CARRY PERP Z-SCORE V2 PAPER",
+        payload: {
+          direction: "LONG", referencePrice: 150, currentPrice: 151, priceDriftPct: 0.0067,
+          review: { status: "pending" }
+        }
       }
     ]);
   });
@@ -55,7 +65,16 @@ async (page) => {
       return {
         documentOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth,
         feedOverflow: feed.scrollWidth > feed.clientWidth,
-        detailsVisible: [...document.querySelectorAll(".signal-more")].every((item) => item.getBoundingClientRect().right <= document.documentElement.clientWidth)
+        detailsVisible: [...document.querySelectorAll(".signal-more")].every((item) => item.getBoundingClientRect().right <= document.documentElement.clientWidth),
+        strategyLabels: [...document.querySelectorAll(".signal-strategy .signal-tag")].map((item) => item.textContent.trim()),
+        strategyVisible: [...document.querySelectorAll(".signal-strategy .signal-tag")].every((item) => {
+          const rect = item.getBoundingClientRect();
+          return rect.left >= 0 && rect.right <= document.documentElement.clientWidth;
+        }),
+        timeVisible: [...document.querySelectorAll(".signal-time")].every((item) => {
+          const rect = item.getBoundingClientRect();
+          return rect.left >= 0 && rect.right <= document.documentElement.clientWidth;
+        })
       };
     });
     await page.locator(".signal-item").evaluateAll((items) => items.forEach((item) => { item.open = true; }));
@@ -66,7 +85,16 @@ async (page) => {
         feedOverflow: feed.scrollWidth > feed.clientWidth
       };
     });
-    const passed = !closed.documentOverflow && !closed.feedOverflow && closed.detailsVisible && !open.documentOverflow && !open.feedOverflow;
+    const passed = !closed.documentOverflow
+      && !closed.feedOverflow
+      && closed.detailsVisible
+      && closed.strategyVisible
+      && closed.timeVisible
+      && closed.strategyLabels[0] === "V4.2"
+      && closed.strategyLabels[1] === "V3.4"
+      && closed.strategyLabels[2] === "Funding Carry V2"
+      && !open.documentOverflow
+      && !open.feedOverflow;
     if (!passed) throw new Error(`responsive overflow at ${width}px: ${JSON.stringify({ closed, open })}`);
     results.push({ width, closed, open, passed });
   }

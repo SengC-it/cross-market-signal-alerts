@@ -511,8 +511,8 @@
 
       .signal-summary {
         display: grid;
-        grid-template-columns: minmax(240px, 1.25fr) 104px minmax(230px, 1fr) minmax(150px, 0.7fr) auto;
-        grid-template-areas: "identity time prices review more";
+        grid-template-columns: minmax(210px, 1.2fr) minmax(128px, auto) minmax(86px, auto) minmax(190px, 1fr) minmax(130px, 0.7fr) auto;
+        grid-template-areas: "identity strategy time prices review more";
         gap: 14px;
         align-items: center;
         padding: 14px 18px;
@@ -585,6 +585,20 @@
         color: var(--muted);
         font-size: 12px;
         white-space: nowrap;
+      }
+
+      .signal-strategy {
+        grid-area: strategy;
+        min-width: 0;
+        font-size: 12px;
+        font-weight: 800;
+        white-space: nowrap;
+      }
+
+      .signal-strategy .signal-tag {
+        max-width: 100%;
+        overflow: hidden;
+        text-overflow: ellipsis;
       }
 
       .signal-prices {
@@ -700,6 +714,7 @@
           grid-template-columns: minmax(0, 1fr) auto;
           grid-template-areas:
             "identity time"
+            "strategy strategy"
             "prices prices"
             "review more";
           row-gap: 9px;
@@ -791,6 +806,7 @@
         .signal-summary {
           grid-template-areas:
             "identity time"
+            "strategy strategy"
             "prices prices"
             "review review"
             "more more";
@@ -1195,10 +1211,31 @@
         els.sentAlerts.innerHTML = `<div class="signal-feed">${alerts.map(renderAlertCard).join("")}</div>`;
       }
 
+      function strategyLabel(alert) {
+        const payload = alert?.payload || {};
+        const strategyId = String(alert?.strategy_id || "");
+        const modelVersion = String(alert?.model_version || payload.modelVersion || "");
+        const signalVariant = String(payload.signalVariant || "");
+
+        if (strategyId === "dynamic_relative_strength_breakout") {
+          return signalVariant === "STRONG_EXTENSION_10_15" ? "V4.2" : "V4";
+        }
+        if (strategyId === "dynamic_relative_weakness_breakdown") return "V4 Shadow";
+        if (/FUNDING CARRY PERP Z-SCORE V2/i.test(modelVersion) || strategyId === "funding_carry_perp_reversion_ema100_v2") {
+          return "Funding Carry V2";
+        }
+        if (/FUNDING CARRY/i.test(modelVersion)) return "Funding Carry";
+        if (/V3\.4/i.test(modelVersion)) return "V3.4";
+        if (/V3\.3/i.test(modelVersion)) return "V3.3";
+        if (/V3\.1/i.test(modelVersion)) return "V3.1";
+        return "旧版";
+      }
+
       function renderAlertCard(alert) {
         const payload = alert.payload || {};
         const direction = directionText(payload);
         const tier = tierText(payload);
+        const strategy = strategyLabel(alert);
         const review = reviewSummary(payload.review);
         const tradeSpec = payload.tradeSpec;
         const executionPlan = payload.executionPlan;
@@ -1230,6 +1267,7 @@
               <span class="signal-tag ${directionClass(direction)}">${escapeHtml(direction)}</span>
               <span class="signal-tag ${tierClass(tier)}" aria-label="信号级别">${escapeHtml(tier)}</span>
             </span>
+            <span class="signal-strategy"><span class="signal-tag neutral">${escapeHtml(strategy)}</span></span>
             <span class="signal-time">${escapeHtml(formatDate(alert.sent_at || alert.trigger_time))}</span>
             <span class="signal-prices">
               <span class="signal-price-flow">参考 ${escapeHtml(formatNumber(referencePrice))} → 当前 ${escapeHtml(formatNumber(payload.currentPrice))}</span>
