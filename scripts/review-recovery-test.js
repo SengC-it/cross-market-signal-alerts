@@ -3,12 +3,14 @@ import { execFileSync } from "node:child_process";
 import {
   fetchWithRetry
 } from "../lib/storage.js";
+import { reviewAlertWithCandles } from "../lib/alert-review.js";
 import {
   classifyReviewState,
   processOrdinaryReviewAlert,
   processPaperReviewRun,
   runReviewRecovery
 } from "../lib/review-recovery.js";
+import { createTradeSpec } from "../lib/trading/trade-spec.js";
 import { run as runAlertBackfill } from "./backfill-alert-reviews.js";
 import { run as runFundingCarryV2Backfill } from "./backfill-funding-carry-v2-reviews.js";
 import { FUNDING_CARRY_V2_MODEL } from "../lib/funding-carry-v2-paper.js";
@@ -54,6 +56,89 @@ const directReview = await processOrdinaryReviewAlert(dueAlert, {
 assert.equal(directReview.status, "reviewed", "due pending signals are reviewed");
 assert.equal(reviewCalls, 1);
 assert.equal(persistCalls, 1);
+
+const partialStart = Date.parse("2026-09-18T07:00:00.000Z");
+const partialSentAt = partialStart + 9 * 1000;
+const partialNow = partialStart + 60 * 60 * 1000;
+const partialTradeSpec = createTradeSpec({
+  side: "LONG",
+  interval: "1h",
+  signalCandleOpenTime: partialStart - 60 * 60 * 1000,
+  signalCandleCloseTime: partialStart,
+  signalAvailableAt: partialStart,
+  entryEligibleAt: partialStart,
+  referencePrice: 100,
+  stopLoss: 95,
+  takeProfit: 105,
+  maxHoldingHours: 8
+});
+const partialAlert = {
+  signal_key: "partial-first-hour",
+  sent_at: new Date(partialSentAt).toISOString(),
+  asset: "BTCUSDT",
+  payload: {
+    tradeSpec: partialTradeSpec,
+    review: { status: "pending", reviewAfter: partialNow - 1 }
+  }
+};
+const partialBaseCandles = [{
+  openTime: partialStart,
+  open: 100,
+  high: 106,
+  low: 99,
+  close: 100
+}];
+const partialLowerCandles = Array.from({ length: 59 }, (_, index) => ({
+  openTime: partialStart + (index + 1) * 60 * 1000,
+  open: 100,
+  high: index === 1 ? 106 : 101,
+  low: 99,
+  close: 100
+}));
+const partialWithoutLower = await processOrdinaryReviewAlert(partialAlert, {
+  now: partialNow,
+  dryRun: true,
+  loadCandles: async () => ({
+    candles: partialBaseCandles,
+    lowerTimeframeCandles: []
+  })
+});
+assert.equal(partialWithoutLower.status, "pending", "partial first-hour review stays pending without 1m data");
+assert.equal(partialWithoutLower.review.reason, "pending_partial_candle");
+assert.equal(partialWithoutLower.review.dataQuality, "INCOMPLETE_INTRABAR_DATA");
+assert.equal(partialWithoutLower.review.outcome, undefined, "missing 1m data never becomes a fake outcome");
+assert.equal(partialWithoutLower.review.returnPct, undefined, "missing 1m data never becomes a fake return");
+
+let stagedReviewCalls = 0;
+const partialWithLower = await processOrdinaryReviewAlert(partialAlert, {
+  now: partialNow,
+  dryRun: true,
+  loadCandles: async () => ({
+    candles: partialBaseCandles,
+    lowerTimeframeCandles: partialLowerCandles
+  }),
+  review: (...args) => {
+    stagedReviewCalls++;
+    return reviewAlertWithCandles(...args);
+  }
+});
+assert.equal(stagedReviewCalls, 2, "lower-timeframe data triggers a second ordinary review pass");
+assert.equal(partialWithLower.status, "reviewed", "complete 1m data resolves a partial first-hour review");
+assert.equal(partialWithLower.review.outcome, "止盈");
+assert.equal(partialWithLower.review.lowerTimeframeReplayed, true);
+
+const partialLowerGap = partialLowerCandles.filter((candle) => candle.openTime !== partialStart + 2 * 60 * 1000);
+const partialWithGap = await processOrdinaryReviewAlert(partialAlert, {
+  now: partialNow,
+  dryRun: true,
+  loadCandles: async () => ({
+    candles: partialBaseCandles,
+    lowerTimeframeCandles: partialLowerGap
+  })
+});
+assert.equal(partialWithGap.status, "pending", "an incomplete 1m range remains pending");
+assert.equal(partialWithGap.review.dataQuality, "INCOMPLETE_INTRABAR_DATA");
+assert.equal(partialWithGap.review.reason, "pending_partial_candle");
 
 let skippedCalls = 0;
 const alreadyReviewed = await processOrdinaryReviewAlert(reviewedAlert, {
