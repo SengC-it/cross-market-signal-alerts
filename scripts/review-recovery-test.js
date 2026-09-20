@@ -138,6 +138,7 @@ assert.equal(degraded.reviewRecovery.health, "degraded", "queue errors surface d
 const v2Rows = ["bad-1", "bad-2", "good-3"].map((key, index) => ({
   model_id: "funding-carry-v2",
   rebalance_time: new Date(NOW - (index + 1) * 3600000).toISOString(),
+  targets: [{ symbol: "BTCUSDT" }],
   review: { status: "pending" }
 }));
 const v2Keys = new Map(v2Rows.map((row, index) => [
@@ -220,7 +221,7 @@ assert.equal(dryRun.status, "reviewed");
 assert.equal(dryRunWrites, 0, "dry-run does not write review state");
 
 let applyWrites = 0;
-await processPaperReviewRun({
+const emptyTargetPaperReview = await processPaperReviewRun({
   model_id: "test-paper",
   rebalance_time: new Date(NOW - 3600000).toISOString(),
   targets: []
@@ -231,7 +232,9 @@ await processPaperReviewRun({
     applyWrites++;
   }
 });
-assert.equal(applyWrites, 1, "apply mode writes the review record");
+assert.equal(emptyTargetPaperReview.status, "skipped", "empty-target paper runs are skipped");
+assert.equal(emptyTargetPaperReview.skippedNoTargets, true);
+assert.equal(applyWrites, 0, "empty-target paper runs never write a review record");
 
 let failedPaperReview = null;
 const retryablePaper = await processPaperReviewRun({
@@ -318,6 +321,70 @@ const fundingBackfillResult = await runFundingCarryV2Backfill({
 assert.equal(fundingBackfillResult.recovery.checked, 1);
 assert.equal(fundingBackfillResult.maxRecords, 1);
 assert.equal(fundingBackfillResult.truncated, true, "Funding Carry V2 backfill honors max-records");
+
+const mixedFundingRows = [
+  {
+    model_id: FUNDING_CARRY_V2_MODEL.id,
+    rebalance_time: new Date(NOW - 3600000).toISOString(),
+    targets: [],
+    review: { status: "pending" }
+  },
+  {
+    model_id: FUNDING_CARRY_V2_MODEL.id,
+    rebalance_time: new Date(NOW - 2 * 3600000).toISOString(),
+    targets: [],
+    review: null
+  },
+  {
+    model_id: FUNDING_CARRY_V2_MODEL.id,
+    rebalance_time: new Date(NOW - 3 * 3600000).toISOString(),
+    targets: [{ symbol: "BTCUSDT" }],
+    review: { status: "pending" }
+  }
+];
+const mixedFundingBackfillResult = await runFundingCarryV2Backfill({
+  apply: false,
+  now: NOW,
+  isConfigured: () => true,
+  fetchPage: () => mixedFundingRows,
+  fetchEmailRuns: () => [],
+  processReview: async () => ({
+    status: "pending",
+    failed: false,
+    review: { status: "pending", reason: "test" }
+  })
+});
+assert.equal(mixedFundingBackfillResult.rawPending, 3);
+assert.equal(mixedFundingBackfillResult.noTargetRuns, 2);
+assert.equal(mixedFundingBackfillResult.actionablePending, 1);
+assert.equal(mixedFundingBackfillResult.actionableDue, 1);
+assert.equal(mixedFundingBackfillResult.recovery.checked, 1);
+
+const failureReasonBackfillResult = await runAlertBackfill({
+  apply: false,
+  now: NOW,
+  configured: () => true,
+  fetchPage: () => [{
+    signal_key: "failure-reason",
+    sent_at: "2026-08-01T00:00:00.000Z",
+    payload: { review: { status: "pending", reviewAfter: NOW - 1 } }
+  }],
+  processAlert: async () => ({
+    key: "failure-reason",
+    status: "pending",
+    failed: true,
+    review: {
+      status: "pending",
+      diagnostics: {
+        lastError: "Binance futures restricted by location (451); Authorization: Bearer test-secret"
+      }
+    }
+  })
+});
+const failureReasonText = Object.keys(failureReasonBackfillResult.failureReasons)[0];
+assert.equal(failureReasonBackfillResult.failureReasons[failureReasonText], 1);
+assert.match(failureReasonText, /451/);
+assert.doesNotMatch(failureReasonText, /test-secret|Bearer\s+test-secret/i);
 
 const previousConfirmation = process.env.CONFIRM_REVIEW_BACKFILL;
 delete process.env.CONFIRM_REVIEW_BACKFILL;
