@@ -1091,7 +1091,8 @@
 
       function renderStrategyPerformance(groups, gate) {
         if (!groups || typeof groups !== "object") return "";
-        const rows = orderedStrategyGroups(groups);
+        const rows = orderedStrategyGroups(groups)
+          .filter((group) => Number(group.signals || 0) > 0 || Number(group.periods || 0) > 0);
         if (!rows.length) return "";
         return `<div class="strategy-performance">
           <div class="strategy-performance-head">
