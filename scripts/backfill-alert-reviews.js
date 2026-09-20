@@ -4,7 +4,8 @@ import {
 } from "../lib/storage.js";
 import {
   classifyReviewState,
-  processOrdinaryReviewAlert
+  processOrdinaryReviewAlert,
+  safeErrorText
 } from "../lib/review-recovery.js";
 
 const APPLY = process.argv.includes("--apply");
@@ -52,12 +53,21 @@ export async function run({
     skipped: beforeRows.length - selectedRows.length,
     reasons: {}
   };
+  const failureReasons = {};
 
   for (const alert of selectedRows) {
     const previousStatus = alert?.payload?.review?.status;
     recovery.checked++;
     const result = await processAlert(alert, { now, dryRun: !apply });
     if (result.failed) recovery.failed++;
+    if (result.failed) {
+      const failureReason = safeErrorText(
+        result.review?.diagnostics?.lastError
+          || result.error
+          || "未提供底层错误"
+      );
+      failureReasons[failureReason] = (failureReasons[failureReason] || 0) + 1;
+    }
     if (result.status === "reviewed" && previousStatus !== "reviewed") recovery.newlyReviewed++;
     if (result.status === "pending") recovery.stillPending++;
     if (result.status === "skipped") recovery.skipped++;
@@ -72,6 +82,7 @@ export async function run({
     truncated: selectedRows.length < dueRows.length,
     before,
     recovery,
+    failureReasons,
     after,
     note: apply
       ? "仅更新 cr_sent_alerts.payload.review；不会新增信号或发送邮件。"

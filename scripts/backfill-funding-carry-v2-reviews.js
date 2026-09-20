@@ -47,14 +47,22 @@ export async function run({
   const beforeRows = await fetchAllRuns(normalizedPageSize, fetchPage);
   const beforeEmailRuns = await fetchEmailRuns();
   const before = fundingSummary(beforeEmailRuns);
+  const reviewQueueBefore = summarizeRows(beforeRows, now);
+  const rawPending = reviewQueueBefore.pending;
+  const noTargetRuns = beforeRows.filter((runRow) =>
+    isPendingReviewRun(runRow) && !isActionablePaperRun(runRow)
+  ).length;
+  const actionablePending = beforeRows.filter((runRow) =>
+    isPendingReviewRun(runRow) && isActionablePaperRun(runRow)
+  ).length;
   const dueRows = beforeRows.filter((runRow) => {
     const state = classifyReviewState(runRow?.review, now);
     return runRow?.model_id === FUNDING_CARRY_V2_MODEL.id
-      && Array.isArray(runRow?.targets)
-      && runRow.targets.length > 0
+      && isActionablePaperRun(runRow)
       && state.due
       && runRow?.review?.status !== "reviewed";
   });
+  const actionableDue = dueRows.length;
   const selectedDueRows = normalizedMaxRecords == null
     ? dueRows
     : dueRows.slice(0, normalizedMaxRecords);
@@ -122,9 +130,13 @@ export async function run({
     truncated: selectedDueRows.length < dueRows.length,
     modelId: FUNDING_CARRY_V2_MODEL.id,
     calculatedAt: new Date(now).toISOString(),
+    rawPending,
+    noTargetRuns,
+    actionablePending,
+    actionableDue,
     before,
     after: fundingSummary(afterEmailRuns),
-    reviewQueueBefore: summarizeRows(beforeRows, now),
+    reviewQueueBefore,
     reviewQueueAfter: summarizeRows(afterRows, now),
     recovery,
     unresolved,
@@ -204,6 +216,14 @@ export function summarizeRows(rows, now = Date.now()) {
     summary.reasons[reason] = (summary.reasons[reason] || 0) + 1;
   }
   return summary;
+}
+
+function isPendingReviewRun(runRow) {
+  return runRow?.review?.status !== "reviewed";
+}
+
+function isActionablePaperRun(runRow) {
+  return Array.isArray(runRow?.targets) && runRow.targets.length > 0;
 }
 
 function fundingSummary(runs) {
