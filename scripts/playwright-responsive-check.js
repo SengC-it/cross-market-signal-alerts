@@ -18,6 +18,9 @@ async (page) => {
       strategyPerformance: {
         legacyProduction: metrics("legacy_production", "LEGACY PRODUCTION", "旧 scanner 实际历史邮件", "signals", 224, null, 224, 0, 82, 142, -0.0024, -0.55, 0.873, -0.53),
         v42Forward: metrics("v4_2_forward", "V4.2 FORWARD", "dynamic_relative_strength_breakout / STRONG_EXTENSION_10_15", "signals", 2, null, 0, 2, 0, 0, null, null, null, null),
+        v4Shadow: metrics("v4_shadow", "V4 SHADOW", "dynamic_relative_weakness_breakdown / SHADOW_ONLY", "signals", 3, null, 0, 3, 0, 0, null, null, null, null),
+        v31ForwardPaper: metrics("v3_1_forward_paper", "V3.1 FORWARD PAPER", "v3_1_residual_momentum_beta_neutral", "periods", 12, 5, 4, 1, 2, 2, 0.004, 0.016, 1.21, -0.031),
+        v33ForwardPaper: metrics("v3_3_forward_paper", "V3.3 FORWARD PAPER", "v3_3_vol_target_catastrophe_breaker", "periods", 16, 6, 5, 1, 2, 3, -0.003, -0.018, 0.91, -0.054),
         v34ForwardPaper: metrics("v3_4_forward_paper", "V3.4 FORWARD PAPER", "v3_4_unified_residual_volatility_risk", "periods", 24, 4, 3, 1, 1, 2, -0.018, -0.056, 0.48, -0.095),
         fundingCarryV2ForwardPaper: metrics("funding_carry_v2_forward_paper", "FUNDING CARRY V2 FORWARD PAPER", "funding_carry_perp_reversion_ema100_v2", "periods", 10, 10, 10, 0, 3, 7, 0.000034, 0.000344, 1.275, -0.000888)
       },
@@ -57,6 +60,19 @@ async (page) => {
   });
 
   const results = [];
+  const performanceLabels = await page.locator(".strategy-performance-title strong").allTextContents();
+  const expectedPerformanceLabels = [
+    "V4.2 FORWARD",
+    "V4 SHADOW",
+    "FUNDING CARRY V2 FORWARD PAPER",
+    "V3.4 FORWARD PAPER",
+    "V3.3 FORWARD PAPER",
+    "V3.1 FORWARD PAPER",
+    "LEGACY PRODUCTION"
+  ];
+  if (JSON.stringify(performanceLabels) !== JSON.stringify(expectedPerformanceLabels)) {
+    throw new Error(`strategy performance order mismatch: ${JSON.stringify(performanceLabels)}`);
+  }
   for (const width of [1440, 1024, 920, 900, 841, 840, 768, 375]) {
     await page.setViewportSize({ width, height: 1000 });
     await page.locator(".signal-item").evaluateAll((items) => items.forEach((item) => { item.open = false; }));
@@ -90,9 +106,9 @@ async (page) => {
       && closed.detailsVisible
       && closed.strategyVisible
       && closed.timeVisible
-      && closed.strategyLabels[0] === "V4.2"
-      && closed.strategyLabels[1] === "V3.4"
-      && closed.strategyLabels[2] === "Funding Carry V2"
+      && closed.strategyLabels[0] === "V4.2 FORWARD"
+      && closed.strategyLabels[1] === "V3.4 FORWARD PAPER"
+      && closed.strategyLabels[2] === "FUNDING CARRY V2 FORWARD PAPER"
       && !open.documentOverflow
       && !open.feedOverflow;
     if (!passed) throw new Error(`responsive overflow at ${width}px: ${JSON.stringify({ closed, open })}`);
