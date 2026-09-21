@@ -30,7 +30,7 @@ jobs:
 
           curl --fail --show-error --silent \
             --get "$APP_URL/api/cron" \
-            --data-urlencode "secret=${{ secrets.CRON_SECRET }}" \
+            --header "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
             --data-urlencode "groups=dynamic-spot,dynamic-weak-spot"
 
   review-recovery:
@@ -48,5 +48,5 @@ jobs:
 
           curl --fail --show-error --silent \
             --get "$APP_URL/api/cron" \
-            --data-urlencode "secret=${{ secrets.CRON_SECRET }}" \
+            --header "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
             --data-urlencode "group=review"
