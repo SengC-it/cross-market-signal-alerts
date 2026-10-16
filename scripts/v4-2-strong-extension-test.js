@@ -187,8 +187,9 @@ const weakRouted = routeSignalsByProductionPolicy({
   candidates: [{ ...extensionSignal, signalKey: "weak-test", strategyId: "dynamic_relative_weakness_breakdown" }],
   strengthObservationEmailEnabled: true
 });
-assert.equal(weakRouted.emailCandidates.length, 0);
-assert.equal(weakRouted.shadowOnlySignals.length, 1);
+assert.equal(weakRouted.emailCandidates.length, 1);
+assert.equal(weakRouted.emailCandidates[0].signalTierLabel, "SHORT 观察级");
+assert.equal(weakRouted.shadowOnlySignals.length, 0);
 
 const m37Routed = routeSignalsByProductionPolicy({
   candidates: [{ ...extensionSignal, signalKey: "m37-test", strategyId: "cross_sectional_relative_momentum_v1" }],

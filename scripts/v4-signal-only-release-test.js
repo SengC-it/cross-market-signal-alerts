@@ -46,9 +46,10 @@ const weakness = classifyProductionSignal({
   strategyId: "dynamic_relative_weakness_breakdown",
   alertTier: "trade"
 });
-assert.equal(weakness.tier, SIGNAL_TIERS.SHADOW_ONLY);
-assert.equal(weakness.emailEligible, false);
-assert.equal(weakness.shadowRecorded, true);
+assert.equal(weakness.tier, SIGNAL_TIERS.OBSERVATION);
+assert.equal(weakness.label, "SHORT 观察级");
+assert.equal(weakness.emailEligible, true);
+assert.equal(weakness.shadowRecorded, false);
 
 for (const strategyId of M37_REJECTED_STRATEGY_IDS) {
   const policy = classifyProductionSignal({ strategyId, alertTier: "trade" });
@@ -74,9 +75,10 @@ const routed = routeSignalsByProductionPolicy({
 });
 assert.equal(routed.highQualitySignals.length, 1);
 assert.equal(routed.observationSignals.length, 1);
-assert.equal(routed.shadowOnlySignals.length, 1);
+assert.equal(routed.shadowOnlySignals.length, 0);
+assert.equal(routed.shortObservationSignals.length, 1);
 assert.equal(routed.researchOnlySignals.length, 3);
-assert.equal(routed.emailCandidates.length, 1);
+assert.equal(routed.emailCandidates.length, 2);
 assert.equal(routed.emailCandidates[0].delivery.mode, "EMAIL");
 
 const optionalObservation = routeSignalsByProductionPolicy({

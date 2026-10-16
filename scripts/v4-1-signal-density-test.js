@@ -58,8 +58,9 @@ const weakRoute = routeSignalsByProductionPolicy({
   observationEmailEnabled: true,
   limit: 4
 });
-assert.equal(weakRoute.emailEligibleSignals.length, 0);
-assert.equal(weakRoute.shadowOnlySignals.length, 1);
+assert.equal(weakRoute.emailEligibleSignals.length, 1);
+assert.equal(weakRoute.emailEligibleSignals[0].signalTierLabel, "SHORT 观察级");
+assert.equal(weakRoute.shadowOnlySignals.length, 0);
 
 const rejectedRoute = routeSignalsByProductionPolicy({
   candidates: M37_REJECTED_STRATEGY_IDS.map((strategyId, index) => fixture(`m37-${index}`, strategyId, "trade", 99)),
@@ -159,7 +160,10 @@ assert.deepEqual(buildSignalQueueStats({
   highQualityOverflowSignals: 2,
   eligibleStrongObservations: 0,
   emailedStrongObservations: 0,
-  observationOverflowSignals: 0
+  observationOverflowSignals: 0,
+  eligibleShortObservations: 0,
+  emailedShortObservations: 0,
+  shortObservationOverflowSignals: 0
 });
 
 const sameGate = (rank) => evaluateDynamicProductionOpportunity({

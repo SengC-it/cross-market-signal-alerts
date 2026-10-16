@@ -11,7 +11,7 @@
 - `SHADOW_ONLY`：已知负 edge 或实验策略，只记录，不发送普通交易提醒。
 - `RESEARCH_ONLY`：冻结研究候选，只保留研究结果，不进入生产 scanner alert candidates。
 
-动态强势策略可进入 `OBSERVATION` 或现有质量层的 `TRADE_WATCH`，不宣称已验证盈利。动态弱势策略为 `SHADOW_ONLY`。V4-M3.7 三个 `REJECTED_CANDIDATE` family 均为 `RESEARCH_ONLY`。
+动态强势策略可进入 `OBSERVATION` 或现有质量层的 `TRADE_WATCH`，不宣称已验证盈利。动态弱势策略经用户选择开放 `SHORT 观察级` Email + Web，仍为 `OBSERVATION`，尚未验证稳定净盈利；既有 `SHADOW_ONLY` 记录不补发。V4-M3.7 三个 `REJECTED_CANDIDATE` family 均为 `RESEARCH_ONLY`。
 
 邮件和页面将参考价、当前价、价格漂移、触发原因、失效条件、历史样本状态和参考 TP/SL 展示为人工决策信息。TP/SL/RR 标记为 `REFERENCE ONLY`，最终是否交易、仓位、止盈止损和平仓均由用户人工决定。
 
@@ -23,7 +23,7 @@
 - 相同 `signalKey` 不重复发送
 - 已处理 candle 不重复扫描/发信
 - current-price drift guard 开启
-- dynamic weakness 不发送普通 production alert
+- dynamic weakness 仅发送明确标注 `SHORT 观察级` 的观察邮件，不升级为 `TRADE_WATCH`
 - M3.7 rejected family 不发送 production alert
 - 只调用 Binance market-data 读取接口，不调用交易/账户下单路径
 
